@@ -4,7 +4,7 @@ Ce document fixe des contraintes de composition et de sensation, pas une maquett
 
 ## Intention
 
-ChoreScore doit être **feel-good, chaleureux, contemporain, vivant mais adulte**. Il doit donner envie d'être ouvert souvent sans ressembler à une app de gamification enfantine.
+ChoreScore doit être **feel-good, chaleureux, contemporain, vivant mais adulte**. Il doit donner envie d'être ouvert souvent sans ressembler à une app de gamification enfantine ni à une app obsédée par la conversion.
 
 ## Composition
 
@@ -61,6 +61,31 @@ Le check de réalisation est évident mais ne doit pas être confondu avec suppr
 
 Doit être reconnaissable comme ChoreScore, lisible sur écran mobile et ne contenir que les informations explicitement partagées. Pas de jugement automatique, pas de texte provocateur généré par l'app.
 
+### Message d'archive Free
+
+Quand le mois change et qu'une archive existe :
+- composant **petit, intégré au flux et non bloquant** ;
+- fond légèrement teinté cohérent avec la palette ;
+- une à deux lignes maximum avant CTA ;
+- ton chaleureux/rassurant ;
+- CTA secondaire du type `Retrouver mon historique` ou `Découvrir Premium` ;
+- pas d'ombre spectaculaire, badge urgent, compte à rebours ou couleur d'alerte ;
+- ne jamais recouvrir le contenu accessible du mois courant.
+
+Référence de ton : « Nouveau mois 🌿 Ton historique précédent est bien au chaud. Avec ChoreScore Premium, tu peux le retrouver à tout moment. »
+
+### Upsell / paywall contextuel
+
+Le Premium ne doit pas être une couche visuelle permanente. Tant que l'utilisateur n'a pas demandé une capacité Premium : pas de grande carte tarifaire, pas de modal, pas de bannière répétitive.
+
+Quand une action Premium est demandée, l'upsell peut devenir plus explicite : fonction demandée en premier, bénéfice concret, puis offres. Toujours fournir une sortie immédiate sans perte de saisie/contexte.
+
+## Mode démo
+
+Le foyer de démonstration est visuellement le **vrai produit Premium**, pas une maquette spéciale simplifiée. Les fonctions Premium doivent être réellement navigables afin que les captures/audits représentent le produit visé.
+
+Un éventuel marqueur `Démo` doit rester discret et ne pas modifier la composition principale. Le mode Free de test doit utiliser exactement les mêmes composants que le vrai Free.
+
 ## Motion
 
 Animations courtes, utiles et facultatives. Aucune animation ne doit ralentir la saisie, masquer un résultat ou empêcher `reduce motion`.
@@ -74,4 +99,6 @@ Rejeter une proposition si elle :
 - remplace les labels par la couleur ;
 - cache les valeurs derrière des visualisations décoratives ;
 - rend les actions courantes à plus de quelques gestes sans raison ;
-- donne l'impression d'une app de points/récompenses plutôt que d'un outil domestique partagé.
+- donne l'impression d'une app de points/récompenses plutôt que d'un outil domestique partagé ;
+- présente Premium avant la valeur du produit ;
+- transforme le message d'archive en publicité intrusive.
