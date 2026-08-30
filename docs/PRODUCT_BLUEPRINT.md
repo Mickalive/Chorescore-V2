@@ -14,14 +14,14 @@ Contenu principal uniquement :
 - tous les foyers auxquels l'utilisateur appartient, y compris ceux rejoints par invitation ;
 - `Créer un foyer` si l'entitlement le permet ;
 - accès `Options` ;
-- accès **Premium / Upgrade** lorsque pertinent ;
+- accès Premium/Upgrade **secondaire et discret** lorsque pertinent ;
 - pour le propriétaire/payeur, accès discret aux `Options du foyer`.
 
 Un compte gratuit peut rejoindre plusieurs foyers par invitation. Sa limite gratuite porte sur la création/possession d'un foyer gratuit, pas sur le nombre de foyers auxquels il peut appartenir.
 
-Chaque foyer est une ligne/carte simple ouvrable. Son plan peut être signalé discrètement lorsqu'utile, puisque la facturation est attachée au foyer. Ne pas transformer la racine en dashboard statistique.
+Chaque foyer est une ligne/carte simple ouvrable. Son plan peut être signalé discrètement lorsqu'utile, puisque la facturation est attachée au foyer. Ne pas transformer la racine en dashboard statistique ni en vitrine de paiement.
 
-L'upgrade doit expliquer la grille canonique : essai complet 30 jours, Standard 2,99 €/mois/foyer jusqu'à 7 membres, Pro 5,99 €/mois/foyer à partir de 8 membres. Les montants doivent être rendus depuis la configuration de billing lorsque le vrai système est branché, pas dupliqués partout.
+L'utilisateur ne doit pas voir un paywall plein écran au démarrage. La grille canonique — essai complet 30 jours, Standard 2,99 €/mois/foyer jusqu'à 7 membres, Pro 5,99 €/mois/foyer à partir de 8 membres — apparaît lorsqu'il demande à voir les offres ou tente une fonction Premium.
 
 ## 3. Foyer ouvert
 
@@ -47,7 +47,7 @@ Doit rester rapide, avec les champs essentiels dans cet ordre mental :
 
 Le membre connecté est proposé par défaut dans `Fait par`, mais peut être remplacé par n'importe quel membre du foyer.
 
-Sur un foyer gratuit, la pondération n'est pas un faux contrôle désactivé perdu dans le formulaire : elle peut être signalée proprement comme fonction Premium depuis Options avancées, sans gêner la saisie de base.
+Sur un foyer Free, la saisie de base reste totalement utilisable. Si l'utilisateur demande la pondération, afficher à ce moment un message/upgrade contextuel expliquant la fonction Premium. Ne pas afficher une grosse bannière Premium en permanence dans le formulaire.
 
 ### PersistentTask
 
@@ -57,18 +57,15 @@ Un libellé peut rester ponctuel ou être enregistré comme PersistentTask. Les 
 
 Sous la saisie : flux chronologique des CompletedEntry accessibles, analogue à la liste des dépenses Tricount.
 
-Chaque ligne montre au minimum :
-- libellé ;
-- durée ;
-- fait par ;
-- fait pour ;
-- date/heure.
+Chaque ligne montre au minimum : libellé, durée, fait par, fait pour, date/heure. Modifier/supprimer via menu compact/détail. Une action de partage permet de partager une entrée ou une sélection utile via le share sheet natif.
 
-Modifier/supprimer via menu compact/détail. Pas de rangée de gros boutons par entrée.
+En Trial/Standard/Pro, l'historique est complet. En Free, il montre le **mois civil courant**. Les entrées plus anciennes restent persistées.
 
-Une action de partage permet de partager une entrée ou une sélection utile via le share sheet natif.
+Lorsqu'une archive plus ancienne existe, afficher dans la page un **petit message chaleureux, non bloquant et visuellement secondaire**. Référence de ton :
 
-En Trial/Standard/Pro, l'historique est complet. En Free, il montre le **mois civil courant**. Les entrées plus anciennes restent persistées et un affordance Premium peut signaler que l'archive existe sans prétendre qu'elle a été supprimée.
+> Nouveau mois 🌿 Ton historique précédent est bien au chaud. Avec ChoreScore Premium, tu peux le retrouver à tout moment.
+
+Le message peut contenir une action discrète `Retrouver mon historique` / `Découvrir Premium`, mais jamais ouvrir automatiquement une modale.
 
 ## 5. Score
 
@@ -89,16 +86,18 @@ Les graphes ne dépendent pas d'une couleur identitaire fixe par membre. Le nom 
 
 ### État gratuit
 
-Pour un foyer gratuit :
+Pour un foyer Free :
 - Score porte uniquement sur le **mois civil courant** ;
 - `Semaine` et `Mois` restent utilisables dans cette fenêtre ;
-- `Année`, `Depuis le début` et les données antérieures ouvrent un état Premium clair ;
+- `Année`, `Depuis le début` et les données antérieures sont Premium ;
 - la section pondérée n'est pas active ;
-- l'UI peut indiquer qu'un historique antérieur existe et sera restauré après upgrade, sans prétendre qu'il a été supprimé.
+- l'archive antérieure reste persistée.
 
-Le passage au mois suivant doit visuellement produire un nouveau Score mensuel sans effacer les données persistées.
+Si l'utilisateur appuie sur une période/option Premium, ouvrir un **upsell contextuel** bref. Si une archive antérieure existe, le même petit message chaleureux que sous Ajouter peut être affiché dans la page. Aucun paywall automatique à l'ouverture de Score.
 
-Le partage du Score courant doit utiliser le share sheet système et pouvoir produire une carte ChoreScore propre, limitée aux informations sélectionnées/visibles.
+Le passage au mois suivant produit un nouveau Score mensuel sans effacer les données persistées.
+
+Le partage du Score courant utilise le share sheet système et peut produire une carte ChoreScore propre, limitée aux informations sélectionnées/visibles.
 
 ## 6. To-do
 
@@ -106,28 +105,17 @@ Le partage du Score courant doit utiliser le share sheet système et pouvoir pro
 
 ### État Trial / Standard / Pro
 
-Une To-do peut être :
-- sans date ;
-- avec date/deadline ;
-- assignée à un membre ;
-- faite pour tout ou partie du foyer ;
-- liée à une PersistentTask ;
-- accompagnée d'une note et d'un rappel.
-
-La liste doit rester lisible : titre, assigné, échéance éventuelle, état. Ne pas créer une usine de gestion de projet.
+Une To-do peut être sans date, datée/deadline, assignée, faite pour tout ou partie du foyer, liée à une PersistentTask, accompagnée d'une note et d'un rappel. La liste reste simple et scannable.
 
 ### État gratuit
 
-L'onglet reste visible pour conserver la navigation canonique, mais affiche un **état Premium simple et utile** : ce que permet To-do + action Upgrade. Aucun faux planning, aucune suppression des anciennes TodoItem après downgrade.
+L'onglet reste visible. L'utilisateur peut comprendre ce que permet To-do sans subir un paywall à l'entrée. Lorsqu'il tente de **créer/planifier** une tâche, afficher l'upgrade contextuel Premium. Un état vide peut expliquer sobrement que la planification fait partie de Premium avec une action secondaire pour en savoir plus.
+
+Aucune TodoItem existante n'est supprimée après downgrade.
 
 ### Check vert — tâche faite
 
-Le check ouvre un mini-formulaire :
-- `Fait par` (membre validant par défaut, modifiable) ;
-- durée réelle ;
-- `Fait pour` repris de la To-do ou modifiable.
-
-Validation atomique : TodoItem terminée + CompletedEntry créée. La nouvelle entrée apparaît immédiatement dans l'historique et modifie Score.
+Le check ouvre un mini-formulaire : `Fait par`, durée réelle, `Fait pour`. Validation atomique : TodoItem terminée + CompletedEntry créée. La nouvelle entrée apparaît immédiatement dans l'historique et modifie Score.
 
 ## 7. Options
 
@@ -139,18 +127,19 @@ Notifications, confidentialité, légal, préférences, compte/connexion et autr
 
 Visibles au propriétaire/payeur selon ses droits : abonnement du foyer, administration, membres, restauration/gestion de l'achat et permissions fines disponibles selon le plan.
 
-## 8. États obligatoires
+Un accès volontaire aux offres Premium peut exister ici sans interruption automatique ailleurs.
 
-Chaque écran important doit avoir :
-- état vide utile ;
-- chargement seulement si nécessaire ;
-- erreur compréhensible avec récupération ;
-- fonctionnement offline/local honnête ;
-- état Free et Premium lorsque leurs comportements diffèrent ;
-- tailles de texte élevées sans casser la navigation ;
-- boutons/actions désactivés expliqués lorsque la capacité externe n'est pas configurée.
+## 8. Mode démo / test
 
-## 9. Interdictions UX
+La version testable doit démarrer dans un **foyer démo Premium entièrement débloqué** pour permettre l'exploration de toutes les fonctions sans achat réel : archive, pondération, To-do, partage et autres capacités implémentées.
+
+Ce mode doit être explicitement identifiable comme démo/test dans l'infrastructure et ne jamais simuler un abonnement payé. Il doit également offrir aux tests un moyen déterministe de basculer vers Free afin de vérifier les restrictions et messages de conversion.
+
+## 9. États obligatoires
+
+Chaque écran important doit avoir : état vide utile, erreur/récupération, fonctionnement offline/local honnête, état Free/Premium lorsque différent, grandes tailles de texte, actions externes non configurées expliquées.
+
+## 10. Interdictions UX
 
 - pas de dashboard générique avant les foyers ;
 - pas d'onglet Historique séparé ;
@@ -158,9 +147,10 @@ Chaque écran important doit avoir :
 - pas de points abstraits ;
 - pas de catégories ménagères obligatoires ;
 - pas de commentaires moraux ou relationnels automatiques ;
-- pas de faux boutons Google/Facebook/calendrier/share/paiement qui prétendent fonctionner ;
+- pas de faux boutons Google/Facebook/calendrier/share/paiement ;
 - pas d'interface dominée par des cartes blanches imbriquées ;
-- pas de paywall agressif qui bloque la saisie de base ;
+- pas de paywall au démarrage ou à chaque changement d'écran ;
+- pas de bannière Premium omniprésente ;
 - pas de message mensonger de suppression des données historiques ;
-- pas de limitation qui empêche un utilisateur gratuit d'accepter une invitation à un foyer ;
+- pas de limitation empêchant un utilisateur gratuit d'accepter une invitation ;
 - pas de placeholder visible dans un critère déclaré terminé.
