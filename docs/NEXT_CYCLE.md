@@ -1,5 +1,9 @@
 # Next cycle
 
-Active criterion: **V2-00 — Socle greenfield**.
+Active criterion: **V2-00 — Socle greenfield** (REPAIR).
 
-Build the new app foundation from scratch. Do not port the previous product. Reuse is allowed only later for isolated technical bricks that independently satisfy the V2 architecture and tests.
+Two mustFix findings from audit cycle 33292303527:
+1. Expo package versions guessed with old scheme → native Android compilation fails → must use SDK 57 aligned versions via `npx expo install`
+2. `createEntry` leaks `householdId` into analytics fact → must strip all operational IDs from emitted analytics data
+
+No new feature scope. Fix findings, verify compilation, add analytics leak test, confirm all existing tests pass.

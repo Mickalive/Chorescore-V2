@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "milestone": "v2-rc",
-  "lastCycle": "human-greenfield-bootstrap",
+  "lastCycle": "33292303527",
   "activeCriteria": ["V2-00"],
   "pendingArtifact": null,
-  "progressSummary": "Repository V2 greenfield initialized. No V1 product evidence is inherited.",
+  "progressSummary": "V2-00 audit returned repair. Architecture/design/tests confirmed sound. Two mustFix findings: (1) Expo package version mismatch breaks Android compilation — must use SDK 57 aligned versions; (2) createEntry leaks householdId into analytics — must strip operational IDs. Repair task assigned.",
   "criteria": [
-    {"id":"V2-00","status":"in_progress","evidence":[]},
+    {"id":"V2-00","status":"in_progress","evidence":["architecture-greenfield-confirmed","ports-honest-adapters","visual-design-coherent","66-tests-passing","js-bundle-success","expo-prebuild-success","mustFix-expo-versions-open","mustFix-analytics-id-leak-open"]},
     {"id":"V2-01","status":"pending","evidence":[]},
     {"id":"V2-02","status":"pending","evidence":[]},
     {"id":"V2-03","status":"pending","evidence":[]},
@@ -15,5 +15,20 @@
     {"id":"V2-06","status":"pending","evidence":[]},
     {"id":"V2-07","status":"pending","evidence":[]}
   ],
-  "openFindings": []
+  "openFindings": [
+    {
+      "cycle": "33292303527",
+      "criterionId": "V2-00",
+      "path": "package.json",
+      "mustFix": true,
+      "summary": "Expo package versions guessed with old scheme (expo-constants ~17.0.3 etc.) instead of SDK 57 aligned versions — ./gradlew :app:assembleDebug fails"
+    },
+    {
+      "cycle": "33292303527",
+      "criterionId": "V2-00",
+      "path": "src/application/use-cases/ChoreScoreApp.ts",
+      "mustFix": true,
+      "summary": "createEntry emits householdId in analytics fact — violates port contract and DATA_PRODUCT_PRIVACY"
+    }
+  ]
 }

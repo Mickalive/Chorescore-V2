@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33292303527",
+  "role": "builder",
+  "decision": "repair",
+  "summary": "Le socle greenfield V2-00 est globalement bien posé : architecture domain/application/infrastructure/UI explicite, domaine sans dépendance fournisseur, ports Auth/Entitlement/Billing/SystemShare/Notification/Calendar/SecureStorage/Sync/ResearchAnalytics bien définis, adapters locaux honnêtes (aucun faux OAuth/paiement/push/sync/analytics), shell de navigation foyers -> Ajouter une tâche | Score | To-do cohérent, charte visuelle chaleureuse/self-care conforme au design contract, tests déterministes verts (66) et typecheck verts, export Android et prebuild réussis. Toutefois deux findings mustFix empêchent l'acceptation : (1) des versions de paquets Expo ont été devinées avec l'ancien schéma de versionnage (expo-constants ~17.0.3, expo-font ~13.0.4, expo-splash-screen ~0.30.3, expo-linking ~7.0.3, expo-status-bar ~2.2.3, expo-router ~4.0.4, react-native-safe-area-context ~5.4.0) au lieu de laisser Expo aligner ses paquets (~57.x), ce qui fait échouer la compilation native Android (expo-constants 17.0.8 incompatible avec expo-modules-core 57.0.14) ; (2) le use-case createEntry émet l'ID opérationnel householdId dans le fait analytics, violant le contrat documenté du port et la politique DATA_PRODUCT_PRIVACY. Un finding non bloquant (createHousehold passe la chaîne littérale 'new-household' comme householdId) est également signalé.",
+  "checks": [
+    "npm run check (typecheck + 66 tests jest) : vert",
+    "npx tsc --noEmit : vert",
+    "npx expo export --platform android : vert (bundle JS 1008 modules)",
+    "npx expo prebuild --platform android --no-install : vert (régénère android/ identique au commit)",
+    "Versions installées : expo 57.0.18, react-native 0.86.3, react 19.2.8, expo-router 4.0.22, jest-expo 57.0.5",
+    "Comparaison package.json vs expo/bundledNativeModules.json : divergences de versions sur expo-constants/expo-font/expo-splash-screen/expo-linking/expo-status-bar/expo-router/react-native-safe-area-context",
+    "./gradlew :app:assembleDebug : ECHEC (compilation Kotlin expo-constants : 'Unresolved reference constants', ConstantsService n'implémente pas les membres abstraits)",
+    "Test indépendant : le fait analytics émis par createEntry contient householdId (violation du contrat du port)",
+    "Inspection des adapters locaux : honnêtes, aucun service externe simulé comme réel",
+    "Inspection du shell de navigation et de la charte visuelle : cohérents avec DESIGN_CONTRACT/DESIGN_BRIEF",
+    "Inspection des écrans : placeholders explicites marqués V2-02/V2-03/V2-04, conformes à l'objectif 'sans prétendre que les fonctionnalités futures sont déjà terminées'"
+  ],
+  "findings": [
+    {
+      "path": "package.json",
+      "problem": "Versions de paquets Expo devinées avec l'ancien schéma de versionnage au lieu de laisser Expo aligner ses paquets compatibles (instruction explicite de la tâche). expo-constants ~17.0.3, expo-font ~13.0.4, expo-splash-screen ~0.30.3, expo-linking ~7.0.3, expo-status-bar ~2.2.3, expo-router ~4.0.4 et react-native-safe-area-context ~5.4.0 sont incompatibles avec les versions alignées SDK 57 attendues par expo/bundledNativeModules.json (~57.0.16, ~57.0.2, ~57.0.8, ~57.0.8, ~57.0.1, ~57.0.17, ~5.7.0). Conséquence directe : la compilation native Android échoue (expo-constants 17.0.8 ne compile pas contre expo-modules-core 57.0.14 : 'Unresolved reference constants', ConstantsService n'implémente pas les membres abstraits). L'APK ne peut pas être construit.",
+      "evidence": "npm run check vert mais ./gradlew :app:assembleDebug -> BUILD FAILED : ':expo-constants:compileDebugKotlin' : e: ConstantsModule.kt:13:35 Unresolved reference 'constants' ; ConstantsService.kt:20:6 Class 'ConstantsService' is not abstract and does not implement abstract members. expo/bundledNativeModules.json (expo 57.0.18) attend expo-constants ~57.0.16, expo-font ~57.0.2, expo-splash-screen ~57.0.8, expo-linking ~57.0.8, expo-status-bar ~57.0.1, expo-router ~57.0.17, react-native-safe-area-context ~5.7.0.",
+      "mustFix": true,
+      "requiredFix": "Remplacer les versions devinées par les versions alignées SDK 57 (via npx expo install ou en pinant les versions de expo/bundledNativeModules.json) pour expo-constants, expo-font, expo-splash-screen, expo-linking, expo-status-bar, expo-router et react-native-safe-area-context, puis régénérer le lockfile et vérifier la compilation native.",
+      "verification": "./gradlew :app:assembleDebug (ou assembleRelease) réussit ; npx expo-doctor / expo install --check ne signale plus de paquet hors alignement ; npm run check reste vert."
+    },
+    {
+      "path": "src/application/use-cases/ChoreScoreApp.ts",
+      "problem": "Le use-case createEntry émet l'ID opérationnel householdId dans le fait analytics (data.householdId), en violation directe du contrat documenté du port ResearchAnalyticsGateway ('Never include: userId, householdId, memberId, email, free text, IP, device ID') et de la politique DATA_PRODUCT_PRIVACY (aucun identifiant opérationnel ne doit entrer dans le plan analytique). Le test analytics existant ne détecte pas le défaut car il teste l'adapter en isolation avec un fait construit à la main, pas le chemin réel createEntry.",
+      "evidence": "Test indépendant exécuté : createEntry avec analytics activé produit un fait dont data contient householdId:'h-test' (expect(facts[0].data).not.toHaveProperty('householdId') échoue). Le port (src/application/ports/index.ts ligne ~198) documente explicitement l'interdiction de householdId.",
+      "mustFix": true,
+      "requiredFix": "Retirer householdId (et tout autre identifiant opérationnel) du fait analytics émis par createEntry ; ne conserver que des données minimisées/agrégées (durée, nombre de bénéficiaires, présence de PersistentTask). Ajouter un test qui exerce createEntry avec analytics activé et vérifie l'absence de tout ID opérationnel.",
+      "verification": "Un test exerçant ChoreScoreApp.createEntry avec analytics activé vérifie que le fait ne contient ni householdId, ni memberId, ni label, ni autre identifiant/texte libre."
+    },
+    {
+      "path": "src/application/use-cases/ChoreScoreApp.ts",
+      "problem": "createHousehold appelle canUseFeature('new-household', 'create-household') en passant la chaîne littérale 'new-household' comme householdId. Le contrôle d'entitlement est donc effectué contre un ID de foyer inexistant, ce qui est sémantiquement incorrect (le foyer n'existe pas encore à la création). Le use-case n'est pas câblé à l'UI (bouton 'Créer un foyer' sans onPress) et sera traité proprement en V2-01, mais le défaut logique est réel.",
+      "evidence": "src/application/use-cases/ChoreScoreApp.ts lignes 96-99 : canUseFeature('new-household', 'create-household').",
+      "mustFix": false,
+      "requiredFix": "En V2-01, restructurer la création de foyer pour résoudre l'entitlement au niveau du compte (un foyer gratuit créé/possédé, foyers supplémentaires avec leur propre plan) plutôt que contre un ID de foyer factice.",
+      "verification": "Le use-case createHousehold résout correctement l'entitlement de création/possession sans ID de foyer factice, et les tests V2-01 couvrent la règle du foyer gratuit unique."
+    }
+  ]
+}

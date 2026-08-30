@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33292303527",
+  "decision": "continue",
+  "reason": "Audit returned repair for V2-00. Two mustFix findings must be resolved before V2-00 can be accepted: (1) Expo package versions guessed with old scheme break native Android compilation — must use SDK 57 aligned versions via npx expo install; (2) createEntry leaks householdId into analytics fact, violating the port contract and DATA_PRODUCT_PRIVACY policy — must strip all operational IDs from emitted analytics facts. The non-blocking finding (createHousehold using fake 'new-household' ID) is deferred to V2-01 where entitlement restructuring will address it properly. V2-00 remains in_progress; the next Builder cycle is a targeted repair of these two findings.",
+  "progressEvidence": [
+    "V2-00 remains in_progress: audit repair, two mustFix findings open",
+    "Architecture confirmed greenfield: domain/application/infrastructure/UI separation, no V1 code as foundation",
+    "Ports all defined with honest local adapters (Auth, Entitlement/Billing, SystemShare, Notification, Calendar, SecureStorage, Sync, ResearchAnalytics)",
+    "ResearchAnalyticsGateway confirmed as secondary output, disabled by default, not contaminating domain",
+    "Shell navigation (Foyers → Ajouter une tâche | Score | To-do) confirmed coherent with DESIGN_BRIEF",
+    "Visual design (warm cream background, terracotta action, ScreenContainer/Card/Button/Text components) confirmed coherent with DESIGN_CONTRACT/DESIGN_BRIEF",
+    "66 deterministic tests passing, typecheck clean, JS bundle successful",
+    "Expo export and prebuild successful",
+    "mustFix #1: Expo package version mismatch — expo-constants ~17.0.3 instead of ~57.0.16, expo-font ~13.0.4 instead of ~57.0.2, etc. → ./gradlew :app:assembleDebug fails on expo-constants:compileDebugKotlin",
+    "mustFix #2: ChoreScoreApp.createEntry emits householdId in analytics data[] — violates port contract and DATA_PRODUCT_PRIVACY",
+    "Non-blocking: createHousehold uses 'new-household' literal as householdId for entitlement check — deferred to V2-01"
+  ]
+}

@@ -4,20 +4,14 @@
   "builder": {
     "enabled": true,
     "criterionId": "V2-00",
-    "objective": "Construire le socle ChoreScore V2 GREENFIELD dans ce dépôt vide. Ne pas copier l'ancienne application. Créer un projet Expo/React Native TypeScript propre et testable, avec une architecture simple séparant domaine/application/infrastructure/UI, scripts check/test et export Android. Pour ce bootstrap, utiliser le stack déjà validé par le run précédent : Expo SDK 57 avec React Native 0.86.3 et React 19.2.x ; laisser Expo aligner ses paquets compatibles plutôt que deviner des versions. Ne pas revenir à RN 0.79/0.87. Définir dès maintenant les ports AuthGateway, Entitlement/BillingGateway, SystemShareGateway, NotificationGateway, CalendarGateway, SecureStorageGateway, SyncGateway et ResearchAnalyticsGateway désactivable. Fournir des adapters locaux honnêtes, sans simuler OAuth/paiement/push/sync/analytics réels. Poser un shell de navigation minimal cohérent avec foyers -> Ajouter une tâche | Score | To-do et la charte graphique canonique chaleureuse/self-care, sans prétendre que les fonctionnalités futures sont déjà terminées.",
+    "objective": "REPAIR V2-00: corriger les deux findings mustFix de l'audit cycle 33292303527. Aucune nouvelle feature. (1) Remplacer les versions de paquets Expo devinées avec l'ancien schéma par les versions alignées SDK 57 (utiliser npx expo install pour aligner automatiquement expo-constants, expo-font, expo-splash-screen, expo-linking, expo-status-bar, expo-router, react-native-safe-area-context). Régénérer le lockfile. Vérifier que ./gradlew :app:assembleDebug réussit et que npx expo install --check ne signale plus de divergence. (2) Retirer householdId (et tout autre identifiant opérationnel) du fait analytics émis par ChoreScoreApp.createEntry — ne conserver que des données minimisées (durée, nombre de bénéficiaires, présence de PersistentTask). Ajouter un test qui exerce createEntry avec analytics activé et vérifie l'absence de tout ID opérationnel (householdId, memberId, label, email, etc.). Vérifier que npm run check reste vert.",
     "acceptance": [
-      "Le code applicatif est créé depuis zéro dans Chorescore-V2 ; aucune arborescence app/src/tests de V1 n'est copiée comme fondation.",
-      "package.json + lockfile sont propres ; Expo SDK 57 / React Native 0.86.3 / React 19.2.x et les paquets Expo sont compatibles entre eux.",
-      "npm run check exécute au minimum typecheck et tests déterministes.",
-      "Un export Android Expo réussit.",
-      "Expo prebuild Android réussit sans dépendre d'assets corrompus ou placeholders invalides.",
-      "Les couches domaine/application/infrastructure/UI sont explicites et le domaine ne dépend d'aucun fournisseur externe.",
-      "Les ports Auth, Entitlement/Billing, SystemShare, Notification, Calendar, SecureStorage, Sync et ResearchAnalytics existent avec contrats testables.",
-      "ResearchAnalytics est une sortie secondaire désactivable et ne conditionne aucune fonction produit.",
-      "SystemShare représente le share sheet natif du système ; aucune dépendance Instagram/Facebook/WhatsApp de partage n'est ajoutée.",
-      "Les services externes non configurés sont explicitement indisponibles et jamais présentés comme réussis.",
-      "Le shell de navigation reflète foyers -> trois onglets sans réintroduire l'ancienne UI.",
-      "Le design de base utilise une charte unique chaleureuse/self-care conforme à DESIGN_BRIEF/DESIGN_CONTRACT, avec fond teinté et composants cohérents, pas une collection d'écrans génériques."
+      "./gradlew :app:assembleDebug (ou assembleRelease) réussit — la compilation native Android n'échoue plus",
+      "npx expo install --check ne signale plus de paquet hors alignement SDK 57",
+      "npm run check (typecheck + tests) reste vert",
+      "createEntry n'émet aucun identifiant opérationnel (householdId, memberId, label, email, IP, device ID) dans le fait analytics",
+      "Un test exerce createEntry avec analytics activé et vérifie l'absence de tout ID opérationnel dans data[]",
+      "Aucune régression sur les 66 tests existants"
     ]
   }
 }
