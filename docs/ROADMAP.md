@@ -88,7 +88,7 @@ Gate : scénarios déterministes + audit données/UX.
 
 Objectif : transformer les entrées en équilibre de temps compréhensible.
 
-Livrables : semaine/mois/année/depuis le début ; Free limité au mois civil courant ; Année/Depuis le début/archive Premium ; reset mensuel sans destruction ; upgrade restaurant immédiatement l'archive ; filtres Toutes/une par PersistentTask/Autres ; algorithme +D au performedBy et -D/N aux bénéficiaires ; somme des soldes = zéro ; compensations pair-à-pair ; temps effectué ; barres nommées ; pondéré secondaire seulement Premium ; historique contextuel période + filtre.
+Livrables : semaine/mois/année/depuis le début ; Free limité au mois civil courant ; Année/Depuis le début/archive Premium ; reset mensuel sans destruction ; upgrade restaure immédiatement l'archive ; filtres Toutes/une par PersistentTask/Autres ; algorithme +D au performedBy et -D/N aux bénéficiaires ; somme des soldes = zéro ; compensations pair-à-pair ; temps effectué ; barres nommées ; pondéré secondaire seulement Premium ; historique contextuel période + filtre.
 
 Gate : valeurs exactes des scénarios de référence, cas 2/3/N membres, reset mensuel, upgrade/downgrade et audit visuel.
 
