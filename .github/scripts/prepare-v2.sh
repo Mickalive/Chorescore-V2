@@ -17,6 +17,7 @@ human_paths=(
   docs/ROADMAP.md
   docs/PRODUCT_BLUEPRINT.md
   docs/DESIGN_CONTRACT.md
+  docs/DESIGN_BRIEF.md
   docs/MONETIZATION.md
   docs/SUBSCRIPTION_REFERENCE_V1.md
   docs/DATA_PRODUCT_PRIVACY.md
