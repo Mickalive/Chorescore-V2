@@ -13,21 +13,21 @@
       "id": "V2-01",
       "priority": 20,
       "title": "Identité, foyers, abonnement et options",
-      "outcome": "Flux local/testable de session et foyers, identité fixe, membres, écran racine foyers + Options + Upgrade, facturation/plan attaché au foyer, essai complet 30 jours, gratuit 1 foyer, Standard 2,99 EUR/mois/foyer jusqu'à 7 membres, Pro 5,99 EUR/mois/foyer à partir de 8 membres, frontières production email/Google/Facebook et permissions propriétaire/payeur propres et non simulées.",
+      "outcome": "Flux local/testable de session et foyers, identité fixe, membres, écran racine foyers + Options + Upgrade, facturation/plan attaché au foyer, essai complet 30 jours, un foyer gratuit créé/possédé, Standard 2,99 EUR/mois/foyer jusqu'à 7 membres, Pro 5,99 EUR/mois/foyer à partir de 8 membres. Un compte gratuit peut rejoindre plusieurs foyers par invitation ; les droits viennent du plan de chaque foyer. Frontières production email/Google/Facebook et permissions propriétaire/payeur propres et non simulées.",
       "requiredEvidence": ["tests", "audit"]
     },
     {
       "id": "V2-02",
       "priority": 30,
       "title": "Réalisations et historique",
-      "outcome": "Dans un foyer : Ajouter une tâche / Score / To-do. Ajouter crée CompletedEntry par durée manuelle ou chrono avec Fait par et Fait pour multi-sélection, PersistentTask facultative, pondération uniquement selon entitlement, modification/suppression et historique complet façon Tricount. Aucune donnée historique n'est détruite au reset mensuel ou downgrade.",
+      "outcome": "Dans un foyer : Ajouter une tâche / Score / To-do. Ajouter crée CompletedEntry par durée manuelle ou chrono avec Fait par et Fait pour multi-sélection, PersistentTask facultative, pondération uniquement selon entitlement, modification/suppression et historique façon Tricount. Trial/Standard/Pro voient l'archive complète ; Free voit le mois civil courant. Aucune donnée historique n'est détruite au reset mensuel ou downgrade.",
       "requiredEvidence": ["tests", "audit"]
     },
     {
       "id": "V2-03",
       "priority": 40,
       "title": "Score, équilibres et fenêtre gratuite",
-      "outcome": "Score propose semaine/mois/année/depuis le début, filtres Toutes/une par PersistentTask/Autres, calcul fait-par/fait-pour à somme nulle, compensations pair-à-pair, temps effectués, graphes nommés réel et pondéré, historique filtré contextuel. Gratuit : Score limité au mois civil courant, sans pondération ; les données antérieures persistent et redeviennent visibles après upgrade. Année/Depuis le début/archive sont Premium.",
+      "outcome": "Score propose semaine/mois/année/depuis le début, filtres Toutes/une par PersistentTask/Autres, calcul fait-par/fait-pour à somme nulle, compensations pair-à-pair, temps effectués, graphes nommés réel et pondéré, historique filtré contextuel. Gratuit : historique analytique et Score limités au mois civil courant, sans pondération ; les données antérieures persistent et redeviennent visibles après upgrade. Année/Depuis le début/archive sont Premium.",
       "requiredEvidence": ["tests", "audit", "reference-scenarios"]
     },
     {
@@ -41,7 +41,7 @@
       "id": "V2-05",
       "priority": 60,
       "title": "Partage, notifications, design et accessibilité",
-      "outcome": "Share sheet système pour entrée/historique/Score/graphes/To-do avec cartes partageables quand pertinent, notifications configurables via port, UX KISS feel-good peu blanche conforme au design contract, états Free/Premium cohérents, preuves visuelles reproductibles des écrans cœur et audit accessibilité complet.",
+      "outcome": "Share sheet système pour entrée/historique/Score/graphes/To-do avec cartes partageables quand pertinent, notifications configurables via port, UX KISS feel-good peu blanche conforme au design contract, états Free/Trial/Standard/Pro cohérents, preuves visuelles reproductibles des écrans cœur et audit accessibilité complet.",
       "requiredEvidence": ["tests", "audit", "visual-evidence"]
     },
     {
@@ -55,7 +55,7 @@
       "id": "V2-07",
       "priority": 80,
       "title": "APK Android final",
-      "outcome": "APK release reproductible depuis lab/chorescore-v2, tests complets verts, export Android, compilation native, installation et lancement sans Metro, puis exécution automatisée du golden path de REFERENCE_SCENARIOS avec checkpoints/captures, incluant CompletedEntry fait-par/fait-pour, historique, Score chiffré, To-do vers CompletedEntry et au moins un comportement Free/Premium. Aucun finding release-blocking ouvert.",
+      "outcome": "APK release reproductible depuis lab/chorescore-v2, tests complets verts, export Android, compilation native, installation et lancement sans Metro, puis exécution automatisée du golden path de REFERENCE_SCENARIOS avec checkpoints/captures, incluant CompletedEntry fait-par/fait-pour, historique, Score chiffré, To-do vers CompletedEntry, reset mensuel non destructif et au moins un comportement Free/Premium. Aucun finding release-blocking ouvert.",
       "requiredEvidence": ["artifact", "runtime-smoke", "e2e-golden-path", "visual-evidence"]
     }
   ]
