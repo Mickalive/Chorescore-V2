@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33333661536",
+  "decision": "continue",
+  "reason": "V2-01 accepted: all mustFix findings (F1 trial expiry, F2 Options screens, F3 AccountRepository resolution, F4 demo-premium consistency) are fixed and verified. 133 tests green, typecheck clean, Android build successful. Audit decision accept with no remaining mustFix findings. V2-01 criterion complete. V2-02 (Réalisations, chrono et historique) assigned as next active criterion. One non-blocking observation noted: Account model carries single ownedFreeHouseholdId, overwrites on 2nd household creation in demo-premium; to be modeled properly when multi-household ownership is addressed.",
+  "progressEvidence": [
+    "V2-00 complete: architecture greenfield, ports/adapters, 67+ tests, analytics minimized",
+    "V2-01 complete: identity/households/subscription/options all functional",
+    "F1 verified: trial expiry wired, getEntitlement returns Free after trialEndsAt",
+    "F2 verified: Options personal + household screens with real routes, owner/payer guard",
+    "F3 verified: getAccountEntitlement resolves via AccountRepository.ownedFreeHouseholdId",
+    "F4 verified: demo-premium getAccountEntitlement returns canCreateFreeHousehold=true constant, consistent with createHousehold bypass",
+    "133 tests passing across 6 suites, typecheck clean",
+    "Android export + assembleDebug BUILD SUCCESSFUL",
+    "Audit RUN_33333661536: decision accept, no mustFix findings",
+    "V2-02 assigned: transactions, chrono, history, PersistentTask"
+  ]
+}

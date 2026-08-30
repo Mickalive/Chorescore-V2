@@ -3,30 +3,26 @@
   "milestone": "v2-rc",
   "builder": {
     "enabled": true,
-    "criterionId": "V2-01",
-    "objective": "V2-01 REPAIR (cycle 2) — Fix 1 remaining mustFix regression. Preserve the existing WIP baseline (commit 09e724d, 133 tests green). Fix only the following, do not expand scope.",
-    "repairFindings": [
-      {
-        "findingId": "F4",
-        "path": "src/infrastructure/local/LocalEntitlementAdapter.ts",
-        "problem": "In demo-premium mode, getAccountEntitlement consults AccountRepository.ownedFreeHouseholdId and returns canCreateFreeHousehold=false after the first household is created. However, createHousehold bypasses this check in demo-premium mode (always allows creation). This creates an inconsistency: the 'Create household' button on the root screen is disabled (canCreateHousehold calls getAccountEntitlement) while the use-case still permits creation. The demo must be a fully unlocked Premium test environment (MAIN_PROMPT: 'entitlement Premium de test entièrement débloqué... exploration et audits de toutes les fonctions').",
-        "requiredFix": "In demo-premium mode, getAccountEntitlement must always return canCreateFreeHousehold=true (consistent with createHousehold's demo-premium bypass). It should still report accurate ownedFreeHouseholdId from AccountRepository for UI state. In demo-free mode, the one-free-household rule remains enforced via ownedFreeHouseholdId===null.",
-        "verification": "Deterministic test: adapter in demo-premium, create user, create first household → getAccountEntitlement returns canCreateFreeHousehold=true, ownedFreeHouseholdId=first household id, ownedHouseholdCount=1. Second createHousehold call succeeds and getAccountEntitlement still returns canCreateFreeHousehold=true. In demo-free mode: after first household, canCreateFreeHousehold=false. npm run check vert."
-      }
-    ],
-    "previousFixesPreserved": [
-      "F1: Trial expiry wired — getEntitlement checks trialEndsAt, returns Free when expired. Test passes.",
-      "F2: Options personal (Profil/Notifications/Confidentialité/Légal/Préférences) and household (Abonnement/Administration/Membres/Permissions) screens implemented with real routes and owner/payer guard. Test passes.",
-      "F3: getAccountEntitlement resolves via AccountRepository.ownedFreeHouseholdId, no global map scan. Test passes in demo-free mode."
-    ],
+    "criterionId": "V2-02",
+    "objective": "V2-02 — Réalisations, chrono et historique. Build the transactional heart of ChoreScore: CompletedEntry with Fait par/Fait pour, manual/chrono duration, PersistentTask (optional, = Score filter), history under 'Ajouter une tâche', navigation Ajouter | Score | To-do, modification/deletion, local persistence. Free shows current civil month only; Trial/Standard/Pro show full archive. No CompletedEntry deleted on month change or downgrade.",
+    "scope": "Greenfield slice: domain CompletedEntry/PersistentTask entities, use-cases for entry creation/listing/deletion, UI screens (Ajouter une tâche with chrono toggle, entry form, history list), PersistentTask as Score filter placeholder, local persistence. Prepare analytical normalization of labels (text stays free in product, but no future research data must depend on raw text export).",
     "acceptance": [
-      "demo-premium: getAccountEntitlement returns canCreateFreeHousehold=true after first household creation",
-      "demo-premium: createHousehold allows multi-household creation (consistent with canCreateFreeHousehold=true)",
-      "demo-free: getAccountEntitlement returns canCreateFreeHousehold=false after first household creation",
-      "demo-free: createHousehold rejects second free household",
-      "All previous F1/F2/F3 fixes preserved — no regressions",
-      "npm run check vert, 133+ tests green",
-      "No regressions in V2-00 or existing V2-01 evidence"
+      "CompletedEntry created with label, performedByMemberId, beneficiaryMemberIds[], duration, household, date/time, optional persistentTaskId",
+      "Fait par defaults to connected user, changeable to any household member",
+      "Fait pour allows 'Tout le monde' or any non-empty subset of members",
+      "Two duration modes: manual input and chrono (1 real minute = 1 minute)",
+      "PersistentTask optional: creates Score filter, does not create entries",
+      "History shows current civil month in Free mode",
+      "History shows full archive in Trial/Standard/Pro mode",
+      "No CompletedEntry destroyed on month change or downgrade",
+      "Modification and deletion of entries possible",
+      "Local persistence and chrono resume work",
+      "npm run check green, no regressions in V2-00/V2-01",
+      "Design follows DESIGN_BRIEF.md (feel-good, warm, contemporary)"
+    ],
+    "previousCriteriaPreserved": [
+      "V2-00: architecture greenfield, ports/adapters, 67+ tests",
+      "V2-01: identity, households, subscription, Options, trial expiry, demo-premium consistency"
     ]
   }
 }
