@@ -6,7 +6,7 @@
       "id": "V2-00",
       "priority": 10,
       "title": "Socle greenfield",
-      "outcome": "Projet Expo/React Native TypeScript créé depuis zéro, navigation/routing minimal, séparation domain/application/infrastructure/UI, scripts check/test, export Android, ports Auth/Entitlement/Billing/SystemShare/Notification/Calendar/SecureStorage/Sync, architecture de plan attaché au foyer et base visuelle conforme au design contract. Aucun code applicatif V1 n'est la fondation.",
+      "outcome": "Projet Expo/React Native TypeScript créé depuis zéro, navigation/routing minimal, séparation domain/application/infrastructure/UI, scripts check/test, export Android, ports Auth/Entitlement/Billing/SystemShare/Notification/Calendar/SecureStorage/Sync/ResearchAnalytics, architecture de plan attaché au foyer et base visuelle conforme au design contract. ResearchAnalytics est une sortie secondaire désactivable qui ne contamine pas le domaine. Aucun code applicatif V1 n'est la fondation.",
       "requiredEvidence": ["tests", "audit"]
     },
     {
@@ -20,7 +20,7 @@
       "id": "V2-02",
       "priority": 30,
       "title": "Réalisations et historique",
-      "outcome": "Dans un foyer : Ajouter une tâche / Score / To-do. Ajouter crée CompletedEntry par durée manuelle ou chrono avec Fait par et Fait pour multi-sélection, PersistentTask facultative, pondération uniquement selon entitlement, modification/suppression et historique façon Tricount. Trial/Standard/Pro voient l'archive complète ; Free voit le mois civil courant avec message d'archive non bloquant lorsqu'une archive existe. Aucune donnée historique n'est détruite au reset mensuel ou downgrade.",
+      "outcome": "Dans un foyer : Ajouter une tâche / Score / To-do. Ajouter crée CompletedEntry par durée manuelle ou chrono avec Fait par et Fait pour multi-sélection, PersistentTask facultative, pondération uniquement selon entitlement, modification/suppression et historique façon Tricount. Trial/Standard/Pro voient l'archive complète ; Free voit le mois civil courant avec message d'archive non bloquant lorsqu'une archive existe. Aucune donnée historique n'est détruite au reset mensuel ou downgrade. Les libellés libres restent produit et ne sont jamais considérés exportables tels quels vers l'analytics commercial.",
       "requiredEvidence": ["tests", "audit"]
     },
     {
@@ -47,15 +47,15 @@
     {
       "id": "V2-06",
       "priority": 70,
-      "title": "Sync, auth, billing production-ready et sécurité",
-      "outcome": "Frontières backend/sync/auth/invitations/billing prêtes pour production, plan et facturation par foyer, règles d'autorisation membres/propriétaire/payeur/permissions, restauration d'entitlements, stockage sécurisé et documentation honnête. Les services nécessitant secrets restent désactivés tant qu'ils ne sont pas configurés. L'entitlement demo/test Premium reste strictement isolé de la production.",
-      "requiredEvidence": ["tests", "audit", "documentation"]
+      "title": "Backend, sync, auth, billing, analytics anonymisé et sécurité",
+      "outcome": "Backend opérationnel production-ready pour auth/sync/invitations/billing avec isolation par foyer, chiffrement, règles d'autorisation membres/propriétaire/payeur, restauration d'entitlements, stockage sécurisé et documentation honnête. En parallèle, Research Analytics Plane strictement séparé : ResearchAnalyticsGateway, taxonomie de tâches versionnée, PrivacyTransformPipeline, Research Analytics Store sans IDs opérationnels/texte libre/clés de jointure, généralisation des quasi-identifiants, suppression de cellules rares, protection differencing/reconstruction, PrivacyReleaseGate, journal d'export et contrats d'API/recherche. Aucune sortie réelle foyer-par-foyer même pseudonymisée. Les services nécessitant secrets restent désactivés tant qu'ils ne sont pas configurés. L'entitlement demo/test Premium reste strictement isolé de la production.",
+      "requiredEvidence": ["tests", "audit", "documentation", "privacy-release-gate"]
     },
     {
       "id": "V2-07",
       "priority": 80,
       "title": "APK Android final",
-      "outcome": "APK release reproductible depuis lab/chorescore-v2, tests complets verts, export Android, compilation native, installation et lancement sans Metro, puis exécution automatisée du golden path de REFERENCE_SCENARIOS. La démo démarre Premium test entièrement débloqué sans achat réel, traverse CompletedEntry fait-par/fait-pour, historique, Score chiffré, To-do vers CompletedEntry et partage, puis bascule en Free pour vérifier reset mensuel non destructif, message d'archive et upsell contextuel avant de restaurer Premium. Aucun finding release-blocking ouvert.",
+      "outcome": "APK release reproductible depuis lab/chorescore-v2, tests complets verts, export Android, compilation native, installation et lancement sans Metro, puis exécution automatisée du golden path de REFERENCE_SCENARIOS. La démo démarre Premium test entièrement débloqué sans achat réel, traverse CompletedEntry fait-par/fait-pour, historique, Score chiffré, To-do vers CompletedEntry et partage, puis bascule en Free pour vérifier reset mensuel non destructif, message d'archive et upsell contextuel avant de restaurer Premium. Les tests contractuels V2-06 doivent également prouver qu'aucun schéma analytique externe n'expose ID opérationnel, texte libre ou historique foyer-par-foyer. Aucun finding release-blocking ouvert.",
       "requiredEvidence": ["artifact", "runtime-smoke", "e2e-golden-path", "visual-evidence"]
     }
   ]

@@ -1,6 +1,6 @@
 # ChoreScore V2 — quality gates
 
-Ces gates s'ajoutent aux critères V2-00..V2-07. Un critère n'est pas « fini » parce que le code compile : il doit produire un comportement réel, cohérent avec le blueprint, le design contract et le modèle d'entitlements.
+Ces gates s'ajoutent aux critères V2-00..V2-07. Un critère n'est pas « fini » parce que le code compile : il doit produire un comportement réel, cohérent avec le blueprint, le design contract, le modèle d'entitlements et la politique de confidentialité des données.
 
 ## QG-1 — Aucun faux produit
 
@@ -100,3 +100,56 @@ Le test E2E produit un dossier de preuves : résultat machine lisible + captures
 ## QG-8 — Audit de régression cumulative
 
 À chaque cycle, l'Auditor contrôle aussi les invariants des critères déjà acceptés. Une nouvelle fonction qui casse un flux antérieur entraîne `repair`/`reject`, même si le critère courant est localement correct.
+
+## QG-9 — Privacy-first research data
+
+À partir de V2-06, le candidat doit respecter `docs/DATA_PRODUCT_PRIVACY.md`.
+
+### Séparation obligatoire
+
+Les tests/audits doivent prouver :
+- le store opérationnel nécessaire à la sync est séparé du Research Analytics Store ;
+- désactiver `ResearchAnalyticsGateway` ne casse aucune fonction produit ;
+- le store opérationnel n'est jamais exposé comme produit de données ;
+- aucune clé de jointure externe ne permet de revenir du plan analytique au compte/foyer.
+
+### Schéma analytique interdit
+
+Un schéma ou export analytique échoue automatiquement s'il contient :
+- user/account/member/household ID opérationnel ;
+- email/téléphone/OAuth subject ;
+- IP/device/advertising ID ;
+- nom de membre ou de foyer ;
+- `label` ou note libre brute ;
+- adresse/GPS précis ;
+- clé stable permettant une reconstruction longitudinale foyer-par-foyer sans Privacy Release Gate.
+
+### Taxonomie et généralisation
+
+- le texte libre est transformé en taxonomie statistique versionnée avant analytics externe ;
+- timestamps, localisation et éventuelles données démographiques sont généralisés lorsque nécessaire ;
+- aucune variable sociologique sensible/riche n'est inférée depuis un prénom ou un comportement.
+
+### Privacy Release Gate
+
+Aucune sortie externe n'est acceptée sans preuve machine/gouvernance de :
+- suppression des identifiants et textes libres ;
+- seuil de cohortes/cellules rares ;
+- suppression complémentaire lorsque nécessaire ;
+- protection contre differencing/reconstruction ;
+- provenance + version de transformation ;
+- finalité/destinataire autorisés ;
+- journal d'export ;
+- évaluation du risque de ré-identification pour tout nouveau type de produit.
+
+Pour une API de requêtes flexibles, le design doit prévoir query budget/rate limit et differential privacy lorsque nécessaire.
+
+### Produits externes autorisés
+
+- agrégats/cohortes ;
+- API statistique protégée ;
+- exports agrégés de recherche ;
+- données synthétiques ;
+- environnement sécurisé/clean room.
+
+**Un export de lignes réelles foyer-par-foyer, même pseudonymisées, est `mustFix` et release-blocking.**
