@@ -8,13 +8,17 @@ Ce fichier existe pour empêcher toute réinvention involontaire de la grille co
 - **Standard : 2,99 € / mois / foyer, jusqu'à 7 membres.**
 - **Pro : 5,99 € / mois / foyer, requis à partir de 8 membres.**
 - Les offres payantes donnaient notamment accès à la **pondération**, l'**historique avancé**, l'**export PDF** et au **multi-foyers**.
-- Le gratuit avait une fenêtre d'historique limitée ; en V2 cette règle est précisée comme **Score limité au mois civil courant**, avec conservation des données antérieures.
+- Le gratuit avait une fenêtre d'historique limitée.
 - La facturation V1 était **attachée au foyer**, via un état de facturation de type `billingHouseholds/<householdId>`, et non à un abonnement global unique du compte.
 
 ## Adaptations V2 explicitement décidées
 
+- Gratuit : un foyer créé/possédé gratuitement.
+- Un compte gratuit peut rejoindre plusieurs foyers par invitation ; il n'a pas à acheter Premium pour accepter une invitation.
+- Les capacités utilisées dans un foyer viennent du plan de ce foyer.
+- Les foyers supplémentaires créés/possédés ont chacun leur propre état de plan/billing ; les droits d'un foyer ne se propagent pas aux autres.
+- Historique visible et Score gratuits = **mois civil courant** ; les données antérieures restent persistées et redeviennent visibles après upgrade.
 - To-do / planification = Premium.
-- Les données sorties de la fenêtre gratuite ne sont jamais détruites ; elles redeviennent visibles après upgrade.
 - Après downgrade, données de pondération et TodoItem restent conservées.
 - Le partage système reste disponible dans le produit de base.
 - Les fournisseurs de paiement sont encapsulés derrière Billing/Entitlement gateways ; Stripe n'est pas une dépendance du domaine.
