@@ -9,6 +9,7 @@ Tous les agents doivent lire avant d'agir :
 - `docs/ROADMAP.md` ;
 - `docs/PRODUCT_BLUEPRINT.md` ;
 - `docs/DESIGN_CONTRACT.md` ;
+- `docs/DESIGN_BRIEF.md` ;
 - `docs/MONETIZATION.md` ;
 - `docs/SUBSCRIPTION_REFERENCE_V1.md` ;
 - `docs/DATA_PRODUCT_PRIVACY.md` ;
@@ -40,6 +41,7 @@ Le produit final doit notamment permettre :
 - notifications et calendrier derrière des ports honnêtes ;
 - Options personnelles et Options du foyer selon les droits ;
 - UX feel-good, KISS, accessible et non moralisatrice ;
+- direction visuelle concrète et cohérente définie par `DESIGN_BRIEF.md` ;
 - backend opérationnel sécurisé pour sync ;
 - **plan analytique de recherche séparé et anonymisé**, conçu pour produire à terme des statistiques vendables sans exposer les historiques de foyers ;
 - preuves visuelles reproductibles ;
@@ -54,7 +56,7 @@ Le produit final doit notamment permettre :
 5. Le partage passe par le share sheet système, pas par un SDK social spécifique.
 6. Toute tranche conserve les critères déjà acceptés.
 7. La V1 n'est jamais une base ; seules des briques isolées passent le greenfield reuse gate.
-8. L'UX fait partie de l'acceptation dès le début.
+8. L'UX et le design font partie de l'acceptation dès le début ; un écran terminé ne peut pas rester visuellement provisoire.
 9. La grille d'abonnement confirmée n'est jamais réinventée par un agent.
 10. Une limitation gratuite masque/restreint l'accès ; elle ne détruit jamais les données.
 11. Le quota de création/possession d'un foyer ne bloque jamais l'acceptation d'une invitation.
@@ -68,7 +70,7 @@ Le produit final doit notamment permettre :
 
 Objectif : créer la nouvelle application et les frontières techniques correctes dès le départ.
 
-Livrables : Expo/React Native TypeScript propre ; routing minimal ; séparation domain/application/infrastructure/UI ; tests/typecheck/export Android ; ports Auth, Entitlement/Billing, SystemShare, Notification, Calendar, SecureStorage, Sync et **ResearchAnalyticsGateway** ; adapters locaux honnêtes ; architecture d'entitlements au niveau foyer ; shell visuel foyers -> trois onglets ; premiers tokens/composants conformes au design contract.
+Livrables : Expo/React Native TypeScript propre ; routing minimal ; séparation domain/application/infrastructure/UI ; tests/typecheck/export Android ; ports Auth, Entitlement/Billing, SystemShare, Notification, Calendar, SecureStorage, Sync et **ResearchAnalyticsGateway** ; adapters locaux honnêtes ; architecture d'entitlements au niveau foyer ; shell visuel foyers -> trois onglets ; premiers tokens/composants conformes au design contract et à la fiche design.
 
 `ResearchAnalyticsGateway` est seulement une frontière secondaire à ce stade : aucune collecte réseau factice, aucune dépendance du domaine à l'analytics.
 
@@ -82,7 +84,7 @@ Objectif : faire exister le niveau global de l'application et le contrat commerc
 
 Livrables : session locale/testable avec identité fixe ; User/Household/Member ; plan/billing par foyer ; écran racine ; Upgrade contextuel ; essai 30 jours ; un foyer gratuit créé/possédé ; invitations multiples autorisées ; Standard/Pro avec seuils 7/8 membres et tarifs configurables ; Options personnelles et du foyer ; contrats email/Google/Facebook sans faux OAuth.
 
-Gate : tests identité, isolation, invitations, plan par foyer, essai, droits, création de foyers et upgrade + audit UX.
+Gate : tests identité, isolation, invitations, plan par foyer, essai, droits, création de foyers et upgrade + audit UX/design.
 
 ## V2-02 — Réalisations, chrono et historique
 
@@ -94,7 +96,7 @@ Free montre le mois civil courant. Trial/Standard/Pro montrent l'archive complè
 
 Préparer une **normalisation analytique séparée** des libellés : le produit garde le texte libre, mais aucune future donnée de recherche ne doit dépendre de l'export de ce texte brut.
 
-Gate : scénarios déterministes + audit données/UX.
+Gate : scénarios déterministes + audit données/UX/design.
 
 ## V2-03 — Score, équilibres et fenêtre gratuite
 
@@ -102,7 +104,7 @@ Objectif : transformer les entrées en équilibre de temps compréhensible.
 
 Livrables : semaine/mois/année/depuis le début ; Free limité au mois civil courant ; Année/Depuis le début/archive Premium ; reset mensuel sans destruction ; upgrade restaure immédiatement l'archive ; filtres Toutes/une par PersistentTask/Autres ; algorithme +D au performedBy et -D/N aux bénéficiaires ; somme des soldes = zéro ; compensations pair-à-pair ; temps effectué ; barres nommées ; pondéré secondaire seulement Premium ; historique contextuel période + filtre.
 
-Gate : valeurs exactes des scénarios de référence, cas 2/3/N membres, reset mensuel, upgrade/downgrade et audit visuel.
+Gate : valeurs exactes des scénarios de référence, cas 2/3/N membres, reset mensuel, upgrade/downgrade et audit visuel contre `DESIGN_BRIEF.md`.
 
 ## V2-04 — To-do Premium et conversion en réalisation
 
@@ -112,15 +114,15 @@ Trial/Standard/Pro : TodoItem datée ou non, assignation, bénéficiaires, note,
 
 Free : onglet présent mais création/planification déclenche seulement alors l'upsell contextuel, aucune TodoItem détruite après downgrade.
 
-Gate : conversion, absence de double comptage, persistance, downgrade/upgrade et audit UX.
+Gate : conversion, absence de double comptage, persistance, downgrade/upgrade et audit UX/design.
 
 ## V2-05 — Partage, notifications, design et accessibilité
 
 Objectif : rendre le produit réellement agréable et partageable dès le premier APK.
 
-Livrables : share sheet natif pour les contextes utiles ; share cards lorsque pertinentes ; notifications via port ; aucun SDK social spécifique ; design conforme au contrat ; Premium contextuel ; message d'archive Free chaleureux/non bloquant ; états Free/Trial/Standard/Pro cohérents ; accessibilité ; captures reproductibles des écrans cœur avec fixture canonique.
+Livrables : share sheet natif pour les contextes utiles ; share cards lorsque pertinentes ; notifications via port ; aucun SDK social spécifique ; design conforme **à `DESIGN_CONTRACT.md` et `DESIGN_BRIEF.md`** ; Premium contextuel ; message d'archive Free chaleureux/non bloquant ; états Free/Trial/Standard/Pro cohérents ; accessibilité ; galerie de captures reproductibles définie dans la fiche design.
 
-Gate : partage système réel dans l'environnement testable, tests UI/accessibilité, preuves visuelles et audit visuel complet.
+Gate : partage système réel dans l'environnement testable, tests UI/accessibilité, preuves visuelles complètes et audit visuel bloquant. Une UI générique/provisoire est un finding même si le code fonctionne.
 
 ## V2-06 — Backend, sync, auth, billing, privacy analytics et sécurité
 
@@ -166,4 +168,4 @@ Un finding `mustFix` interrompt la progression. Une implémentation anticipée n
 
 ## Définition de fini
 
-ChoreScore V2 n'est fini que lorsque le parcours canonique fonctionne, les entitlements commerciaux fonctionnent sans destruction de données, la démo Premium est testable, l'UX/design est conforme, le backend opérationnel est sécurisé, la frontière analytique est privacy-first et incapable de livrer des historiques ré-identifiables, les ports externes sont honnêtes, V2-00 à V2-06 sont acceptés indépendamment, et V2-07 fournit un APK traversé par le golden path Android.
+ChoreScore V2 n'est fini que lorsque le parcours canonique fonctionne, les entitlements commerciaux fonctionnent sans destruction de données, la démo Premium est testable, l'UX/design est conforme au contrat **et à la fiche concrète**, le backend opérationnel est sécurisé, la frontière analytique est privacy-first et incapable de livrer des historiques ré-identifiables, les ports externes sont honnêtes, V2-00 à V2-06 sont acceptés indépendamment, et V2-07 fournit un APK traversé par le golden path Android.
