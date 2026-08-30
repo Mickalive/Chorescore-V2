@@ -157,37 +157,37 @@ export class LocalEntitlementAdapter implements EntitlementGateway {
    * Get account-level entitlement for household creation.
    * Resolves via AccountRepository.ownedFreeHouseholdId,
    * consistent with createHousehold's account-level check.
+   *
+   * In demo-premium mode, canCreateFreeHousehold is always true
+   * (consistent with createHousehold's demo-premium bypass).
+   * ownedFreeHouseholdId is still reported accurately for UI state.
    */
   async getAccountEntitlement(userId: string): Promise<AccountEntitlementState> {
-    if (this.mode === 'demo-premium') {
-      // In demo-premium, still consult AccountRepository for accurate state
-      // The demo-premium mode bypass is only for createHousehold entitlement checks
-      const account = this.accountRepository
-        ? await this.accountRepository.getByUser(userId)
-        : null;
-
-      const ownedFreeHouseholdId = account?.ownedFreeHouseholdId ?? null;
-
-      return {
-        canCreateFreeHousehold: ownedFreeHouseholdId === null,
-        ownedFreeHouseholdId,
-        hasActiveTrial: true,
-        ownedHouseholdCount: ownedFreeHouseholdId !== null ? 1 : 0,
-      };
-    }
-
-    // In demo-free, resolve via AccountRepository — never via global entitlements map scan
     const account = this.accountRepository
       ? await this.accountRepository.getByUser(userId)
       : null;
 
     const ownedFreeHouseholdId = account?.ownedFreeHouseholdId ?? null;
+    const ownedHouseholdCount = ownedFreeHouseholdId !== null ? 1 : 0;
 
+    if (this.mode === 'demo-premium') {
+      // In demo-premium, always allow household creation (bypass the one-free-household rule)
+      // This is consistent with createHousehold's demo-premium bypass in ChoreScoreApp.
+      // Still report accurate ownedFreeHouseholdId for UI state (e.g., showing which household is owned).
+      return {
+        canCreateFreeHousehold: true,
+        ownedFreeHouseholdId,
+        hasActiveTrial: true,
+        ownedHouseholdCount,
+      };
+    }
+
+    // In demo-free, resolve via AccountRepository — never via global entitlements map scan
     return {
       canCreateFreeHousehold: ownedFreeHouseholdId === null,
       ownedFreeHouseholdId,
       hasActiveTrial: false,
-      ownedHouseholdCount: ownedFreeHouseholdId !== null ? 1 : 0,
+      ownedHouseholdCount,
     };
   }
 

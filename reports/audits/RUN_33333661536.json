@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33333661536",
+  "role": "builder",
+  "decision": "accept",
+  "summary": "V2-01 REPAIR (cycle 2) — F4 corrigé : en mode demo-premium, getAccountEntitlement retourne désormais canCreateFreeHousehold=true (cohérent avec le bypass de createHousehold) tout en rapportant ownedFreeHouseholdId/ownedHouseholdCount exacts depuis AccountRepository ; le mode demo-free conserve la règle un-foyer-gratuit (ownedFreeHouseholdId===null). Vérification de confiance exit code 0 (133 tests verts, export Android, assembleDebug BUILD SUCCESSFUL). Checks indépendants : npm run check vert (6 suites, 133 tests), diff candidat strictement limité aux 2 fichiers attendus (adapter + test d'acceptation), scénario déterministe reproduit (demo-premium : création multi-foyers OK + canCreateFreeHousehold=true après 1er et 2e foyer ; demo-free : canCreateFreeHousehold=false + second foyer rejeté ; retour demo-premium sans perte de données), driver UI (bouton « Créer un foyer ») cohérent, aucune régression F1/F2/F3 ni V2-00. Aucun finding mustFix.",
+  "checks": [
+    "Trusted verification exit code 0 (reports/audits/TRUSTED_33333661536.md) : npm run check vert (6 suites, 133 tests), export Android OK, ./gradlew :app:assembleDebug BUILD SUCCESSFUL",
+    "npm run check (typecheck + jest) exécuté indépendamment : 133 tests, 6 suites, 0 échec",
+    "Diff candidat vs arbre pristine accepté : exactement 2 fichiers modifiés (src/infrastructure/local/LocalEntitlementAdapter.ts, __tests__/application/V2-01-acceptance.test.ts) + rapport TRUSTED non suivi ; ChoreScoreApp.ts identique au pristine",
+    "F4 — demo-premium : getAccountEntitlement retourne canCreateFreeHousehold=true après création du 1er foyer, ownedFreeHouseholdId=id du 1er foyer, ownedHouseholdCount=1",
+    "F4 — demo-premium : second createHousehold réussit et canCreateFreeHousehold reste true (cohérence avec le bypass de createHousehold)",
+    "F4 — demo-free : après 1er foyer, canCreateFreeHousehold=false, ownedFreeHouseholdId renseigné, second createHousehold rejeté ('Cannot create additional free households')",
+    "F4 — retour demo-premium après demo-free : canCreateFreeHousehold=true restauré, ownedFreeHouseholdId préservé (aucune destruction de données)",
+    "F4 — driver UI : app/index.tsx pilote le bouton « Créer un foyer » via canCreateHousehold/getAccountEntitlement.canCreateFreeHousehold ; en demo-premium le bouton reste actif après la 1re création",
+    "Régression F1 (expiration d'essai → Free sans destruction), F2 (écrans Options personnelles/foyer avec routes et garde propriétaire), F3 (résolution via AccountRepository.ownedFreeHouseholdId) : tests verts, comportements inchangés",
+    "Régression V2-00 : ports/adapters honnêtes, analytics secondaire désactivable, grille tarifaire canonique (30j/2,99/5,99/7/8) — tests verts"
+  ],
+  "findings": [
+    {
+      "path": "src/infrastructure/local/LocalEntitlementAdapter.ts",
+      "problem": "Observation non bloquante (hors périmètre F4, préexistante à la baseline acceptée) : le modèle Account ne porte qu'un seul champ ownedFreeHouseholdId ; createHousehold (ChoreScoreApp.ts, identique au pristine) écrase ce champ à chaque création. Après un 2e foyer créé en demo-premium, ownedFreeHouseholdId pointe le 2e foyer et ownedHouseholdCount reste 1 alors que l'utilisateur possède 2 foyers. N'affecte pas les critères d'acceptation F4 (canCreateFreeHousehold=true constant, ownedFreeHouseholdId exact après la 1re création) ni la règle demo-free. À modéliser proprement (état de possession multi-foyers) lors d'un cycle ultérieur.",
+      "evidence": "Vérification indépendante : demo-premium, 2 createHousehold successifs → getAccountEntitlement retourne ownedFreeHouseholdId=id du 2e foyer, ownedHouseholdCount=1. Comportement identique dans l'arbre pristine (ChoreScoreApp.ts ligne 206 : accounts.update({ ownedFreeHouseholdId: household.id })).",
+      "mustFix": false,
+      "requiredFix": "Aucune pour ce cycle. Cycle ultérieur : faire porter à Account un état de possession multi-foyers (ex. ownedHouseholdIds[]) pour que ownedFreeHouseholdId/ownedHouseholdCount reflètent toutes les possessions en demo-premium.",
+      "verification": "Non requis pour l'acceptation de ce cycle ; à couvrir par un test déterministe lors du cycle qui modélisera la possession multi-foyers."
+    }
+  ]
+}

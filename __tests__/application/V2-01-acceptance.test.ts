@@ -559,9 +559,10 @@ describe('V2-01 Acceptance Criteria', () => {
       // Create household
       const household = await app.createHousehold('Mon foyer', user.id);
 
-      // Now should have owned household
+      // In demo-premium: canCreateFreeHousehold stays true (full demo bypass)
+      // but ownedFreeHouseholdId is accurate for UI state
       const entitlement2 = await app.getAccountEntitlement(user.id);
-      expect(entitlement2.canCreateFreeHousehold).toBe(false);
+      expect(entitlement2.canCreateFreeHousehold).toBe(true);
       expect(entitlement2.ownedFreeHouseholdId).toBe(household.id);
     });
 
@@ -571,18 +572,24 @@ describe('V2-01 Acceptance Criteria', () => {
         displayName: 'Alex',
       });
 
-      // Create first household
+      // Create first household in demo-premium mode
       const household1 = await app.createHousehold('Premier foyer', user.id);
 
-      // Verify account-level entitlement reflects ownership
+      // In demo-premium: canCreateFreeHousehold=true (bypass for full demo testing)
+      // but ownedFreeHouseholdId is still accurate for UI state
       const entitlement = await app.getAccountEntitlement(user.id);
-      expect(entitlement.canCreateFreeHousehold).toBe(false);
+      expect(entitlement.canCreateFreeHousehold).toBe(true);
       expect(entitlement.ownedFreeHouseholdId).toBe(household1.id);
 
       // Switch to demo-free to enforce creation check
       entitlementAdapter.setMode('demo-free');
 
-      // Attempting to create another should fail
+      // In demo-free: canCreateFreeHousehold=false after first household
+      const freeEntitlement = await app.getAccountEntitlement(user.id);
+      expect(freeEntitlement.canCreateFreeHousehold).toBe(false);
+      expect(freeEntitlement.ownedFreeHouseholdId).toBe(household1.id);
+
+      // Attempting to create another should fail in demo-free
       await expect(
         app.createHousehold('Deuxième foyer', user.id)
       ).rejects.toThrow('Cannot create additional free households');
