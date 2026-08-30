@@ -19,6 +19,7 @@ human_paths=(
   docs/DESIGN_CONTRACT.md
   docs/MONETIZATION.md
   docs/SUBSCRIPTION_REFERENCE_V1.md
+  docs/DATA_PRODUCT_PRIVACY.md
   docs/REFERENCE_SCENARIOS.json
   docs/QUALITY_GATES.md
   docs/architecture.md
