@@ -1,0 +1,187 @@
+name: ChoreScore V2 Greenfield Factory
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - "MAIN_PROMPT.md"
+      - "AGENTS.md"
+      - "governance/**"
+      - "docs/architecture.md"
+      - "docs/agent-workflow.md"
+      - "directives/DIRECTOR.md"
+      - ".opencode/**"
+      - "opencode.json"
+      - ".github/**"
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: chorescore-v2-greenfield-factory
+  cancel-in-progress: false
+
+env:
+  OPENCODE_MAX_ATTEMPTS: "3"
+  OPENCODE_RETRY_DELAY_SECONDS: "300"
+  OPENCODE_ATTEMPT_TIMEOUT_SECONDS: "3000"
+  CYCLE_KEY: ${{ github.run_id }}
+  CI: "true"
+  EXPO_NO_TELEMETRY: "1"
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      accepted_sha: ${{ steps.p.outputs.accepted_sha }}
+      pending_artifact: ${{ steps.p.outputs.pending_artifact }}
+      builder_enabled: ${{ steps.p.outputs.builder_enabled }}
+      final: ${{ steps.p.outputs.final }}
+    steps:
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+        with: {fetch-depth: 0, persist-credentials: false}
+      - id: p
+        env: {GH_TOKEN: "${{ github.token }}"}
+        run: bash .github/scripts/prepare-v2.sh
+
+  probe:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.final != 'true' && needs.prepare.outputs.pending_artifact != 'true' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        model: [mimo-v2.5-free, hy3-free, big-pickle, muse-spark-1.2-contributor-free, nemotron-3-ultra-free, nemotron-3.5-lightning-free, deepseek-v4-flash-free, north-mini-code-free, laguna-s-2.1-free, ling-3.0-flash-free, ling-3.0-tiny-free, x-preview-f-free]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+        with: {ref: "${{ needs.prepare.outputs.accepted_sha }}", fetch-depth: 0, persist-credentials: false}
+      - uses: ./.github/actions/setup-opencode
+      - run: bash .github/scripts/probe-model.sh "${{ matrix.model }}"
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: "probe-${{ matrix.model }}", path: "${{ runner.temp }}/model-probe-${{ matrix.model }}/probe.json", retention-days: 2}
+
+  select:
+    needs: [prepare, probe]
+    if: ${{ always() && needs.prepare.result == 'success' && needs.prepare.outputs.final != 'true' && needs.prepare.outputs.pending_artifact != 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      builder_model: ${{ steps.s.outputs.builder_model }}
+      auditor_model: ${{ steps.s.outputs.auditor_model }}
+      director_model: ${{ steps.s.outputs.director_model }}
+    steps:
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+        with: {ref: "${{ needs.prepare.outputs.accepted_sha }}", fetch-depth: 0, persist-credentials: false}
+      - env: {GH_TOKEN: "${{ github.token }}"}
+        run: mkdir -p /tmp/probes && gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" -p 'probe-*' -D /tmp/probes
+      - id: s
+        run: bash .github/scripts/select-models.sh /tmp/probes
+
+  builder:
+    needs: [prepare, select]
+    if: ${{ needs.prepare.outputs.builder_enabled == 'true' && needs.select.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+        with: {ref: "${{ needs.prepare.outputs.accepted_sha }}", fetch-depth: 0, persist-credentials: false}
+      - uses: actions/setup-node@ae0d4ed08881f17d1511386f5be3e62356acd4a6
+        with: {node-version: 22.13.0}
+      - uses: ./.github/actions/setup-opencode
+      - env: {OX_MODEL: "${{ needs.select.outputs.builder_model }}"}
+        run: bash .github/scripts/candidate.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: candidate-builder, path: "${{ runner.temp }}/candidate-builder", retention-days: 2, if-no-files-found: error}
+
+  audit:
+    needs: [prepare, select, builder]
+    if: ${{ needs.builder.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+        with: {ref: "${{ needs.prepare.outputs.accepted_sha }}", fetch-depth: 0, persist-credentials: false}
+      - uses: actions/setup-node@ae0d4ed08881f17d1511386f5be3e62356acd4a6
+        with: {node-version: 22.13.0}
+      - env: {GH_TOKEN: "${{ github.token }}"}
+        run: gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" -n candidate-builder -D /tmp/candidate-builder
+      - uses: ./.github/actions/setup-opencode
+      - env: {ACCEPTED_SHA: "${{ needs.prepare.outputs.accepted_sha }}", OX_MODEL: "${{ needs.select.outputs.auditor_model }}"}
+        run: bash .github/scripts/audit.sh /tmp/candidate-builder
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: audit-builder, path: "${{ runner.temp }}/audit-builder", retention-days: 14, if-no-files-found: error}
+
+  director:
+    needs: [prepare, select, builder, audit]
+    if: ${{ always() && needs.prepare.result == 'success' && needs.builder.result == 'success' && needs.audit.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 220
+    outputs:
+      pending_artifact: ${{ steps.d.outputs.pending_artifact }}
+    steps:
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+        with: {ref: "${{ needs.prepare.outputs.accepted_sha }}", fetch-depth: 0, persist-credentials: false}
+      - uses: actions/setup-node@ae0d4ed08881f17d1511386f5be3e62356acd4a6
+        with: {node-version: 22.13.0}
+      - env: {GH_TOKEN: "${{ github.token }}"}
+        run: |
+          mkdir -p /tmp/factory
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" -n candidate-builder -D /tmp/factory/candidate-builder
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" -n audit-builder -D /tmp/factory/audit-builder
+      - uses: ./.github/actions/setup-opencode
+      - id: d
+        env: {GH_TOKEN: "${{ github.token }}", ACCEPTED_SHA: "${{ needs.prepare.outputs.accepted_sha }}", OX_MODEL: "${{ needs.select.outputs.director_model }}"}
+        run: bash .github/scripts/integrate-director.sh
+
+  release:
+    needs: [prepare, director]
+    if: ${{ always() && needs.prepare.result == 'success' && (needs.prepare.outputs.pending_artifact == 'true' || (needs.director.result == 'success' && needs.director.outputs.pending_artifact == 'true')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+        with: {ref: lab/chorescore-v2, fetch-depth: 0, persist-credentials: false}
+      - run: jq -e '.pendingArtifact=="V2-07" and all(.criteria[]; if .id=="V2-07" then .status=="in_progress" else .status=="complete" end)' docs/RELEASE_STATUS.json >/dev/null
+      - uses: actions/setup-node@ae0d4ed08881f17d1511386f5be3e62356acd4a6
+        with: {node-version: 22.13.0}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - run: npm ci --ignore-scripts --no-audit --no-fund && npm run check && npx --no-install expo export --platform android --output-dir "$RUNNER_TEMP/v2-final-export"
+      - id: build
+        run: |
+          npx --no-install expo prebuild --platform android --no-install
+          (cd android && ./gradlew :app:assembleRelease --no-daemon --stacktrace)
+          apk="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk"; test -s "$apk"
+          echo "apk=$apk" >> "$GITHUB_OUTPUT"; echo "sha=$(sha256sum "$apk" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+      - uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: 35
+          target: default
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash "$GITHUB_WORKSPACE/.github/scripts/smoke-android-apk.sh" "${{ steps.build.outputs.apk }}" com.mickalive.chorescore "$RUNNER_TEMP/v2-smoke"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: chorescore-v2-final-apk
+          path: |
+            ${{ steps.build.outputs.apk }}
+            ${{ runner.temp }}/v2-smoke
+          retention-days: 90
+          compression-level: 0
+      - env: {GH_TOKEN: "${{ github.token }}", APK_SHA: "${{ steps.build.outputs.sha }}"}
+        run: |
+          set -euo pipefail
+          tmp=$(mktemp)
+          jq --arg run "$GITHUB_RUN_ID" --arg sha "$APK_SHA" '(.criteria[]|select(.id=="V2-07")|.status)="complete" | (.criteria[]|select(.id=="V2-07")|.evidence)=[{"kind":"artifact","reference":("Actions run "+$run+" APK sha256 "+$sha)},{"kind":"runtime-smoke","reference":("Android API35 install/launch run "+$run)}] | .pendingArtifact=null | .activeCriteria=[] | .lastCycle=$run | .progressSummary="V2 RC complete with installable Android APK"' docs/RELEASE_STATUS.json > "$tmp"; mv "$tmp" docs/RELEASE_STATUS.json
+          git config user.name chorescore-v2-factory; git config user.email chorescore-v2-factory@users.noreply.github.com
+          git add docs/RELEASE_STATUS.json; git commit -m "release: attest ChoreScore V2 Android RC"
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0); git -c "http.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:refs/heads/lab/chorescore-v2

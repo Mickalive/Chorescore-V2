@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "milestone": "v2-rc",
+  "lastCycle": "human-greenfield-bootstrap",
+  "activeCriteria": ["V2-00"],
+  "pendingArtifact": null,
+  "progressSummary": "Repository V2 greenfield initialized. No V1 product evidence is inherited.",
+  "criteria": [
+    {"id":"V2-00","status":"in_progress","evidence":[]},
+    {"id":"V2-01","status":"pending","evidence":[]},
+    {"id":"V2-02","status":"pending","evidence":[]},
+    {"id":"V2-03","status":"pending","evidence":[]},
+    {"id":"V2-04","status":"pending","evidence":[]},
+    {"id":"V2-05","status":"pending","evidence":[]},
+    {"id":"V2-06","status":"pending","evidence":[]},
+    {"id":"V2-07","status":"pending","evidence":[]}
+  ],
+  "openFindings": []
+}

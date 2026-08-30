@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "milestone": "v2-rc",
+  "builder": {
+    "enabled": true,
+    "criterionId": "V2-00",
+    "objective": "Construire le socle ChoreScore V2 GREENFIELD dans ce dépôt vide. Ne pas copier l'ancienne application. Créer un projet Expo/React Native TypeScript propre et testable, avec une architecture simple séparant domaine/application/infrastructure/UI, scripts check/test et export Android. Définir dès maintenant les ports AuthGateway, Entitlement/BillingGateway, SystemShareGateway (share sheet natif, aucun SDK réseau social spécifique), NotificationGateway, CalendarGateway, SecureStorageGateway et SyncGateway. Fournir des adapters locaux honnêtes nécessaires au développement, sans simuler OAuth/paiement/push/sync réels. Poser un shell de navigation minimal cohérent avec foyers -> Ajouter une tâche | Score | To-do, sans prétendre que les fonctionnalités futures sont déjà terminées.",
+    "acceptance": [
+      "Le code applicatif est créé depuis zéro dans Chorescore-V2 ; aucune arborescence app/src/tests de V1 n'est copiée comme fondation.",
+      "package.json + lockfile sont propres et les dépendances choisies sont compatibles avec le SDK Expo retenu.",
+      "npm run check exécute au minimum typecheck et tests déterministes.",
+      "Un export Android Expo réussit.",
+      "Les couches domaine/application/infrastructure/UI sont explicites et le domaine ne dépend d'aucun fournisseur externe.",
+      "Les ports Auth, Entitlement/Billing, SystemShare, Notification, Calendar, SecureStorage et Sync existent avec contrats testables.",
+      "SystemShare représente le share sheet natif du système ; aucune dépendance Instagram/Facebook/WhatsApp de partage n'est ajoutée.",
+      "Les services externes non configurés sont explicitement indisponibles et jamais présentés comme réussis.",
+      "Le shell de navigation reflète le modèle mental foyers -> trois onglets du foyer sans réintroduire l'ancienne UI.",
+      "Le design de base part dans une direction feel-good avec fond teinté, sans dépendre d'une grande surface blanche."
+    ]
+  }
+}
