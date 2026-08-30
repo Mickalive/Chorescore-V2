@@ -24,6 +24,8 @@ export default function RootLayout() {
         >
           <Stack.Screen name="index" />
           <Stack.Screen name="household/[id]" />
+          <Stack.Screen name="options/personal" />
+          <Stack.Screen name="options/household/[id]" />
         </Stack>
       </AppProvider>
     </SafeAreaProvider>

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33330593679",
+  "role": "builder",
+  "decision": "repair",
+  "summary": "V2-01 REPAIR audité contradictoirement. Les trois findings ciblés sont traités : (1) l'expiration d'essai est câblée dans getEntitlement (trialEndsAt passé -> entitlement Free, capacités Premium désactivées, aucune destruction de données) ; (2) les écrans Options personnelles (Profil/Notifications/Confidentialité/Légal/Préférences) et Options du foyer (Abonnement/Administration/Membres/Permissions) existent avec de vraies routes et une protection propriétaire sur l'écran foyer ; (3) getAccountEntitlement consulte AccountRepository.ownedFreeHouseholdId au lieu du scan global de la map d'entitlements. La vérification de confiance a un exit code 0 (133 tests verts, export Android, assembleDebug BUILD SUCCESSFUL). Cependant, un finding mustFix subsiste : la modification du chemin demo-premium de getAccountEntitlement (hors périmètre du finding F3 qui ne concernait que demo-free) rend canCreateFreeHousehold=false dès qu'un foyer est possédé, ce qui désactive le bouton « Créer un foyer » de l'écran racine dans le mode démo par défaut après la première création, alors que createHousehold continue d'autoriser la création (bypass demo-premium). Cela casse la promesse constitutionnelle d'une démo Premium entièrement débloquée (multi-foyers = capacité Premium) et crée une incohérence bouton/use-case. Décision : repair.",
+  "checks": [
+    "npm run check (typecheck + jest) : 6 suites, 133 tests, 0 échec",
+    "npx tsc --noEmit : exit 0",
+    "Vérification de confiance TRUSTED_33330593679.md : exit code 0, 133 tests verts, export Android OK, ./gradlew :app:assembleDebug BUILD SUCCESSFUL",
+    "Diff candidat vs arbre pristine accepté : exactement 8 fichiers (2 tests, _layout, index, 2 écrans Options, AppContext, LocalEntitlementAdapter) + rapport TRUSTED non suivi",
+    "F1 : test indépendant — startTrial puis trialEndsAt passé -> getEntitlement plan free, weightingEnabled/todoPlanningEnabled/historyArchiveAccess/scoreArchiveAccess/advancedExportEnabled false, entitlement stocké intact (plan trial conservé), foyer toujours présent",
+    "F1b : test indépendant — trialEndsAt futur -> plan trial conservé",
+    "F1c : test indépendant — canUseFeature (weighting/todo-planning/history-archive/score-archive) repasse à false après expiration",
+    "F2 : app/options/personal.tsx et app/options/household/[id].tsx existent, routes enregistrées dans app/_layout.tsx, navigation réelle depuis app/index.tsx (router.push)",
+    "F2b : écran Options du foyer vérifie membership?.role === 'OWNER' et affiche « Accès restreint » pour les non-propriétaires ; sections Abonnement/Administration/Membres/Permissions présentes",
+    "F2c : écran Options personnelles contient Profil/Notifications/Confidentialité/Légal/Préférences + déconnexion",
+    "F3 : test indépendant — getAccountEntitlement résout via AccountRepository.ownedFreeHouseholdId (canCreateFreeHousehold false après création, true sans compte, indépendant des entitlements d'autres foyers)",
+    "F3b : test indépendant — demo-free : createHousehold rejette un second foyer gratuit",
+    "REGRESSION : test indépendant — demo-premium (mode par défaut de l'app) : après création du premier foyer, getAccountEntitlement retourne canCreateFreeHousehold=false (bouton « Créer un foyer » désactivé) alors que createHousehold autorise toujours la création (bypass demo-premium) — incohérence et blocage de l'exploration multi-foyers en démo",
+    "Régression des invariants acceptés : architecture, ports, adapters honnêtes, analytics secondaire désactivable, grille tarifaire canonique (30 j, 2,99/5,99 EUR, seuils 7/8), identité fixe, invitations multiples — inchangés"
+  ],
+  "findings": [
+    {
+      "path": "src/infrastructure/local/LocalEntitlementAdapter.ts",
+      "problem": "Le chemin demo-premium de getAccountEntitlement a été modifié hors du périmètre du finding F3 (qui ne concernait que le scan global de la map en demo-free). Il consulte désormais AccountRepository.ownedFreeHouseholdId et retourne canCreateFreeHousehold=false dès que l'utilisateur possède un foyer. Or createHousehold conserve son bypass demo-premium (création toujours autorisée). Résultat : dans le mode démo par défaut de l'application (LocalEntitlementAdapter() sans argument = demo-premium), l'écran racine désactive le bouton « Créer un foyer » après la première création (canCreate est piloté par getAccountEntitlement), alors que le use-case autorise la création. Cela bloque l'exploration/audit de la création multi-foyers — une capacité Premium que la démo doit débloquer (« entitlement Premium de test entièrement débloqué... exploration et audits de toutes les fonctions », MAIN_PROMPT ; « pondération, archive, To-do et autres fonctions Premium doivent être réellement utilisables dans la démo », MONETIZATION.md) — et contredit l'exigence F3 « consistent with createHousehold ». Régression par rapport à la baseline acceptée où demo-premium retournait toujours canCreateFreeHousehold=true.",
+      "evidence": "Reproduction indépendante : mode demo-premium par défaut, création d'un utilisateur puis d'un foyer -> getAccountEntitlement retourne canCreateFreeHousehold=false (ownedFreeHouseholdId renseigné) ; un second appel createHousehold réussit pourtant (bypass demo-premium). Le test d'acceptation 15 du candidat (V2-01-acceptance.test.ts) codifie cette régression en l'assertant en mode demo-premium. Le commentaire du candidat admet l'incohérence : « The demo-premium mode bypass is only for createHousehold entitlement checks ».",
+      "mustFix": true,
+      "requiredFix": "En mode demo-premium, getAccountEntitlement doit retourner canCreateFreeHousehold=true (cohérent avec le bypass de createHousehold qui autorise la création multi-foyers en démo) tout en continuant de rapporter ownedFreeHouseholdId exact depuis AccountRepository. Le mode demo-free conserve la règle canCreateFreeHousehold = (ownedFreeHouseholdId === null). Ajouter un test déterministe : en demo-premium, après création d'un premier foyer, getAccountEntitlement retourne canCreateFreeHousehold=true et ownedFreeHouseholdId=id du premier foyer, et l'état du bouton « Créer un foyer » reste actif.",
+      "verification": "Test déterministe : adapter en demo-premium avec AccountRepository injecté ; créer deux foyers pour le même utilisateur ; getAccountEntitlement retourne canCreateFreeHousehold=true, ownedFreeHouseholdId=premier foyer, ownedHouseholdCount=1 ; en demo-free, le même scénario retourne canCreateFreeHousehold=false après le premier foyer. npm run check vert."
+    }
+  ]
+}

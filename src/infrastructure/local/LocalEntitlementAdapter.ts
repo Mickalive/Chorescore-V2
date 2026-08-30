@@ -6,7 +6,7 @@
  * The demo/test entitlement is explicitly isolated from production.
  *
  * Account-level entitlements resolve the "one free household" rule
- * at the account level, not against a fake household ID.
+ * at the account level, using AccountRepository.ownedFreeHouseholdId.
  */
 
 import {
@@ -17,6 +17,7 @@ import {
   AccountEntitlementState,
 } from '../../application/ports';
 import { PRICING } from '../../domain/entities';
+import { AccountRepository } from '../../application/use-cases/ChoreScoreApp';
 
 const DEMO_PREMIUM_ENTITLEMENT: EntitlementState = {
   plan: 'standard',
@@ -48,17 +49,39 @@ export class LocalEntitlementAdapter implements EntitlementGateway {
   private entitlements: Map<string, EntitlementState> = new Map();
   private trialStarts: Map<string, Date> = new Map();
   private mode: 'demo-premium' | 'demo-free' = 'demo-premium';
+  private accountRepository: AccountRepository | null = null;
 
-  constructor() {
+  constructor(accountRepository?: AccountRepository) {
     // Default to demo-premium for testing
     this.mode = 'demo-premium';
+    this.accountRepository = accountRepository ?? null;
+  }
+
+  /** Inject account repository (allows late binding for testing) */
+  setAccountRepository(repo: AccountRepository): void {
+    this.accountRepository = repo;
   }
 
   async getEntitlement(householdId: string): Promise<EntitlementState> {
     if (this.mode === 'demo-free') {
       return FREE_ENTITLEMENT;
     }
-    return this.entitlements.get(householdId) || DEMO_PREMIUM_ENTITLEMENT;
+
+    const stored = this.entitlements.get(householdId);
+    if (!stored) {
+      return DEMO_PREMIUM_ENTITLEMENT;
+    }
+
+    // Wire trial expiry: if the entitlement is a trial and trialEndsAt is in the past,
+    // return Free entitlement without destroying data.
+    if (stored.plan === 'trial' && stored.trialEndsAt) {
+      const trialEndDate = new Date(stored.trialEndsAt);
+      if (trialEndDate.getTime() < Date.now()) {
+        return FREE_ENTITLEMENT;
+      }
+    }
+
+    return stored;
   }
 
   async canUseFeature(householdId: string, feature: EntitlementFeature): Promise<boolean> {
@@ -132,30 +155,39 @@ export class LocalEntitlementAdapter implements EntitlementGateway {
 
   /**
    * Get account-level entitlement for household creation.
-   * The "one free household" rule is resolved at the account level.
+   * Resolves via AccountRepository.ownedFreeHouseholdId,
+   * consistent with createHousehold's account-level check.
    */
   async getAccountEntitlement(userId: string): Promise<AccountEntitlementState> {
     if (this.mode === 'demo-premium') {
-      // In demo-premium, always allow creation
+      // In demo-premium, still consult AccountRepository for accurate state
+      // The demo-premium mode bypass is only for createHousehold entitlement checks
+      const account = this.accountRepository
+        ? await this.accountRepository.getByUser(userId)
+        : null;
+
+      const ownedFreeHouseholdId = account?.ownedFreeHouseholdId ?? null;
+
       return {
-        canCreateFreeHousehold: true,
-        ownedFreeHouseholdId: null,
+        canCreateFreeHousehold: ownedFreeHouseholdId === null,
+        ownedFreeHouseholdId,
         hasActiveTrial: true,
-        ownedHouseholdCount: 0,
+        ownedHouseholdCount: ownedFreeHouseholdId !== null ? 1 : 0,
       };
     }
 
-    // In demo-free, check if user already owns a free household
-    // This is a simplified check — in production, this would query the account repository
-    const existingEntitlement = Array.from(this.entitlements.entries()).find(
-      ([_, e]) => e.plan === 'free'
-    );
+    // In demo-free, resolve via AccountRepository — never via global entitlements map scan
+    const account = this.accountRepository
+      ? await this.accountRepository.getByUser(userId)
+      : null;
+
+    const ownedFreeHouseholdId = account?.ownedFreeHouseholdId ?? null;
 
     return {
-      canCreateFreeHousehold: !existingEntitlement,
-      ownedFreeHouseholdId: existingEntitlement?.[0] ?? null,
+      canCreateFreeHousehold: ownedFreeHouseholdId === null,
+      ownedFreeHouseholdId,
       hasActiveTrial: false,
-      ownedHouseholdCount: existingEntitlement ? 1 : 0,
+      ownedHouseholdCount: ownedFreeHouseholdId !== null ? 1 : 0,
     };
   }
 

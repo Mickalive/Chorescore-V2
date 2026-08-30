@@ -68,6 +68,9 @@ export function AppProvider({ children }: AppProviderProps) {
   });
 
   // Create stable service instances
+  // AccountRepository is injected into entitlement adapter so that
+  // getAccountEntitlement resolves via AccountRepository.ownedFreeHouseholdId
+  // instead of a global entitlements map scan.
   const servicesRef = useRef({
     auth: new LocalAuthAdapter(),
     entitlements: new LocalEntitlementAdapter(),
@@ -78,6 +81,11 @@ export function AppProvider({ children }: AppProviderProps) {
     sync: new LocalSyncAdapter(),
     analytics: new LocalResearchAnalyticsAdapter(),
   });
+
+  // Inject account repository into entitlement adapter
+  useEffect(() => {
+    servicesRef.current.entitlements.setAccountRepository(reposRef.current.accounts);
+  }, []);
 
   // Create the app instance
   const appRef = useRef<ChoreScoreApp>(

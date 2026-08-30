@@ -210,13 +210,22 @@ export default function HomeScreen() {
                       {item.memberCount} {item.memberCount > 1 ? 'membres' : 'membre'}
                     </Text>
                   </View>
-                  <View style={styles.planBadge}>
-                    <Text variant="caption" style={styles.planBadgeText}>
-                      {item.plan === 'free' && 'Gratuit'}
-                      {item.plan === 'trial' && 'Essai'}
-                      {item.plan === 'standard' && 'Standard'}
-                      {item.plan === 'pro' && 'Pro'}
-                    </Text>
+                  <View style={styles.householdActions}>
+                    <View style={styles.planBadge}>
+                      <Text variant="caption" style={styles.planBadgeText}>
+                        {item.plan === 'free' && 'Gratuit'}
+                        {item.plan === 'trial' && 'Essai'}
+                        {item.plan === 'standard' && 'Standard'}
+                        {item.plan === 'pro' && 'Pro'}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => router.push(`/options/household/${item.household.id}`)}
+                      activeOpacity={0.7}
+                      style={styles.householdOptionsButton}
+                    >
+                      <Text variant="caption" color={colors.primary}>Options</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               </Card>
@@ -243,7 +252,7 @@ export default function HomeScreen() {
         <Button
           title="Options"
           variant="ghost"
-          onPress={() => {}}
+          onPress={() => router.push('/options/personal')}
           size="small"
         />
         <Button
@@ -275,11 +284,19 @@ const styles = StyleSheet.create({
   householdInfo: {
     flex: 1,
   },
+  householdActions: {
+    alignItems: 'flex-end',
+    gap: spacing.xs,
+  },
   planBadge: {
     backgroundColor: colors.surfaceAlt,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.sm,
+  },
+  householdOptionsButton: {
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
   },
   planBadgeText: {
     color: colors.textSecondary,
