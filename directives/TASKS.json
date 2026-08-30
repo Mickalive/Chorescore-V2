@@ -4,37 +4,28 @@
   "builder": {
     "enabled": true,
     "criterionId": "V2-01",
-    "objective": "V2-01 REPAIR — Fix 3 mustFix findings. Preserve the existing WIP baseline (commit 9415dc6). Fix only the following, do not expand scope: (1) Wire trial expiry into entitlement resolution: getEntitlement must check trialEndsAt and return Free when expired, without destroying data. (2) Implement Options personal and household screens with real navigation. Options household visible only to owner/payer. (3) Fix getAccountEntitlement to consult AccountRepository.ownedFreeHouseholdId instead of global entitlements map scan.",
+    "objective": "V2-01 REPAIR (cycle 2) — Fix 1 remaining mustFix regression. Preserve the existing WIP baseline (commit 09e724d, 133 tests green). Fix only the following, do not expand scope.",
     "repairFindings": [
       {
-        "findingId": "F1",
+        "findingId": "F4",
         "path": "src/infrastructure/local/LocalEntitlementAdapter.ts",
-        "problem": "getEntitlement returns plan:'trial' indefinitely without checking trialEndsAt",
-        "requiredFix": "Wire trialEndsAt check into getEntitlement. When trialEndsAt < now, return entitlement with plan:'free' and Premium capabilities disabled. No data destruction.",
-        "verification": "Deterministic test: startTrial, simulate trialEndsAt in past, assert getEntitlement returns plan:'free' with weightingEnabled/todoPlanningEnabled/historyArchiveAccess/scoreArchiveAccess false, no data deleted."
-      },
-      {
-        "findingId": "F2",
-        "path": "app/index.tsx",
-        "problem": "Options personal and household screens are placeholders onPress={() => {}}",
-        "requiredFix": "Implement Options personal (profile, notifications, privacy, legal, preferences) and Options household (subscription, administration, members, permissions) with real routes and screens. Options household visible only to owner/payer.",
-        "verification": "Navigation from home screen to both Options screens works. Options household visible only when user is owner/payer. Tests cover access and content."
-      },
-      {
-        "findingId": "F3",
-        "path": "src/infrastructure/local/LocalEntitlementAdapter.ts",
-        "problem": "getAccountEntitlement demo-free scans global entitlements map instead of AccountRepository",
-        "requiredFix": "Resolve getAccountEntitlement via AccountRepository.ownedFreeHouseholdId, consistent with createHousehold.",
-        "verification": "Test: user with ownedFreeHouseholdId set → canCreateFreeHousehold=false; user without → true, independent of other households' entitlements."
+        "problem": "In demo-premium mode, getAccountEntitlement consults AccountRepository.ownedFreeHouseholdId and returns canCreateFreeHousehold=false after the first household is created. However, createHousehold bypasses this check in demo-premium mode (always allows creation). This creates an inconsistency: the 'Create household' button on the root screen is disabled (canCreateHousehold calls getAccountEntitlement) while the use-case still permits creation. The demo must be a fully unlocked Premium test environment (MAIN_PROMPT: 'entitlement Premium de test entièrement débloqué... exploration et audits de toutes les fonctions').",
+        "requiredFix": "In demo-premium mode, getAccountEntitlement must always return canCreateFreeHousehold=true (consistent with createHousehold's demo-premium bypass). It should still report accurate ownedFreeHouseholdId from AccountRepository for UI state. In demo-free mode, the one-free-household rule remains enforced via ownedFreeHouseholdId===null.",
+        "verification": "Deterministic test: adapter in demo-premium, create user, create first household → getAccountEntitlement returns canCreateFreeHousehold=true, ownedFreeHouseholdId=first household id, ownedHouseholdCount=1. Second createHousehold call succeeds and getAccountEntitlement still returns canCreateFreeHousehold=true. In demo-free mode: after first household, canCreateFreeHousehold=false. npm run check vert."
       }
     ],
+    "previousFixesPreserved": [
+      "F1: Trial expiry wired — getEntitlement checks trialEndsAt, returns Free when expired. Test passes.",
+      "F2: Options personal (Profil/Notifications/Confidentialité/Légal/Préférences) and household (Abonnement/Administration/Membres/Permissions) screens implemented with real routes and owner/payer guard. Test passes.",
+      "F3: getAccountEntitlement resolves via AccountRepository.ownedFreeHouseholdId, no global map scan. Test passes in demo-free mode."
+    ],
     "acceptance": [
-      "Trial expiry wired: getEntitlement returns Free after trialEndsAt, deterministic test passes",
-      "Options personal screen implemented with profile/notifications/privacy/legal/preferences",
-      "Options household screen implemented with subscription/administration/members/permissions",
-      "Options household visible only to owner/payer",
-      "getAccountEntitlement resolves via AccountRepository, consistent with createHousehold",
-      "npm run check vert, 120+ tests green",
+      "demo-premium: getAccountEntitlement returns canCreateFreeHousehold=true after first household creation",
+      "demo-premium: createHousehold allows multi-household creation (consistent with canCreateFreeHousehold=true)",
+      "demo-free: getAccountEntitlement returns canCreateFreeHousehold=false after first household creation",
+      "demo-free: createHousehold rejects second free household",
+      "All previous F1/F2/F3 fixes preserved — no regressions",
+      "npm run check vert, 133+ tests green",
       "No regressions in V2-00 or existing V2-01 evidence"
     ]
   }

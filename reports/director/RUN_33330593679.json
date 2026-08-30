@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33330593679",
+  "decision": "continue",
+  "reason": "V2-01 repair cycle 2: one mustFix regression remains. The previous cycle's F3 fix (consulting AccountRepository) introduced a demo-premium inconsistency — getAccountEntitlement returns canCreateFreeHousehold=false after first household creation while createHousehold still allows creation in demo-premium mode. This blocks multi-household Premium demo exploration. The WIP baseline (133 tests green, typecheck clean, export Android OK) is preserved. Builder assigned targeted F4 fix: demo-premium getAccountEntitlement must always return canCreateFreeHousehold=true. No scope expansion. No criterion change.",
+  "progressEvidence": [
+    "V2-00 complete: 67 tests, architecture greenfield, ports/adapters, analytics minimized",
+    "V2-01 F1 fix verified: trial expiry wired, getEntitlement returns Free after trialEndsAt, deterministic test passes",
+    "V2-01 F2 fix verified: Options personal + household screens with real routes, owner/payer guard, test passes",
+    "V2-01 F3 fix verified: getAccountEntitlement resolves via AccountRepository.ownedFreeHouseholdId, no global map scan, demo-free test passes",
+    "V2-01 F4 regression identified: demo-premium getAccountEntitlement returns canCreateFreeHousehold=false after creation, inconsistent with createHousehold bypass",
+    "133 tests passing across 6 suites, typecheck clean",
+    "Export Android + assembleDebug successful (from TRUSTED audit log)",
+    "Baseline commit 09e724d preserved"
+  ]
+}

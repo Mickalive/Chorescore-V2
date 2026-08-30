@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "milestone": "v2-rc",
-  "lastCycle": "33327393482",
+  "lastCycle": "33330593679",
   "activeCriteria": ["V2-01"],
   "pendingArtifact": null,
-  "progressSummary": "V2-00 complete: Expo SDK 57 aligned, Android build successful, analytics fact minimized, 67 tests green. V2-01 repair: 3 mustFix findings (trial expiry not wired, Options screens placeholder, getAccountEntitlement global scan). WIP baseline preserved, 120 tests green. Builder assigned targeted fixes.",
+  "progressSummary": "V2-00 complete: Expo SDK 57 aligned, Android build successful, analytics fact minimized, 67 tests green. V2-01 repair cycle 2: F1 (trial expiry) fixed, F2 (Options screens) fixed, F3 (AccountRepository resolution) fixed in demo-free. F4 regression: demo-premium getAccountEntitlement returns canCreateFreeHousehold=false after creation, inconsistent with createHousehold bypass. WIP baseline preserved (133 tests green, typecheck clean). Builder assigned targeted F4 fix.",
   "criteria": [
     {"id":"V2-00","status":"complete","evidence":["architecture-greenfield-confirmed","ports-honest-adapters","visual-design-coherent","67-tests-passing","js-bundle-success","expo-prebuild-success","expo-sdk57-packages-aligned","android-build-successful","analytics-fact-minimized-no-operational-ids","dedicated-analytics-leakage-test","npm-run-check-green"]},
-    {"id":"V2-01","status":"in_progress","evidence":[]},
+    {"id":"V2-01","status":"in_progress","evidence":["trial-expiry-wired-F1","options-personal-screen-F2","options-household-screen-F2","owner-payer-guard-F2","account-repository-resolution-F3","133-tests-green","typecheck-clean","android-export-ok"]},
     {"id":"V2-02","status":"pending","evidence":[]},
     {"id":"V2-03","status":"pending","evidence":[]},
     {"id":"V2-04","status":"pending","evidence":[]},
@@ -15,5 +15,13 @@
     {"id":"V2-06","status":"pending","evidence":[]},
     {"id":"V2-07","status":"pending","evidence":[]}
   ],
-  "openFindings": []
+  "openFindings": [
+    {
+      "findingId": "F4",
+      "criterionId": "V2-01",
+      "path": "src/infrastructure/local/LocalEntitlementAdapter.ts",
+      "severity": "mustFix",
+      "summary": "demo-premium getAccountEntitlement returns canCreateFreeHousehold=false after first household creation, inconsistent with createHousehold bypass. Blocks multi-household Premium demo exploration."
+    }
+  ]
 }
