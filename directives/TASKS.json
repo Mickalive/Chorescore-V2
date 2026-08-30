@@ -4,20 +4,38 @@
   "builder": {
     "enabled": true,
     "criterionId": "V2-01",
-    "objective": "V2-01 — Identité, foyers, abonnement et Options. Implémenter le niveau global de l'application et le contrat commercial canonique. 1) Session locale testable avec identité fixe : compte ChoreScore/email avec userId stable, sans faux OAuth. Le 'Fait par' est une donnée d'entrée, pas un switch d'identité. 2) User/Household/Member : créer les entités User (id, email, displayName) et membership (MEMBER/OWNER pour chaque foyer). Member.userId lie l'utilisateur à son membership. 3) Écran racine : afficher la liste des foyers de l'utilisateur, chaque foyer montre nom + nombre de membres + badge du plan (Free/Standard/Pro). Bouton 'Créer un foyer' visible uniquement si l'utilisateur a le droit (un foyer gratuit créé/possédé). 4) Options personnelles : profil, notifications, confidentialité, légal, préférences. 5) Options du foyer (payeur/propriétaire uniquement) : abonnement, administration, membres, permissions. 6) Essai complet 30 jours : chaque nouveau foyer bénéficie d'un essai Premium de 30 jours, le trial se termine et repasse en Free sans destruction de données. 7) Un foyer gratuit créé/possédé : le premier foyer créé est gratuit, un foyer supplémentaire créé/possédé doit avoir son propre plan (Standard ou Pro). 8) Invitations multiples autorisées : un compte gratuit peut rejoindre plusieurs foyers par invitation sans payer. Les droits viennent du plan de chaque foyer, pas du compte. 9) Standard 2,99 EUR/mois/foyer jusqu'à 7 membres, Pro 5,99 EUR/mois/foyer dès 8 membres : seuils et tarifs configurables, facturation par foyer. 10) Résoudre l'entitlement de création au niveau du compte (pas contre un ID de foyer factice 'new-household'). Le contrôle 'un foyer gratuit' doit être une règle de droit du compte. 11) Contrats AuthGateway email/Google/Facebook propres (pas de faux OAuth, les providers sont des ports avec adapters honnêtes).",
+    "objective": "V2-01 REPAIR — Fix 3 mustFix findings. Preserve the existing WIP baseline (commit 9415dc6). Fix only the following, do not expand scope: (1) Wire trial expiry into entitlement resolution: getEntitlement must check trialEndsAt and return Free when expired, without destroying data. (2) Implement Options personal and household screens with real navigation. Options household visible only to owner/payer. (3) Fix getAccountEntitlement to consult AccountRepository.ownedFreeHouseholdId instead of global entitlements map scan.",
+    "repairFindings": [
+      {
+        "findingId": "F1",
+        "path": "src/infrastructure/local/LocalEntitlementAdapter.ts",
+        "problem": "getEntitlement returns plan:'trial' indefinitely without checking trialEndsAt",
+        "requiredFix": "Wire trialEndsAt check into getEntitlement. When trialEndsAt < now, return entitlement with plan:'free' and Premium capabilities disabled. No data destruction.",
+        "verification": "Deterministic test: startTrial, simulate trialEndsAt in past, assert getEntitlement returns plan:'free' with weightingEnabled/todoPlanningEnabled/historyArchiveAccess/scoreArchiveAccess false, no data deleted."
+      },
+      {
+        "findingId": "F2",
+        "path": "app/index.tsx",
+        "problem": "Options personal and household screens are placeholders onPress={() => {}}",
+        "requiredFix": "Implement Options personal (profile, notifications, privacy, legal, preferences) and Options household (subscription, administration, members, permissions) with real routes and screens. Options household visible only to owner/payer.",
+        "verification": "Navigation from home screen to both Options screens works. Options household visible only when user is owner/payer. Tests cover access and content."
+      },
+      {
+        "findingId": "F3",
+        "path": "src/infrastructure/local/LocalEntitlementAdapter.ts",
+        "problem": "getAccountEntitlement demo-free scans global entitlements map instead of AccountRepository",
+        "requiredFix": "Resolve getAccountEntitlement via AccountRepository.ownedFreeHouseholdId, consistent with createHousehold.",
+        "verification": "Test: user with ownedFreeHouseholdId set → canCreateFreeHousehold=false; user without → true, independent of other households' entitlements."
+      }
+    ],
     "acceptance": [
-      "User, Household, Member et membership entities existent et sont testées",
-      "Écran racine affiche les foyers de l'utilisateur avec nom + membres + badge plan",
-      "Créer un foyer disponible selon le droit (un foyer gratuit créé/possédé)",
-      "Essai 30 jours : nouveau foyer = trial, expiry = Free, aucune donnée détruite",
-      "Standard/Pro : seuils 7/8 membres et tarifs 2,99/5,99 EUR configurables",
-      "Facturation attachée au foyer, pas au compte",
-      "Invitations : un compte gratuit peut rejoindre plusieurs foyers invités",
-      "Options personnelles + Options foyer (propriétaire/payeur) existent",
-      "AuthGateway propres : email/Google/Facebook comme ports, adapters honnêtes",
-      "Entitlement de création résolu au niveau du compte, pas contre un foyer factice",
-      "npm run check vert, aucun test existant cassé",
-      "Audit UX/design : écran cohérent avec DESIGN_BRIEF"
+      "Trial expiry wired: getEntitlement returns Free after trialEndsAt, deterministic test passes",
+      "Options personal screen implemented with profile/notifications/privacy/legal/preferences",
+      "Options household screen implemented with subscription/administration/members/permissions",
+      "Options household visible only to owner/payer",
+      "getAccountEntitlement resolves via AccountRepository, consistent with createHousehold",
+      "npm run check vert, 120+ tests green",
+      "No regressions in V2-00 or existing V2-01 evidence"
     ]
   }
 }

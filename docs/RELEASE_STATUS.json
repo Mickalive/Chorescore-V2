@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "milestone": "v2-rc",
-  "lastCycle": "33323640740",
+  "lastCycle": "33327393482",
   "activeCriteria": ["V2-01"],
   "pendingArtifact": null,
-  "progressSummary": "V2-00 complete: Expo SDK 57 aligned, Android build successful, analytics fact minimized, 67 tests green. V2-01 assigned: Identity, households, subscription and Options.",
+  "progressSummary": "V2-00 complete: Expo SDK 57 aligned, Android build successful, analytics fact minimized, 67 tests green. V2-01 repair: 3 mustFix findings (trial expiry not wired, Options screens placeholder, getAccountEntitlement global scan). WIP baseline preserved, 120 tests green. Builder assigned targeted fixes.",
   "criteria": [
     {"id":"V2-00","status":"complete","evidence":["architecture-greenfield-confirmed","ports-honest-adapters","visual-design-coherent","67-tests-passing","js-bundle-success","expo-prebuild-success","expo-sdk57-packages-aligned","android-build-successful","analytics-fact-minimized-no-operational-ids","dedicated-analytics-leakage-test","npm-run-check-green"]},
     {"id":"V2-01","status":"in_progress","evidence":[]},

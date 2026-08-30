@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33327393482",
+  "decision": "continue",
+  "reason": "Audit returned repair for V2-01 with 3 mustFix findings. The WIP repair baseline (commit 9415dc6) is preserved: npm run check green (6 suites, 120 tests), typecheck clean, all existing V2-00 evidence intact. The 3 findings are all within V2-01 scope and addressable in the next cycle: (1) trial expiry not wired to entitlement resolution — getEntitlement must check trialEndsAt and return Free when expired; (2) Options personal and household screens not implemented — placeholder onPress only; (3) getAccountEntitlement demo-free mode scans global map instead of consulting AccountRepository. V2-01 remains active. Builder assigned the 3 specific fixes. V2-00 evidence preserved.",
+  "progressEvidence": [
+    "V2-01 REPAIR: 3 mustFix findings identified, WIP baseline preserved",
+    "npm run check green: 6 suites, 120 tests, 0 failures",
+    "V2-00 evidence intact: architecture greenfield, ports/adapters, visual design, 67→120 tests",
+    "WIP baseline commit 9415dc6 preserved: User/Household/Member/Membership/Account, PRICING, AuthGateway ports, entitlement creation at account level, multiple invitations, effective plan resolution",
+    "FINDING 1 (mustFix): Trial expiry not wired — getEntitlement returns plan:'trial' indefinitely without checking trialEndsAt. Fix: check trialEndsAt in getEntitlement, return Free when expired, add deterministic test.",
+    "FINDING 2 (mustFix): Options personal and household screens not implemented — placeholder onPress={() => {}}. Fix: implement both Options screens with real navigation, tests for access control.",
+    "FINDING 3 (mustFix): getAccountEntitlement demo-free scans global entitlements map instead of AccountRepository. Fix: resolve via AccountRepository.ownedFreeHouseholdId, consistent with createHousehold.",
+    "No regressions: architecture, ports, adapters, analytics secondary, shell navigation, visual design all intact",
+    "V2-01 remains active with 3 targeted fixes assigned to Builder"
+  ]
+}
