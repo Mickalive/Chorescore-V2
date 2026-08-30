@@ -24,8 +24,13 @@ if [[ "$criterion" == "V2-00" ]]; then
   export OPENCODE_ATTEMPT_TIMEOUT_SECONDS="7200"
 fi
 
+native_hint=""
+if [[ "$criterion" == "V2-00" ]]; then
+  native_hint="Trusted native verification from the immediately preceding repair run found one additional concrete blocker after the original two findings were fixed: Expo SDK 57 / expo-modules-core 57.0.14 compiled against react-native-worklets 0.12.1 fails in WorkletJSCallInvoker.cpp because WorkletRuntime has no executeSync. expo-modules-core declares compatible worklets ranges only through 0.10.x and npm identified 0.10.4 as a compatible peer candidate. Resolve this dependency mismatch within the SDK 57 family, regenerate the lockfile, and prove the fix with the local Gradle assembleDebug. Do not upgrade to an unrelated RN/Expo family."
+fi
+
 set +e
-OPENCODE_RETRY_LABEL=builder bash .github/scripts/run-ox.sh opencode run --model "${OX_MODEL:?}" --agent greenfield-builder "Build ChoreScore V2 factory cycle $cycle. Active criterion: $criterion. Objective: $objective. Acceptance: $acceptance. Read all canonical files first. Finish a coherent tested tranche. For V2-00 use Expo SDK 57 with React Native 0.86.3 and React 19.2.x, and use Expo's own install alignment instead of guessing package generations. Never rebuild an existing repair baseline from scratch."
+OPENCODE_RETRY_LABEL=builder bash .github/scripts/run-ox.sh opencode run --model "${OX_MODEL:?}" --agent greenfield-builder "Build ChoreScore V2 factory cycle $cycle. Active criterion: $criterion. Objective: $objective. Acceptance: $acceptance. Read all canonical files first. Finish a coherent tested tranche. For V2-00 use Expo SDK 57 with React Native 0.86.3 and React 19.2.x, and use Expo's own install alignment instead of guessing package generations. Never rebuild an existing repair baseline from scratch. $native_hint"
 agent_rc=$?
 set -e
 
