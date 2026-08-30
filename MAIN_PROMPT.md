@@ -24,18 +24,20 @@ Pas d'onglet Historique, Classement, Bilan, Profil ou Foyer supplémentaire dans
 
 En production, l'utilisateur se connecte avec sa propre identité : compte ChoreScore/email, Google ou Facebook. L'identité connectée est fixe ; `Fait par` est une donnée d'une entrée, pas une façon de changer d'identité.
 
-L'écran racine affiche les foyers accessibles, `Créer un foyer` lorsque les droits le permettent, `Options` et une action **Upgrade / Premium** lorsque pertinente.
+L'écran racine affiche tous les foyers auxquels l'utilisateur appartient, `Créer un foyer` lorsque ses droits le permettent, `Options` et une action **Upgrade / Premium** lorsque pertinente.
 
 ### Grille commerciale canonique héritée de V1
 
 - **Essai complet : 30 jours**.
-- **Gratuit : 1 foyer**, saisie de base, Score limité au mois civil courant, pas de pondération, pas de planification To-do.
+- **Gratuit : un foyer créé/possédé gratuitement**, saisie de base, historique visible + Score limités au mois civil courant, pas de pondération, pas de planification To-do.
 - **Standard : 2,99 € / mois / foyer, jusqu'à 7 membres**.
 - **Pro : 5,99 € / mois / foyer, requis à partir de 8 membres**.
-- Les offres payantes donnent notamment pondération, historique avancé, export PDF, multi-foyers et To-do V2.
+- Les offres payantes donnent notamment pondération, historique avancé, export PDF, multi-foyers créés/possédés et To-do V2.
 - **La facturation est attachée au foyer**, pas à un abonnement global unique du compte.
 
-Chaque foyer possède donc son propre état de plan/billing, son propriétaire/payeur et ses droits. Un compte peut appartenir à plusieurs foyers sans mélanger leurs abonnements ni leurs données. Les règles exactes sont dans `docs/MONETIZATION.md` et la référence figée dans `docs/SUBSCRIPTION_REFERENCE_V1.md`.
+Un compte gratuit peut **rejoindre plusieurs foyers auxquels il est invité sans devoir payer lui-même**. Dans chaque foyer, les capacités disponibles viennent du plan de ce foyer. La limite gratuite porte sur la création/possession d'un foyer gratuit ; un foyer supplémentaire créé/possédé doit disposer de son propre état de plan/billing.
+
+Chaque foyer possède donc son propre état de plan/billing, son propriétaire/payeur et ses droits. Les droits d'un foyer ne se propagent jamais à un autre. Les règles exactes sont dans `docs/MONETIZATION.md` et la référence figée dans `docs/SUBSCRIPTION_REFERENCE_V1.md`.
 
 Tout utilisateur a des Options personnelles (notifications, confidentialité, légal, préférences). Le payeur/propriétaire voit en plus les Options du foyer : abonnement, administration, membres et permissions disponibles selon le plan. Cela ne devient pas un quatrième onglet.
 
@@ -43,13 +45,13 @@ Le modèle collaboratif par défaut repose sur la confiance, comme Tricount : le
 
 ### Fenêtre gratuite et conservation des données
 
-La version gratuite reste utilisable pour saisir le travail domestique. Son Score ne montre/calcul que le **mois civil courant**. À chaque changement de mois, le Score gratuit repart visuellement sur le nouveau mois.
+La version gratuite reste utilisable pour saisir le travail domestique. Les vues gratuites d'historique et Score ne montrent que le **mois civil courant**. À chaque changement de mois, l'historique visible et le Score repartent visuellement sur le nouveau mois.
 
-**Les anciennes données ne sont jamais effacées.** Elles restent persistées mais deviennent hors de la fenêtre gratuite. Un upgrade Trial/Standard/Pro doit les rendre immédiatement à nouveau accessibles.
+**Les anciennes données ne sont jamais effacées.** Elles restent persistées mais deviennent hors de la fenêtre gratuite. Un upgrade Trial/Standard/Pro doit les rendre immédiatement à nouveau accessibles partout.
 
 La pondération et les TodoItem créées pendant une période Premium ne sont jamais détruites après downgrade ; elles sont seulement non disponibles selon les droits courants et doivent réapparaître après upgrade.
 
-## Ajouter une tâche = saisie + historique complet
+## Ajouter une tâche = saisie + historique
 
 Une réalisation crée une **CompletedEntry indépendante**. Deux réalisations identiques restent deux entrées.
 
@@ -68,13 +70,13 @@ Champs cœur :
 
 Il existe exactement deux modes de durée : **durée manuelle** ou **chrono**. **1 minute réelle = 1 minute réelle.**
 
-Sous la saisie se trouve **tout l'historique chronologique du foyer**, comme les dépenses dans Tricount. Chaque ligne montre de façon compacte quoi, durée, fait par, fait pour, date. Modifier/supprimer via interaction compacte.
+Sous la saisie se trouve l'historique chronologique du foyer, comme les dépenses dans Tricount. En Trial/Standard/Pro, il est complet. En Free, il montre le mois civil courant et signale honnêtement l'existence d'une archive Premium sans supprimer les anciennes entrées. Chaque ligne montre de façon compacte quoi, durée, fait par, fait pour, date. Modifier/supprimer via interaction compacte.
 
 ## PersistentTask
 
 Une `PersistentTask` est facultative. Elle sert uniquement à accélérer la saisie, mémoriser éventuellement une pondération par défaut et créer **exactement un filtre stable dans Score**.
 
-**Une PersistentTask = un filtre Score.** Les libellés non persistants ne créent jamais de filtres, même s'ils se répètent. Ils restent individuellement dans l'historique complet et sont regroupés sous **Autres** dans Score.
+**Une PersistentTask = un filtre Score.** Les libellés non persistants ne créent jamais de filtres, même s'ils se répètent. Ils restent individuellement dans l'historique accessible et sont regroupés sous **Autres** dans Score.
 
 PersistentTask n'est ni une réalisation ni une To-do. Les PersistentTask ne sont pas supprimées au changement de mois gratuit.
 
@@ -103,7 +105,7 @@ L'identité d'un membre ne dépend pas d'une couleur fixe. Les couleurs servent 
 
 La pondération est Premium, avancée, coefficient 1 par défaut, et ne change jamais le temps réel. La même logique fait-par/fait-pour produit une section secondaire d'**heures pondérées** : soldes/compensations + graphique pondéré. Aucun point abstrait.
 
-Sous les statistiques, Score affiche l'**historique correspondant exactement à la période et au filtre sélectionnés**. Donc : Ajouter = historique complet ; Score = historique filtré/contextuel. Sur gratuit, cet historique Score est limité au mois courant sans supprimer les entrées plus anciennes.
+Sous les statistiques, Score affiche l'**historique correspondant exactement à la période et au filtre sélectionnés**. Donc : Ajouter = historique chronologique de la fenêtre accessible ; Score = historique filtré/contextuel de la même fenêtre d'entitlement.
 
 ## To-do = planning futur Premium
 
@@ -130,7 +132,7 @@ Le partage doit être contextuel : entrée, sélection d'historique, Score coura
 
 Le domaine ne dépend directement d'aucun fournisseur externe. Prévoir des ports/adapters explicites pour :
 - `AuthGateway` : email/compte, Google, Facebook ;
-- `EntitlementGateway` / `BillingGateway` : plan du foyer, limites membres, multi-foyers et capacités Premium ;
+- `EntitlementGateway` / `BillingGateway` : plan du foyer, limites membres, création de foyers supplémentaires et capacités Premium ;
 - `SystemShareGateway` : share sheet natif ;
 - `NotificationGateway` : notifications locales puis push quand configuré ;
 - `CalendarGateway` : calendrier device/synchronisation quand autorisée ;
