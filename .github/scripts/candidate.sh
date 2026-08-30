@@ -34,18 +34,31 @@ OPENCODE_RETRY_LABEL=builder bash .github/scripts/run-ox.sh opencode run --model
 agent_rc=$?
 set -e
 
-# Do not throw away coherent work just because the model hit its wall-clock budget.
-# Trusted shell verification below remains authoritative: broken work still fails.
+# Trusted verification is authoritative, but a failure must NOT destroy coherent Builder work.
+# Capture the result, materialize the candidate patch, and let the independent Auditor turn a
+# verification failure into a repair finding so the WIP baseline can be preserved.
+verify_log="$out/trusted-verification.log"
+set +e
+(
+  set -euo pipefail
+  if [[ -f package.json ]]; then
+    test -s package-lock.json
+    npm ci --ignore-scripts --no-audit --no-fund
+    npm run check
+    if jq -e '.dependencies.expo or .devDependencies.expo' package.json >/dev/null; then
+      npx --no-install expo install --check
+      npx --no-install expo export --platform android --output-dir "$RUNNER_TEMP/v2-candidate-export"
+      npx --no-install expo prebuild --platform android --no-install
+      (cd android && ./gradlew :app:assembleDebug --no-daemon)
+    fi
+  fi
+) > >(tee "$verify_log") 2>&1
+verify_rc=$?
+set -e
+
+# Recompute after verification because Expo prebuild may legitimately materialize generated files.
 git add -A
 mapfile -d '' changed < <(git diff --cached --name-only -z HEAD); count=${#changed[@]}
-if (( agent_rc != 0 )); then
-  if (( count == 0 )); then
-    echo "::error::Builder exited $agent_rc and produced no candidate delta"
-    exit "$agent_rc"
-  fi
-  echo "::warning::Builder exited $agent_rc after producing $count changed files; continuing with trusted verification instead of discarding the work"
-fi
-
 (( count <= 140 )) || { echo "::error::Candidate changed $count files"; exit 4; }
 for p in "${changed[@]}"; do
   case "$p" in
@@ -54,18 +67,22 @@ for p in "${changed[@]}"; do
   esac
 done
 
-if [[ -f package.json ]]; then
-  test -s package-lock.json
-  npm ci --ignore-scripts --no-audit --no-fund
-  npm run check
-  if jq -e '.dependencies.expo or .devDependencies.expo' package.json >/dev/null; then
-    npx --no-install expo install --check
-    npx --no-install expo export --platform android --output-dir "$RUNNER_TEMP/v2-candidate-export"
-    npx --no-install expo prebuild --platform android --no-install
-    (cd android && ./gradlew :app:assembleDebug --no-daemon)
+if (( agent_rc != 0 )); then
+  if (( count == 0 )); then
+    echo "::error::Builder exited $agent_rc and produced no candidate delta"
+    exit "$agent_rc"
   fi
+  echo "::warning::Builder exited $agent_rc after producing $count changed files; preserving the delta for independent audit"
+fi
+if (( verify_rc != 0 )); then
+  echo "::warning::Trusted candidate verification exited $verify_rc; preserving the candidate so Auditor can issue a repair instead of losing the work"
 fi
 
-has=false; verify=true; : > "$out/candidate.patch"
-if (( count > 0 )); then has=true; verify=false; git diff --cached --binary HEAD > "$out/candidate.patch"; fi
-jq -n --arg cycle "$cycle" --arg baseSha "$(git rev-parse HEAD)" --arg criterion "$criterion" --arg objective "$objective" --argjson changedFiles "$count" --argjson hasDelta "$has" --argjson verificationOnly "$verify" --argjson agentExitCode "$agent_rc" '{schemaVersion:1,cycle:$cycle,role:"builder",baseSha:$baseSha,criterionId:$criterion,objective:$objective,changedFiles:$changedFiles,hasDelta:$hasDelta,verificationOnly:$verificationOnly,agentExitCode:$agentExitCode}' > "$out/metadata.json"
+has=false; verify_only=true; : > "$out/candidate.patch"
+if (( count > 0 )); then has=true; verify_only=false; git diff --cached --binary HEAD > "$out/candidate.patch"; fi
+if (( verify_rc == 0 )); then verify_passed=true; else verify_passed=false; fi
+jq -n --arg cycle "$cycle" --arg baseSha "$(git rev-parse HEAD)" --arg criterion "$criterion" --arg objective "$objective" --argjson changedFiles "$count" --argjson hasDelta "$has" --argjson verificationOnly "$verify_only" --argjson agentExitCode "$agent_rc" --argjson trustedVerificationPassed "$verify_passed" --argjson trustedVerificationExitCode "$verify_rc" '{schemaVersion:1,cycle:$cycle,role:"builder",baseSha:$baseSha,criterionId:$criterion,objective:$objective,changedFiles:$changedFiles,hasDelta:$hasDelta,verificationOnly:$verificationOnly,agentExitCode:$agentExitCode,trustedVerificationPassed:$trustedVerificationPassed,trustedVerificationExitCode:$trustedVerificationExitCode}' > "$out/metadata.json"
+
+# Exit successfully when a structurally safe candidate exists, even if trusted verification failed.
+# The Auditor independently replays verification and is forbidden to accept a failing candidate.
+exit 0
