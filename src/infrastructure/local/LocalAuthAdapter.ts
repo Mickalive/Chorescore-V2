@@ -4,13 +4,14 @@
  * Development-only adapter that provides local authentication.
  * In production, this would be replaced by a real OAuth/email provider.
  * This adapter is HONEST: it does not simulate OAuth or external auth.
+ * Providers (Google, Facebook) are ports — adapter decides if available.
  */
 
-import { AuthGateway } from '../../application/ports';
+import { AuthGateway, AuthUser } from '../../application/ports';
 
 export class LocalAuthAdapter implements AuthGateway {
-  private currentUserId: string | null = null;
-  private listeners: Array<(userId: string | null) => void> = [];
+  private currentUser: AuthUser | null = null;
+  private listeners: Array<(user: AuthUser | null) => void> = [];
 
   isAvailable(): boolean {
     // Local auth is always available in development
@@ -18,49 +19,60 @@ export class LocalAuthAdapter implements AuthGateway {
   }
 
   getCurrentUserId(): string | null {
-    return this.currentUserId;
+    return this.currentUser?.userId ?? null;
   }
 
-  async signInWithEmail(_email: string, _password: string): Promise<{ userId: string } | null> {
-    // Local development: create a simple user ID
-    this.currentUserId = `local-user-${Date.now()}`;
+  getCurrentUser(): AuthUser | null {
+    return this.currentUser;
+  }
+
+  async signInWithEmail(email: string, _password: string): Promise<AuthUser | null> {
+    // Local development: create a simple user with stable ID
+    const userId = `local-user-${email.replace(/[^a-z0-9]/gi, '-').toLowerCase()}`;
+    const user: AuthUser = {
+      userId,
+      email,
+      displayName: email.split('@')[0],
+      provider: 'email',
+    };
+    this.currentUser = user;
     this.notifyListeners();
-    return { userId: this.currentUserId };
+    return user;
   }
 
-  async signInWithGoogle(): Promise<{ userId: string } | null> {
-    // Not configured: returns null
+  async signInWithGoogle(): Promise<AuthUser | null> {
+    // Not configured: returns null (honest adapter)
     return null;
   }
 
-  async signInWithFacebook(): Promise<{ userId: string } | null> {
-    // Not configured: returns null
+  async signInWithFacebook(): Promise<AuthUser | null> {
+    // Not configured: returns null (honest adapter)
     return null;
   }
 
   async signOut(): Promise<void> {
-    this.currentUserId = null;
+    this.currentUser = null;
     this.notifyListeners();
   }
 
-  onAuthStateChanged(callback: (userId: string | null) => void): () => void {
+  onAuthStateChanged(callback: (user: AuthUser | null) => void): () => void {
     this.listeners.push(callback);
     // Immediately call with current state
-    callback(this.currentUserId);
+    callback(this.currentUser);
     return () => {
       this.listeners = this.listeners.filter(l => l !== callback);
     };
   }
 
   /** Set user for demo/testing purposes */
-  setUser(userId: string | null): void {
-    this.currentUserId = userId;
+  setUser(user: AuthUser | null): void {
+    this.currentUser = user;
     this.notifyListeners();
   }
 
   private notifyListeners(): void {
     for (const listener of this.listeners) {
-      listener(this.currentUserId);
+      listener(this.currentUser);
     }
   }
 }

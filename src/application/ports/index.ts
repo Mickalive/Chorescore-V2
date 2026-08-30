@@ -6,21 +6,32 @@
  * external provider directly.
  */
 
+// ── Auth Ports ─────────────────────────────────────────────────
+
 export interface AuthGateway {
   /** Check if authentication is configured and available */
   isAvailable(): boolean;
   /** Get current user ID if authenticated */
   getCurrentUserId(): string | null;
-  /** Sign in with email/password (future) */
-  signInWithEmail(email: string, password: string): Promise<{ userId: string } | null>;
-  /** Sign in with Google (future) */
-  signInWithGoogle(): Promise<{ userId: string } | null>;
-  /** Sign in with Facebook (future) */
-  signInWithFacebook(): Promise<{ userId: string } | null>;
+  /** Get current user profile if authenticated */
+  getCurrentUser(): AuthUser | null;
+  /** Sign in with email/password */
+  signInWithEmail(email: string, password: string): Promise<AuthUser | null>;
+  /** Sign in with Google (provider port — adapter decides if available) */
+  signInWithGoogle(): Promise<AuthUser | null>;
+  /** Sign in with Facebook (provider port — adapter decides if available) */
+  signInWithFacebook(): Promise<AuthUser | null>;
   /** Sign out */
   signOut(): Promise<void>;
   /** Listen to auth state changes */
-  onAuthStateChanged(callback: (userId: string | null) => void): () => void;
+  onAuthStateChanged(callback: (user: AuthUser | null) => void): () => void;
+}
+
+export interface AuthUser {
+  userId: string;
+  email: string;
+  displayName: string;
+  provider: 'email' | 'google' | 'facebook' | 'local';
 }
 
 export interface EntitlementGateway {
@@ -32,6 +43,10 @@ export interface EntitlementGateway {
   startTrial(householdId: string): Promise<void>;
   /** Check trial status */
   getTrialStatus(householdId: string): Promise<TrialStatus>;
+  /** Get account-level entitlement for household creation */
+  getAccountEntitlement(userId: string): Promise<AccountEntitlementState>;
+  /** Resolve effective plan for a household based on member count */
+  resolveEffectivePlan(householdId: string, memberCount: number): Promise<'standard' | 'pro'>;
 }
 
 export type EntitlementFeature =
@@ -54,6 +69,17 @@ export interface EntitlementState {
   memberLimit: number;
   canCreateAdditionalOwnedHousehold: boolean;
   trialEndsAt?: string;
+}
+
+/**
+ * Account-level entitlement state.
+ * The "one free household" rule is resolved here, not against a fake household ID.
+ */
+export interface AccountEntitlementState {
+  canCreateFreeHousehold: boolean;
+  ownedFreeHouseholdId: string | null;
+  hasActiveTrial: boolean;
+  ownedHouseholdCount: number;
 }
 
 export interface TrialStatus {

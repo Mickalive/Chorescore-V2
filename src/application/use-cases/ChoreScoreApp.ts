@@ -5,7 +5,19 @@
  * No direct dependency on external providers.
  */
 
-import { CompletedEntry, PersistentTask, TodoItem, Household, Member, ScoreResult, FilterType } from '../../domain/entities';
+import {
+  CompletedEntry,
+  PersistentTask,
+  TodoItem,
+  Household,
+  Member,
+  User,
+  Membership,
+  Account,
+  ScoreResult,
+  FilterType,
+  AccountEntitlement,
+} from '../../domain/entities';
 import { calculateScore, filterEntries } from '../../domain/calculations/score';
 import {
   AuthGateway,
@@ -18,7 +30,31 @@ import {
   SyncGateway,
   ResearchAnalyticsGateway,
   EntitlementState,
+  AccountEntitlementState,
 } from '../ports';
+
+// ── Repository Interfaces ──────────────────────────────────────
+
+export interface UserRepository {
+  getById(id: string): Promise<User | null>;
+  getByEmail(email: string): Promise<User | null>;
+  create(data: Omit<User, 'id' | 'createdAt'>): Promise<User>;
+  update(id: string, data: Partial<User>): Promise<User>;
+}
+
+export interface MembershipRepository {
+  getByUser(userId: string): Promise<Membership[]>;
+  getByHousehold(householdId: string): Promise<Membership[]>;
+  getByUserAndHousehold(userId: string, householdId: string): Promise<Membership | null>;
+  create(data: Omit<Membership, 'id' | 'joinedAt'>): Promise<Membership>;
+  delete(id: string): Promise<void>;
+}
+
+export interface AccountRepository {
+  getByUser(userId: string): Promise<Account | null>;
+  create(data: Omit<Account, 'id' | 'createdAt'>): Promise<Account>;
+  update(userId: string, data: Partial<Account>): Promise<Account>;
+}
 
 export interface HouseholdRepository {
   getAll(): Promise<Household[]>;
@@ -74,6 +110,9 @@ export class ChoreScoreApp {
   constructor(
     public readonly services: AppServices,
     public readonly repositories: {
+      users: UserRepository;
+      memberships: MembershipRepository;
+      accounts: AccountRepository;
       households: HouseholdRepository;
       members: MemberRepository;
       entries: EntryRepository;
@@ -81,6 +120,44 @@ export class ChoreScoreApp {
       todos: TodoRepository;
     }
   ) {}
+
+  // ── User & Account Use Cases ─────────────────────────────────
+
+  async getCurrentUser(): Promise<User | null> {
+    const authUser = this.services.auth.getCurrentUser();
+    if (!authUser) return null;
+    return this.repositories.users.getById(authUser.userId);
+  }
+
+  async getOrCreateAccount(userId: string): Promise<Account> {
+    let account = await this.repositories.accounts.getByUser(userId);
+    if (!account) {
+      account = await this.repositories.accounts.create({
+        userId,
+        ownedFreeHouseholdId: null,
+      });
+    }
+    return account;
+  }
+
+  async getHouseholdsForUser(userId: string): Promise<Household[]> {
+    const memberships = await this.repositories.memberships.getByUser(userId);
+    const householdIds = memberships.map(m => m.householdId);
+    const households: Household[] = [];
+    for (const id of householdIds) {
+      const household = await this.repositories.households.getById(id);
+      if (household) households.push(household);
+    }
+    return households;
+  }
+
+  async getMembersForHousehold(householdId: string): Promise<Member[]> {
+    return this.repositories.members.getByHousehold(householdId);
+  }
+
+  async getMembershipForUser(userId: string, householdId: string): Promise<Membership | null> {
+    return this.repositories.memberships.getByUserAndHousehold(userId, householdId);
+  }
 
   // ── Household Use Cases ──────────────────────────────────────
 
@@ -92,15 +169,95 @@ export class ChoreScoreApp {
     return this.repositories.households.getById(id);
   }
 
-  async createHousehold(name: string, ownerId: string): Promise<Household> {
-    const canCreate = await this.services.entitlements.canUseFeature(
-      'new-household',
-      'create-household'
-    );
-    if (!canCreate) {
-      throw new Error('Cannot create additional households on free plan');
+  /**
+   * Create a new household with account-level entitlement check.
+   * The "one free household" rule is resolved at the account level,
+   * not against a fake household ID like 'new-household'.
+   */
+  async createHousehold(
+    name: string,
+    ownerId: string,
+    options?: { skipEntitlementCheck?: boolean }
+  ): Promise<Household> {
+    // Get or create account for the owner
+    const account = await this.getOrCreateAccount(ownerId);
+
+    // Check account-level entitlement for free household creation
+    if (!options?.skipEntitlementCheck) {
+      // In demo-premium mode, always allow creation
+      const entitlementMode = (this.services.entitlements as { getMode?: () => string }).getMode?.();
+      const isDemoPremium = entitlementMode === 'demo-premium';
+
+      if (!isDemoPremium) {
+        // Check if user already owns a free household
+        if (account.ownedFreeHouseholdId !== null) {
+          throw new Error(
+            'Cannot create additional free households. Upgrade to Standard or Pro for additional households.'
+          );
+        }
+      }
     }
-    return this.repositories.households.create(name, ownerId);
+
+    // Create the household
+    const household = await this.repositories.households.create(name, ownerId);
+
+    // Update account to track the free household
+    await this.repositories.accounts.update(ownerId, {
+      ownedFreeHouseholdId: household.id,
+    });
+
+    // Create the owner membership
+    await this.repositories.memberships.create({
+      userId: ownerId,
+      householdId: household.id,
+      role: 'OWNER',
+    });
+
+    // Create the owner as a member
+    const ownerUser = await this.repositories.users.getById(ownerId);
+    await this.repositories.members.create({
+      householdId: household.id,
+      name: ownerUser?.displayName || 'Propriétaire',
+      userId: ownerId,
+    });
+
+    // Start trial for the new household
+    await this.services.entitlements.startTrial(household.id);
+
+    return household;
+  }
+
+  /**
+   * Join an existing household via invitation.
+   * A free account can join multiple households without paying.
+   * Rights come from the household's plan, not the account.
+   */
+  async joinHousehold(
+    userId: string,
+    householdId: string
+  ): Promise<Membership> {
+    // Check if already a member
+    const existing = await this.repositories.memberships.getByUserAndHousehold(userId, householdId);
+    if (existing) {
+      throw new Error('Already a member of this household');
+    }
+
+    // Create membership
+    const membership = await this.repositories.memberships.create({
+      userId,
+      householdId,
+      role: 'MEMBER',
+    });
+
+    // Create the member entry
+    const user = await this.repositories.users.getById(userId);
+    await this.repositories.members.create({
+      householdId,
+      name: user?.displayName || 'Membre',
+      userId,
+    });
+
+    return membership;
   }
 
   // ── Entry Use Cases ──────────────────────────────────────────
@@ -251,6 +408,42 @@ export class ChoreScoreApp {
 
   async canUseFeature(householdId: string, feature: EntitlementFeature): Promise<boolean> {
     return this.services.entitlements.canUseFeature(householdId, feature);
+  }
+
+  async getAccountEntitlement(userId: string): Promise<AccountEntitlementState> {
+    return this.services.entitlements.getAccountEntitlement(userId);
+  }
+
+  /**
+   * Check if the current user can create a household.
+   * This is an account-level check, not against a fake household ID.
+   */
+  async canCreateHousehold(userId: string): Promise<boolean> {
+    const entitlement = await this.services.entitlements.getAccountEntitlement(userId);
+    return entitlement.canCreateFreeHousehold;
+  }
+
+  /**
+   * Get household summary with member count and effective plan.
+   */
+  async getHouseholdSummary(householdId: string): Promise<{
+    household: Household;
+    memberCount: number;
+    effectivePlan: 'free' | 'trial' | 'standard' | 'pro';
+    entitlement: EntitlementState;
+  } | null> {
+    const household = await this.repositories.households.getById(householdId);
+    if (!household) return null;
+
+    const members = await this.repositories.members.getByHousehold(householdId);
+    const entitlement = await this.services.entitlements.getEntitlement(householdId);
+
+    return {
+      household,
+      memberCount: members.length,
+      effectivePlan: entitlement.plan,
+      entitlement,
+    };
   }
 
   // ── Share Use Cases ──────────────────────────────────────────

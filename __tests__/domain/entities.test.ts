@@ -12,9 +12,95 @@ import {
   TodoItem,
   Entitlement,
   PlanType,
+  User,
+  Membership,
+  Account,
+  AccountEntitlement,
+  PRICING,
 } from '../../src/domain/entities';
 
 describe('Domain Entities', () => {
+  describe('User', () => {
+    it('should have required fields', () => {
+      const user: User = {
+        id: 'u-1',
+        email: 'alex@example.com',
+        displayName: 'Alex',
+        createdAt: '2026-08-30T00:00:00Z',
+      };
+
+      expect(user.id).toBe('u-1');
+      expect(user.email).toBe('alex@example.com');
+      expect(user.displayName).toBe('Alex');
+    });
+  });
+
+  describe('Membership', () => {
+    it('should have required fields', () => {
+      const membership: Membership = {
+        id: 'mem-1',
+        userId: 'u-1',
+        householdId: 'h-1',
+        role: 'OWNER',
+        joinedAt: '2026-08-30T00:00:00Z',
+      };
+
+      expect(membership.userId).toBe('u-1');
+      expect(membership.householdId).toBe('h-1');
+      expect(membership.role).toBe('OWNER');
+    });
+
+    it('should support MEMBER role', () => {
+      const membership: Membership = {
+        id: 'mem-2',
+        userId: 'u-2',
+        householdId: 'h-1',
+        role: 'MEMBER',
+        joinedAt: '2026-08-30T00:00:00Z',
+      };
+
+      expect(membership.role).toBe('MEMBER');
+    });
+  });
+
+  describe('Account', () => {
+    it('should have required fields', () => {
+      const account: Account = {
+        id: 'acc-1',
+        userId: 'u-1',
+        ownedFreeHouseholdId: null,
+        createdAt: '2026-08-30T00:00:00Z',
+      };
+
+      expect(account.userId).toBe('u-1');
+      expect(account.ownedFreeHouseholdId).toBeNull();
+    });
+
+    it('should track owned free household', () => {
+      const account: Account = {
+        id: 'acc-1',
+        userId: 'u-1',
+        ownedFreeHouseholdId: 'h-1',
+        createdAt: '2026-08-30T00:00:00Z',
+      };
+
+      expect(account.ownedFreeHouseholdId).toBe('h-1');
+    });
+  });
+
+  describe('AccountEntitlement', () => {
+    it('should have required fields', () => {
+      const entitlement: AccountEntitlement = {
+        canCreateFreeHousehold: true,
+        ownedFreeHouseholdId: null,
+        hasActiveTrial: false,
+      };
+
+      expect(entitlement.canCreateFreeHousehold).toBe(true);
+      expect(entitlement.ownedFreeHouseholdId).toBeNull();
+    });
+  });
+
   describe('Household', () => {
     it('should have required fields', () => {
       const household: Household = {
@@ -176,6 +262,16 @@ describe('Domain Entities', () => {
         };
         expect(entitlement.plan).toBe(plan);
       }
+    });
+  });
+
+  describe('PRICING', () => {
+    it('should have canonical V1 pricing values', () => {
+      expect(PRICING.TRIAL_DAYS).toBe(30);
+      expect(PRICING.STANDARD_MONTHLY_EUR).toBe(2.99);
+      expect(PRICING.STANDARD_MEMBER_LIMIT).toBe(7);
+      expect(PRICING.PRO_MONTHLY_EUR).toBe(5.99);
+      expect(PRICING.PRO_MEMBER_THRESHOLD).toBe(8);
     });
   });
 });

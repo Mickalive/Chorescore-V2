@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33327393482",
+  "role": "builder",
+  "decision": "repair",
+  "summary": "Audit indépendant du candidat V2-01 (Identité, foyers, abonnement et Options). La vérification de confiance a un exit code 0 (npm run check vert, export Android OK, ./gradlew :app:assembleDebug BUILD SUCCESSFUL). Le socle est solide : User/Household/Member/Membership/Account existent, identité fixe par email avec userId stable, AuthGateway email/Google/Facebook en ports avec adapters honnêtes (Google/Facebook retournent null, pas de faux OAuth), écran racine liste les foyers avec nom + nombre de membres + badge de plan, 'Créer un foyer' piloté par un entitlement de création résolu au niveau du compte (createHousehold consulte le AccountRepository, plus aucun ID de foyer factice 'new-household'), invitations multiples autorisées (joinHousehold), PRICING configurable (30 jours, 2,99/5,99 EUR, seuils 7/8 membres), resolveEffectivePlan présent. Trois findings mustFix restent, tous dans le périmètre explicite du critère actif : (1) la fin d'essai ne fait pas repasser l'entitlement effectif en Free — getEntitlement retourne plan:'trial' indéfiniment sans vérifier trialEndsAt, getTrialStatus calcule l'expiration mais n'est pas câblé dans getEntitlement (critère 6) ; (2) les Options personnelles (profil, notifications, confidentialité, légal, préférences) et Options du foyer (abonnement, administration, membres, permissions) ne sont pas implémentées — les boutons 'Options' et 'Premium' de l'écran racine sont des placeholders onPress={() => {}} sans routes/écrans (critères 4 et 5) ; (3) getAccountEntitlement en mode demo-free fait un scan global de la map d'entitlements au lieu de consulter le AccountRepository, incohérent avec createHousehold et pouvant produire un état UI erroné du bouton 'Créer un foyer' (critère 10). Décision : repair.",
+  "checks": [
+    "Trusted verification exit code : 0 (rapport reports/audits/TRUSTED_33327393482.md : npm run check vert, expo export Android OK, ./gradlew :app:assembleDebug BUILD SUCCESSFUL en 18m47s)",
+    "npm run check (typecheck + tests jest) : vert (6 suites, 120 tests, 0 échec)",
+    "npx tsc --noEmit : exit 0",
+    "Inspection du diff candidat (13 fichiers, +1696/-88) : User/Household/Member/Membership/Account, PRICING, AccountEntitlement, ports Auth/Entitlement étendus, LocalAuthAdapter/LocalEntitlementAdapter, InMemoryRepositories, AppContext, écran racine",
+    "Identité fixe : signInWithEmail produit un userId stable déterministe par email (local-user-<email>), 'Fait par' reste une donnée d'entrée (pas de switch d'identité)",
+    "AuthGateway honnête : signInWithGoogle/signInWithFacebook retournent null (non configurés), aucun faux OAuth",
+    "Entitlement de création résolu au niveau du compte : createHousehold consulte AccountRepository.ownedFreeHouseholdId, plus aucun ID de foyer factice 'new-household'",
+    "Invitations multiples : joinHousehold crée une membership MEMBER sans limite liée au compte gratuit",
+    "PRICING configurable : TRIAL_DAYS=30, STANDARD_MONTHLY_EUR=2.99, STANDARD_MEMBER_LIMIT=7, PRO_MONTHLY_EUR=5.99, PRO_MEMBER_THRESHOLD=8 ; resolveEffectivePlan retourne pro à 8+ membres",
+    "Test indépendant (temporaire, retiré) : après startTrial, getEntitlement retourne plan:'trial' sans vérifier trialEndsAt — la fin d'essai ne repasse pas en Free",
+    "Test indépendant (temporaire, retiré) : getAccountEntitlement en demo-free scanne globalement la map d'entitlements (trouve un plan 'free' quel que soit l'utilisateur) au lieu de consulter le AccountRepository",
+    "Grep Options/routes : aucun écran Options personnelles ni Options du foyer ; seuls des boutons placeholders onPress={() => {}} dans app/index.tsx",
+    "Régression des invariants acceptés : architecture domain/application/infrastructure/UI, ports explicites, adapters locaux honnêtes, analytics secondaire désactivable, shell de navigation, charte visuelle"
+  ],
+  "findings": [
+    {
+      "path": "src/infrastructure/local/LocalEntitlementAdapter.ts",
+      "problem": "La fin d'essai ne fait pas repasser l'entitlement effectif en Free. getEntitlement retourne l'entitlement stocké (plan:'trial' après startTrial) sans jamais vérifier trialEndsAt par rapport à l'heure courante. getTrialStatus calcule bien l'expiration (isActive/daysRemaining) mais ce résultat n'est pas câblé dans getEntitlement. Un foyer dont l'essai de 30 jours est expiré conserve donc plan:'trial' et toutes les capacités Premium indéfiniment. Violation directe du critère 6 : 'le trial se termine et repasse en Free sans destruction de données'.",
+      "evidence": "LocalEntitlementAdapter.getEntitlement (lignes 57-62) : 'return this.entitlements.get(householdId) || DEMO_PREMIUM_ENTITLEMENT;' — aucune vérification de trialEndsAt. startTrial (lignes 88-96) stocke plan:'trial' avec trialEndsAt. Vérification indépendante : après startTrial('h-1'), getEntitlement('h-1').plan === 'trial' et trialEndsAt est renseigné, mais getEntitlement ignore l'expiration. Aucun test ne couvre la transition trial->free après expiration.",
+      "mustFix": true,
+      "requiredFix": "Câbler l'expiration de l'essai dans la résolution de l'entitlement effectif : lorsque trialEndsAt est dépassé, getEntitlement doit retourner un entitlement Free (plan:'free', capacités Premium désactivées) sans détruire aucune donnée. Ajouter un test déterministe simulant une expiration d'essai et vérifiant le retour en Free.",
+      "verification": "Test déterministe : startTrial puis simulation d'une expiration (trialEndsAt dans le passé) → getEntitlement retourne plan:'free' avec weightingEnabled/todoPlanningEnabled/historyArchiveAccess/scoreArchiveAccess à false, et aucune donnée supprimée."
+    },
+    {
+      "path": "app/index.tsx",
+      "problem": "Les Options personnelles (profil, notifications, confidentialité, légal, préférences) et les Options du foyer (abonnement, administration, membres, permissions) ne sont pas implémentées. Les boutons 'Options' et 'Premium' de l'écran racine sont des placeholders avec onPress={() => {}} et il n'existe aucune route/écran Options. Violation directe des critères 4 et 5 du critère actif V2-01.",
+      "evidence": "app/index.tsx lignes 242-255 : <Button title=\"Options\" onPress={() => {}} /> et <Button title=\"Premium\" onPress={() => {}} />. Grep des routes : app/ ne contient que _layout.tsx, index.tsx et household/[id]/_layout.tsx — aucun écran Options. Aucun test ne couvre les Options personnelles ni les Options du foyer.",
+      "mustFix": true,
+      "requiredFix": "Implémenter les Options personnelles (profil, notifications, confidentialité, légal, préférences) accessibles depuis l'écran racine, et les Options du foyer (abonnement, administration, membres, permissions) réservées au payeur/propriétaire, conformément à la constitution et au DESIGN_BRIEF (accès Premium discret, pas de paywall au lancement).",
+      "verification": "Navigation réelle depuis l'écran racine vers les écrans Options personnelles et Options du foyer ; les Options du foyer ne sont visibles que pour le propriétaire/payeur ; tests couvrant l'accès et le contenu des deux niveaux d'Options."
+    },
+    {
+      "path": "src/infrastructure/local/LocalEntitlementAdapter.ts",
+      "problem": "getAccountEntitlement en mode demo-free ne consulte pas le AccountRepository : il fait un scan global de la map d'entitlements à la recherche d'un plan 'free', quel que soit l'utilisateur. C'est incohérent avec createHousehold qui, lui, consulte correctement AccountRepository.ownedFreeHouseholdId. Résultat : l'état du bouton 'Créer un foyer' (piloté par getAccountEntitlement via canCreateHousehold) peut être erroné — un utilisateur possédant déjà un foyer gratuit peut voir le bouton actif (si aucun entitlement 'free' n'est dans la map, ex. après startTrial qui stocke 'trial'), puis échouer au clic. Violation de l'exigence du critère 10 : le contrôle 'un foyer gratuit' doit être une règle de droit du compte.",
+      "evidence": "LocalEntitlementAdapter.getAccountEntitlement (lignes 137-160) : en demo-free, 'Array.from(this.entitlements.entries()).find(([_, e]) => e.plan === \"free\")' — scan global, pas de requête par userId. Le commentaire l'admet : 'This is a simplified check — in production, this would query the account repository'. Vérification indépendante : avec un entitlement 'free' posé sur h-owned, getAccountEntitlement('u-1') retourne canCreateFreeHousehold:false pour n'importe quel utilisateur.",
+      "mustFix": true,
+      "requiredFix": "Faire résoudre getAccountEntitlement (et donc canCreateHousehold / l'état du bouton 'Créer un foyer') à partir du AccountRepository du compte (ownedFreeHouseholdId), cohérent avec createHousehold, plutôt que par un scan global de la map d'entitlements.",
+      "verification": "Test : un utilisateur possédant un foyer gratuit (AccountRepository.ownedFreeHouseholdId renseigné) voit canCreateFreeHousehold=false ; un autre utilisateur sans foyer gratuit voit true, indépendamment des entitlements d'autres foyers."
+    }
+  ]
+}
