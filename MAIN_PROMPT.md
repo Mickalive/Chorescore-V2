@@ -4,7 +4,7 @@
 
 Ce dépôt est un **rebuild greenfield**. L'ancien dépôt `Mickalive/Chorescore` est une archive : aucune app, aucun modèle métier, aucun test produit et aucune migration de l'ancienne V1 ne constituent une base de confiance. Une brique technique ancienne peut être réimplémentée ou reprise seulement si elle est isolée, comprise, utile à la V2 et auditée comme telle.
 
-Ordre d'autorité : sécurité/droit > ce fichier > `governance/RELEASE_DEFINITION.json` > `docs/architecture.md` > rôle > tâche active.
+Ordre d'autorité : sécurité/droit > ce fichier > `governance/RELEASE_DEFINITION.json` > `docs/ROADMAP.md` > `docs/PRODUCT_BLUEPRINT.md` / `docs/MONETIZATION.md` / `docs/QUALITY_GATES.md` / `docs/DESIGN_CONTRACT.md` / `docs/SUBSCRIPTION_REFERENCE_V1.md` > `docs/architecture.md` > rôle > tâche active.
 
 Une suite de tests verte ne vaut jamais validation produit si l'UX ou le comportement divergent de cette constitution.
 
@@ -12,7 +12,7 @@ Une suite de tests verte ne vaut jamais validation produit si l'UX ou le comport
 
 **ChoreScore est un Tricount du temps domestique, avec un planning To-do partagé. KISS.**
 
-Après connexion, l'utilisateur voit ses **foyers** et peut en créer selon le quota de son abonnement. Dans un foyer, la navigation principale comporte exactement :
+Après connexion, l'utilisateur voit ses **foyers**. Dans un foyer, la navigation principale comporte exactement :
 
 1. **Ajouter une tâche**
 2. **Score**
@@ -24,11 +24,30 @@ Pas d'onglet Historique, Classement, Bilan, Profil ou Foyer supplémentaire dans
 
 En production, l'utilisateur se connecte avec sa propre identité : compte ChoreScore/email, Google ou Facebook. L'identité connectée est fixe ; `Fait par` est une donnée d'une entrée, pas une façon de changer d'identité.
 
-L'écran racine affiche les foyers accessibles, `Créer un foyer` si le quota le permet, et `Options`. Le nombre de foyers dépend d'un entitlement numérique (`householdLimit` ou équivalent). **Ne jamais coder `gratuit = 1 / premium = plusieurs`** : plusieurs paliers existent et leurs limites/prix viennent de la configuration de facturation.
+L'écran racine affiche les foyers accessibles, `Créer un foyer` lorsque les droits le permettent, `Options` et une action **Upgrade / Premium** lorsque pertinente.
 
-Tout utilisateur a des Options personnelles (notifications, confidentialité, légal, préférences). Le payeur/propriétaire voit en plus les Options du foyer : abonnement/quota, administration et permissions disponibles selon le plan. Cela ne devient pas un quatrième onglet.
+### Grille commerciale canonique héritée de V1
+
+- **Essai complet : 30 jours**.
+- **Gratuit : 1 foyer**, saisie de base, Score limité au mois civil courant, pas de pondération, pas de planification To-do.
+- **Standard : 2,99 € / mois / foyer, jusqu'à 7 membres**.
+- **Pro : 5,99 € / mois / foyer, requis à partir de 8 membres**.
+- Les offres payantes donnent notamment pondération, historique avancé, export PDF, multi-foyers et To-do V2.
+- **La facturation est attachée au foyer**, pas à un abonnement global unique du compte.
+
+Chaque foyer possède donc son propre état de plan/billing, son propriétaire/payeur et ses droits. Un compte peut appartenir à plusieurs foyers sans mélanger leurs abonnements ni leurs données. Les règles exactes sont dans `docs/MONETIZATION.md` et la référence figée dans `docs/SUBSCRIPTION_REFERENCE_V1.md`.
+
+Tout utilisateur a des Options personnelles (notifications, confidentialité, légal, préférences). Le payeur/propriétaire voit en plus les Options du foyer : abonnement, administration, membres et permissions disponibles selon le plan. Cela ne devient pas un quatrième onglet.
 
 Le modèle collaboratif par défaut repose sur la confiance, comme Tricount : les membres peuvent saisir, corriger et organiser pour les autres. Des permissions fines peuvent être proposées selon le plan du propriétaire.
+
+### Fenêtre gratuite et conservation des données
+
+La version gratuite reste utilisable pour saisir le travail domestique. Son Score ne montre/calcul que le **mois civil courant**. À chaque changement de mois, le Score gratuit repart visuellement sur le nouveau mois.
+
+**Les anciennes données ne sont jamais effacées.** Elles restent persistées mais deviennent hors de la fenêtre gratuite. Un upgrade Trial/Standard/Pro doit les rendre immédiatement à nouveau accessibles.
+
+La pondération et les TodoItem créées pendant une période Premium ne sont jamais détruites après downgrade ; elles sont seulement non disponibles selon les droits courants et doivent réapparaître après upgrade.
 
 ## Ajouter une tâche = saisie + historique complet
 
@@ -42,7 +61,7 @@ Champs cœur :
 - foyer ;
 - date/heure ;
 - `persistentTaskId` facultatif ;
-- pondération avancée facultative ;
+- pondération avancée facultative lorsque l'entitlement l'autorise ;
 - traçabilité `createdBy/modifiedBy` si nécessaire.
 
 `Fait par` sélectionne par défaut l'utilisateur connecté mais peut être changé pour n'importe quel membre du foyer. `Fait pour` permet `Tout le monde` ou n'importe quel sous-ensemble non vide des membres.
@@ -57,13 +76,13 @@ Une `PersistentTask` est facultative. Elle sert uniquement à accélérer la sai
 
 **Une PersistentTask = un filtre Score.** Les libellés non persistants ne créent jamais de filtres, même s'ils se répètent. Ils restent individuellement dans l'historique complet et sont regroupés sous **Autres** dans Score.
 
-PersistentTask n'est ni une réalisation ni une To-do.
+PersistentTask n'est ni une réalisation ni une To-do. Les PersistentTask ne sont pas supprimées au changement de mois gratuit.
 
 ## Score = statistiques + équilibres + historique filtré
 
 Score est l'équivalent d'**Équilibres** de Tricount enrichi de statistiques.
 
-Périodes cœur : **Semaine / Mois / Année / Depuis le début**.
+Périodes produit : **Semaine / Mois / Année / Depuis le début**. Pour un foyer gratuit, la fenêtre accessible reste le **mois civil courant** : Semaine et Mois sont utilisables dans cette fenêtre ; Année, Depuis le début et toute donnée antérieure au mois courant nécessitent l'historique avancé Premium.
 
 Filtres : **Toutes / chaque PersistentTask / Autres**. Le filtre s'applique aux calculs, graphes et historique contextuel.
 
@@ -82,15 +101,17 @@ Score affiche au minimum :
 
 L'identité d'un membre ne dépend pas d'une couleur fixe. Les couleurs servent seulement à la lisibilité et ne doivent pas limiter le nombre de membres.
 
-La pondération est avancée, coefficient 1 par défaut, et ne change jamais le temps réel. La même logique fait-par/fait-pour produit une section secondaire d'**heures pondérées** : soldes/compensations + graphique pondéré. Aucun point abstrait.
+La pondération est Premium, avancée, coefficient 1 par défaut, et ne change jamais le temps réel. La même logique fait-par/fait-pour produit une section secondaire d'**heures pondérées** : soldes/compensations + graphique pondéré. Aucun point abstrait.
 
-Sous les statistiques, Score affiche l'**historique correspondant exactement à la période et au filtre sélectionnés**. Donc : Ajouter = historique complet ; Score = historique filtré/contextuel.
+Sous les statistiques, Score affiche l'**historique correspondant exactement à la période et au filtre sélectionnés**. Donc : Ajouter = historique complet ; Score = historique filtré/contextuel. Sur gratuit, cet historique Score est limité au mois courant sans supprimer les entrées plus anciennes.
 
-## To-do = planning futur
+## To-do = planning futur Premium
 
-`TodoItem` représente quelque chose à faire. Elle peut être sans date, datée/deadline, assignée à un membre, destinée à tout ou partie du foyer, liée à une PersistentTask, accompagnée de notes et d'un rappel, et synchronisable avec un calendrier lorsque l'intégration réelle est active.
+`TodoItem` représente quelque chose à faire. La planification To-do est une capacité Premium/essai. Elle peut être sans date, datée/deadline, assignée à un membre, destinée à tout ou partie du foyer, liée à une PersistentTask, accompagnée de notes et d'un rappel, et synchronisable avec un calendrier lorsque l'intégration réelle est active.
 
-Une To-do possède un check clair. Lorsqu'elle est marquée faite :
+Pour un foyer gratuit, l'onglet existe dans la structure canonique mais présente honnêtement la capacité Premium et l'upgrade ; il ne simule pas un planning disponible. Un downgrade ne détruit aucune TodoItem existante.
+
+Une To-do Premium possède un check clair. Lorsqu'elle est marquée faite :
 1. mini-formulaire ;
 2. `Fait par` par défaut = membre qui valide, mais modifiable ;
 3. durée réelle demandée ;
@@ -109,7 +130,7 @@ Le partage doit être contextuel : entrée, sélection d'historique, Score coura
 
 Le domaine ne dépend directement d'aucun fournisseur externe. Prévoir des ports/adapters explicites pour :
 - `AuthGateway` : email/compte, Google, Facebook ;
-- `Entitlement/BillingGateway` : quota de foyers et capacités du plan ;
+- `EntitlementGateway` / `BillingGateway` : plan du foyer, limites membres, multi-foyers et capacités Premium ;
 - `SystemShareGateway` : share sheet natif ;
 - `NotificationGateway` : notifications locales puis push quand configuré ;
 - `CalendarGateway` : calendrier device/synchronisation quand autorisée ;
@@ -119,7 +140,7 @@ Le domaine ne dépend directement d'aucun fournisseur externe. Prévoir des port
 
 Les adapters de développement peuvent être locaux, mais **aucun OAuth, paiement, push, calendrier distant ou sync réseau ne doit être présenté comme réel sans configuration réelle**.
 
-Le choix fournisseur peut évoluer. L'architecture doit permettre un adapter Firebase Auth/Firestore ou équivalent sans contaminer le domaine. Le billing doit rester abstrait pour respecter les exigences des stores et le modèle commercial final.
+Le choix fournisseur peut évoluer. L'architecture doit permettre un adapter Firebase Auth/Firestore ou équivalent sans contaminer le domaine. Le billing doit rester abstrait : StoreKit / Google Play Billing lorsque les stores l'exigent, Stripe ou autre sur les canaux où cela est permis. Aucun fournisseur n'est hardcodé dans le domaine.
 
 ## UX / design
 
@@ -132,8 +153,11 @@ Direction : **feel-good, chaleureuse, contemporaine, énergique mais pas enfanti
 - graphes lisibles avec noms et temps ;
 - aucune palette identitaire finie par membre ;
 - peu de texte permanent ;
+- upgrade clair mais non trompeur ;
 - aucune interprétation morale/psychologique automatique ;
 - accessibilité, grandes tailles de texte, contrastes, états vides et erreurs font partie du produit.
+
+Les agents doivent suivre `docs/PRODUCT_BLUEPRINT.md`, `docs/DESIGN_CONTRACT.md`, `docs/REFERENCE_SCENARIOS.json`, `docs/MONETIZATION.md`, `docs/SUBSCRIPTION_REFERENCE_V1.md` et `docs/QUALITY_GATES.md`.
 
 ## Objets métier à ne jamais fusionner
 
@@ -143,6 +167,6 @@ Direction : **feel-good, chaleureuse, contemporaine, énergique mais pas enfanti
 
 ## Condition terminale
 
-La factory ne s'arrête que lorsque tous les critères de release sont prouvés, aucun finding bloquant n'est ouvert, l'UX est conforme, les dépendances externes sont honnêtement encapsulées, et un **APK Android reproductible est réellement compilé, installé et lancé**.
+La factory ne s'arrête que lorsque tous les critères de release sont prouvés, aucun finding bloquant n'est ouvert, l'UX est conforme, les entitlements sont prouvés sans destruction de données, les dépendances externes sont honnêtement encapsulées, et un **APK Android reproductible est réellement compilé, installé, lancé et traversé par le golden path E2E**.
 
 **Construire la V2 depuis zéro. Réutiliser seulement des briques isolées après audit, jamais l'ancienne app comme fondation.**

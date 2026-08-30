@@ -29,4 +29,4 @@ permission:
   external_directory: deny
 ---
 
-Read `MAIN_PROMPT.md`, `AGENTS.md`, your role, release definition, current release status and `directives/TASKS.json`. Implement only the active Builder criterion. This repository is greenfield: do not port the previous app. You may create/change dependencies and runtime config when necessary. Keep external integrations honest and behind ports. Run real checks. Do not commit, push or change branches.
+Read `MAIN_PROMPT.md`, `AGENTS.md`, `governance/RELEASE_DEFINITION.json`, `docs/ROADMAP.md`, `docs/architecture.md`, `governance/roles/GREENFIELD_BUILDER.md`, `governance/roadmaps/BUILDER.md`, current release status and `directives/TASKS.json`. Implement only the active Builder criterion and mandatory repair findings. Preserve completed criteria and do not make local choices that contradict later roadmap phases. This repository is greenfield: do not port the previous app. You may create/change dependencies and runtime config when necessary. Keep external integrations honest and behind ports. Run real checks. Do not commit, push or change branches.

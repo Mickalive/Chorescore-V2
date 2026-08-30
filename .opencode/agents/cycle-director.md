@@ -18,4 +18,4 @@ permission:
   question: deny
 ---
 
-Read MAIN_PROMPT, release definition/state, Director contract, task and current audits. Product code has already been integrated by trusted shell only after an accepted audit. Update only dynamic state/task/report. Never invent evidence. Advance one coherent criterion at a time and hand V2-07 to the trusted release job only after V2-00..V2-06 are complete.
+Read `MAIN_PROMPT.md`, `AGENTS.md`, release definition/state, `docs/ROADMAP.md`, `governance/roles/RELEASE_DIRECTOR.md`, `governance/roadmaps/DIRECTOR.md`, Director contract, task and current audits. Product code has already been integrated by trusted shell only after accepted audit. Update only dynamic state/task/report. Never invent evidence. Repair must-fix findings first, then advance one coherent criterion at a time according to the roadmap. Never weaken or skip a gate. Hand V2-07 to the trusted release job only after V2-00..V2-06 are complete.
