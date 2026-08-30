@@ -11,11 +11,13 @@ But : atteindre l'écran des foyers avec une identité fixe.
 ## 2. Racine — Foyers
 
 Contenu principal uniquement :
-- foyers auxquels l'utilisateur appartient ;
+- tous les foyers auxquels l'utilisateur appartient, y compris ceux rejoints par invitation ;
 - `Créer un foyer` si l'entitlement le permet ;
 - accès `Options` ;
 - accès **Premium / Upgrade** lorsque pertinent ;
 - pour le propriétaire/payeur, accès discret aux `Options du foyer`.
+
+Un compte gratuit peut rejoindre plusieurs foyers par invitation. Sa limite gratuite porte sur la création/possession d'un foyer gratuit, pas sur le nombre de foyers auxquels il peut appartenir.
 
 Chaque foyer est une ligne/carte simple ouvrable. Son plan peut être signalé discrètement lorsqu'utile, puisque la facturation est attachée au foyer. Ne pas transformer la racine en dashboard statistique.
 
@@ -28,6 +30,8 @@ Navigation principale exactement :
 `Ajouter une tâche | Score | To-do`
 
 Le nom du foyer reste identifiable dans l'en-tête. Options et compte ne deviennent jamais un quatrième onglet.
+
+Les capacités visibles dépendent du plan **de ce foyer**, pas d'un statut Premium global du compte.
 
 ## 4. Ajouter une tâche
 
@@ -49,9 +53,9 @@ Sur un foyer gratuit, la pondération n'est pas un faux contrôle désactivé pe
 
 Un libellé peut rester ponctuel ou être enregistré comme PersistentTask. Les PersistentTask existantes doivent accélérer la saisie sans transformer l'écran en catalogue de tâches.
 
-### Historique complet
+### Historique
 
-Sous la saisie : flux chronologique de toutes les CompletedEntry du foyer, analogue à la liste des dépenses Tricount.
+Sous la saisie : flux chronologique des CompletedEntry accessibles, analogue à la liste des dépenses Tricount.
 
 Chaque ligne montre au minimum :
 - libellé ;
@@ -64,7 +68,7 @@ Modifier/supprimer via menu compact/détail. Pas de rangée de gros boutons par 
 
 Une action de partage permet de partager une entrée ou une sélection utile via le share sheet natif.
 
-**L'historique complet de saisie ne doit pas être détruit lors du reset mensuel gratuit.** La limitation Premium concerne la fenêtre de Score/historique analytique, pas l'existence des CompletedEntry.
+En Trial/Standard/Pro, l'historique est complet. En Free, il montre le **mois civil courant**. Les entrées plus anciennes restent persistées et un affordance Premium peut signaler que l'archive existe sans prétendre qu'elle a été supprimée.
 
 ## 5. Score
 
@@ -123,7 +127,7 @@ Le check ouvre un mini-formulaire :
 - durée réelle ;
 - `Fait pour` repris de la To-do ou modifiable.
 
-Validation atomique : TodoItem terminée + CompletedEntry créée. La nouvelle entrée apparaît immédiatement dans l'historique complet et modifie Score.
+Validation atomique : TodoItem terminée + CompletedEntry créée. La nouvelle entrée apparaît immédiatement dans l'historique et modifie Score.
 
 ## 7. Options
 
@@ -158,4 +162,5 @@ Chaque écran important doit avoir :
 - pas d'interface dominée par des cartes blanches imbriquées ;
 - pas de paywall agressif qui bloque la saisie de base ;
 - pas de message mensonger de suppression des données historiques ;
+- pas de limitation qui empêche un utilisateur gratuit d'accepter une invitation à un foyer ;
 - pas de placeholder visible dans un critère déclaré terminé.
