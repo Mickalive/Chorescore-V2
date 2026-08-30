@@ -22,7 +22,7 @@ permissions:
 
 concurrency:
   group: chorescore-v2-greenfield-factory
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 env:
   OPENCODE_MAX_ATTEMPTS: "3"
