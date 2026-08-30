@@ -10,6 +10,7 @@ on:
       - "MAIN_PROMPT.md"
       - "AGENTS.md"
       - "governance/**"
+      - "docs/ROADMAP.md"
       - "docs/architecture.md"
       - "docs/agent-workflow.md"
       - "directives/DIRECTOR.md"
