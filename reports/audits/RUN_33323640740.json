@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33323640740",
+  "role": "builder",
+  "decision": "accept",
+  "summary": "Audit indépendant du cycle de réparation V2-00 (objectif : corriger les deux findings mustFix de l'audit 33292303527, aucune nouvelle feature). Les deux mustFix sont corrigés et vérifiés. (1) Dépendances Expo : package.json est désormais aligné SDK 57 via npx expo install — expo-constants ~57.0.16, expo-font ~57.0.2, expo-splash-screen ~57.0.8, expo-linking ~57.0.8, expo-status-bar ~57.0.1, expo-router ~57.0.17, react-native-safe-area-context ~5.7.0 — toutes conformes à expo/bundledNativeModules.json ; le lockfile a été régénéré (lockfileVersion 3, cohérent avec package.json) ; npx expo install --check ne signale plus aucune divergence ('Dependencies are up to date', seuls react-native-worklets et typescript sont exclus via expo.install.exclude) ; la vérification de confiance rapporte ./gradlew :app:assembleDebug BUILD SUCCESSFUL (exit code 0, 18m40s) avec APK produit (android/app/build/outputs/apk/debug/app-debug.apk). (2) Confidentialité analytics : ChoreScoreApp.createEntry n'émet plus que des données minimisées (durationMinutes, beneficiaryCount, hasPersistentTask) ; aucun identifiant opérationnel (householdId, memberId, label, email, createdBy, etc.) n'entre dans le fait ; un nouveau test 'should emit no operational IDs in analytics fact when creating entry' exerce createEntry avec analytics activé et vérifie l'absence de tout ID opérationnel ; un test indépendant de l'auditeur (scan profond des valeurs) confirme l'absence de fuite. npm run check reste vert (typecheck + 67 tests jest). Aucun finding mustFix restant ; le seul point non bloquant (createHousehold passe 'new-household' comme householdId) est explicitement différé en V2-01 et hors périmètre de ce cycle de réparation. Décision : accept.",
+  "checks": [
+    "Trusted verification exit code : 0 (rapport reports/audits/TRUSTED_33323640740.md : npm run check vert, expo install --check 'Dependencies are up to date', expo export Android OK, ./gradlew :app:assembleDebug BUILD SUCCESSFUL en 18m40s)",
+    "npm run check (typecheck + 67 tests jest) : vert (5 suites, 67 tests, 0 échec)",
+    "npx expo install --check : 'Dependencies are up to date' (seuls react-native-worklets et typescript exclus via expo.install.exclude)",
+    "package.json vs expo/bundledNativeModules.json : les 7 paquets précédemment divergents sont alignés SDK 57 (expo-constants ~57.0.16, expo-font ~57.0.2, expo-splash-screen ~57.0.8, expo-linking ~57.0.8, expo-status-bar ~57.0.1, expo-router ~57.0.17, react-native-safe-area-context ~5.7.0)",
+    "package-lock.json régénéré (lockfileVersion 3) et cohérent avec package.json (versions résolues : expo 57.0.18, expo-constants 57.0.16, expo-font 57.0.2, expo-splash-screen 57.0.8, expo-linking 57.0.8, expo-status-bar 57.0.1, expo-router 57.0.17, react-native-safe-area-context 5.7.0, jest-expo 57.0.5)",
+    "APK debug produit : android/app/build/outputs/apk/debug/app-debug.apk présent (sortie de la vérification de confiance)",
+    "Inspection ChoreScoreApp.createEntry : le fait analytics ne contient que durationMinutes, beneficiaryCount, hasPersistentTask ; aucun householdId/memberId/label/email/createdBy/texte libre",
+    "Test ajouté (__tests__/application/ChoreScoreApp.test.ts) : 'should emit no operational IDs in analytics fact when creating entry' exerce createEntry avec analytics activé et vérifie l'absence de tout ID opérationnel + présence des données minimisées",
+    "Test indépendant de l'auditeur (scan profond des clés ET des valeurs du fait sérialisé) : aucune fuite d'identifiant opérationnel ni de texte libre",
+    "Grep emitFact : un seul point d'émission dans le produit (createEntry), aucun autre chemin analytics",
+    "Régression des invariants acceptés : architecture domain/application/infrastructure/UI, ports explicites, adapters locaux honnêtes, analytics secondaire désactivable, shell de navigation, charte visuelle, placeholders V2-02/V2-03/V2-04 intacts"
+  ],
+  "findings": [
+    {
+      "path": "src/application/use-cases/ChoreScoreApp.ts",
+      "problem": "Non bloquant, déjà signalé à l'audit 33292303527 et explicitement différé en V2-01 : createHousehold appelle canUseFeature('new-household', 'create-household') en passant la chaîne littérale 'new-household' comme householdId, donc le contrôle d'entitlement est effectué contre un ID de foyer inexistant. Le use-case n'est pas câblé à l'UI et le cycle actuel est une réparation ciblée ('aucune nouvelle feature') : hors périmètre.",
+      "evidence": "src/application/use-cases/ChoreScoreApp.ts lignes 95-104 : canUseFeature('new-household', 'create-household').",
+      "mustFix": false,
+      "requiredFix": "En V2-01, restructurer la création de foyer pour résoudre l'entitlement au niveau du compte (un foyer gratuit créé/possédé, foyers supplémentaires avec leur propre plan) plutôt que contre un ID de foyer factice.",
+      "verification": "Le use-case createHousehold résout correctement l'entitlement de création/possession sans ID de foyer factice, et les tests V2-01 couvrent la règle du foyer gratuit unique."
+    }
+  ]
+}
