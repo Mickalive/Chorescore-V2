@@ -95,7 +95,9 @@ jobs:
       - uses: actions/setup-node@ae0d4ed08881f17d1511386f5be3e62356acd4a6
         with: {node-version: 22.13.0}
       - uses: ./.github/actions/setup-opencode
-      - env: {OX_MODEL: "${{ needs.select.outputs.builder_model }}"}
+      - env:
+          OX_MODEL: "${{ needs.select.outputs.builder_model }}"
+          GH_TOKEN: "${{ github.token }}"
         run: bash .github/scripts/candidate.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with: {name: candidate-builder, path: "${{ runner.temp }}/candidate-builder", retention-days: 2, if-no-files-found: error}
@@ -195,3 +197,20 @@ jobs:
           git config user.name chorescore-v2-factory; git config user.email chorescore-v2-factory@users.noreply.github.com
           git add docs/RELEASE_STATUS.json; git commit -m "release: attest ChoreScore V2 Android RC"
           auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0); git -c "http.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:refs/heads/lab/chorescore-v2
+
+  continue-factory:
+    needs: [prepare, builder, audit, director, release]
+    if: ${{ always() && needs.prepare.result == 'success' && needs.prepare.outputs.final != 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - run: sleep 300
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+        with: {ref: lab/chorescore-v2, fetch-depth: 1, persist-credentials: false}
+      - env: {GH_TOKEN: "${{ github.token }}"}
+        run: |
+          set -euo pipefail
+          final=$(jq -r 'all(.criteria[];.status=="complete") and .pendingArtifact==null and (.activeCriteria|length)==0' docs/RELEASE_STATUS.json)
+          [[ "$final" == true ]] && { echo "V2 is final; continuation stops."; exit 0; }
+          gh workflow run chorescore-v2-factory.yml --repo "$GITHUB_REPOSITORY"
+          echo "Queued next ChoreScore V2 factory cycle from inside the factory itself."
