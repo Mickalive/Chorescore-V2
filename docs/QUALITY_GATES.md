@@ -33,7 +33,7 @@ Au plus tard en V2-05, fournir des preuves visuelles reproductibles des écrans 
 - racine foyers avec état d'abonnement/upgrade pertinent ;
 - Ajouter une tâche + historique peuplé ;
 - Score réel/pondéré + historique filtré ;
-- version gratuite de Score limitée au mois courant avec upgrade honnête pour l'archive ;
+- version gratuite limitée au mois courant avec archive Premium honnête ;
 - To-do Premium peuplée + modal de complétion ;
 - état To-do verrouillé/non Premium ;
 - au moins un état vide/erreur pertinent.
@@ -43,14 +43,20 @@ Les preuves peuvent être captures Android ou autre rendu déterministe suffisam
 ## QG-5 — Entitlements et non-destruction
 
 Les tests doivent prouver au minimum :
-- gratuit : Score limité au mois civil courant ;
-- passage au mois suivant : anciens calculs/entrées disparaissent de la vue gratuite mais les données persistent ;
+- essai complet = 30 jours ;
+- Standard = 2,99 EUR/mois/foyer et maximum 7 membres ;
+- Pro = 5,99 EUR/mois/foyer et requis à partir de 8 membres ;
+- plan/billing attaché au foyer, jamais propagé globalement au compte ;
+- un compte gratuit peut créer/posséder un foyer gratuit ;
+- un compte gratuit peut rejoindre plusieurs foyers par invitation sans achat personnel ;
+- les droits utilisés dans chaque foyer invité viennent du plan de ce foyer ;
+- un foyer supplémentaire créé/possédé dispose de son propre état de plan/billing ;
+- gratuit : historique visible et Score limités au mois civil courant ;
+- passage au mois suivant : anciens calculs/entrées disparaissent des vues gratuites mais les données persistent ;
 - upgrade : les données historiques redeviennent immédiatement accessibles ;
 - downgrade : aucune CompletedEntry, PersistentTask, donnée de pondération ou TodoItem n'est supprimée ;
 - gratuit : pondération inactive ;
-- gratuit : planification To-do inactive ;
-- Premium 1 foyer possible indépendamment du multi-foyers ;
-- `householdLimit` contrôle le nombre de foyers séparément des autres capacités.
+- gratuit : planification To-do inactive.
 
 ## QG-6 — Performance perceptible
 
@@ -74,7 +80,8 @@ Il doit automatiser au minimum le `goldenPath` de `docs/REFERENCE_SCENARIOS.json
 6. terminer une To-do en renseignant le temps dans un contexte Premium de test ;
 7. vérifier qu'une seule CompletedEntry est créée et que Score change ;
 8. vérifier au moins un comportement d'entitlement gratuit/Premium ;
-9. déclencher un contexte de share sheet système quand la plateforme de test le permet.
+9. vérifier le changement de mois gratuit sans destruction des données ;
+10. déclencher un contexte de share sheet système quand la plateforme de test le permet.
 
 Le test E2E produit un dossier de preuves : résultat machine lisible + captures aux checkpoints utiles. Un simple lancement de l'app n'est pas une preuve suffisante de V2-07.
 
