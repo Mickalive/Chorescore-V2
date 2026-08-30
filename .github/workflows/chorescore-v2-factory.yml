@@ -200,7 +200,7 @@ jobs:
 
   continue-factory:
     needs: [prepare, builder, audit, director, release]
-    if: ${{ always() && needs.prepare.result == 'success' && needs.prepare.outputs.final != 'true' }}
+    if: ${{ always() && !cancelled() && needs.prepare.result == 'success' && needs.prepare.outputs.final != 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
