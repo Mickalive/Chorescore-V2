@@ -1,6 +1,6 @@
 # ChoreScore V2 — quality gates
 
-Ces gates s'ajoutent aux critères V2-00..V2-07. Un critère n'est pas « fini » parce que le code compile : il doit produire un comportement réel, cohérent avec le blueprint, le design contract, le modèle d'entitlements et la politique de confidentialité des données.
+Ces gates s'ajoutent aux critères V2-00..V2-07. Un critère n'est pas « fini » parce que le code compile : il doit produire un comportement réel, cohérent avec le blueprint, le design contract, la fiche design concrète, le modèle d'entitlements et la politique de confidentialité des données.
 
 ## QG-1 — Aucun faux produit
 
@@ -10,7 +10,8 @@ Avant acceptation d'un critère :
 - aucune intégration externe présentée comme active si elle ne l'est pas ;
 - aucun écran hérité conceptuellement de la V1 s'il ne correspond pas à la V2 ;
 - aucun paywall qui prétend qu'une donnée a été supprimée alors qu'elle est seulement verrouillée ;
-- aucun paywall automatique au démarrage ou simple changement d'écran.
+- aucun paywall automatique au démarrage ou simple changement d'écran ;
+- aucun écran déclaré terminé qui conserve une mise en page manifestement provisoire/générique incompatible avec `docs/DESIGN_BRIEF.md`.
 
 ## QG-2 — Référence déterministe
 
@@ -32,16 +33,29 @@ Les upsells Premium sont **contextuels** : ils apparaissent quand l'utilisateur 
 
 ## QG-4 — Design et accessibilité
 
-Le candidat doit respecter `docs/DESIGN_CONTRACT.md`.
+Le candidat doit respecter **à la fois** `docs/DESIGN_CONTRACT.md` et `docs/DESIGN_BRIEF.md`.
 
-Au plus tard en V2-05, fournir des preuves visuelles reproductibles des écrans cœur avec la fixture canonique :
+Le contrat fixe les contraintes ; la fiche design fixe la direction concrète. Un écran peut donc être rejeté même sans bug fonctionnel s'il :
+- ressemble à un template générique ou à un prototype non fini ;
+- casse le langage visuel entre écrans ;
+- réintroduit un blanc dominant, un dashboard SaaS, des cartes imbriquées ou une identité par couleur de membre ;
+- place Premium avant la valeur du produit ;
+- surcharge le geste principal ;
+- rend les chiffres/graphes moins lisibles que la structure définie dans la fiche design.
+
+Au plus tard en V2-05, fournir la **galerie visuelle reproductible** prévue par `DESIGN_BRIEF.md`, au minimum :
+- connexion ;
 - racine foyers sans paywall agressif ;
 - Ajouter une tâche + historique peuplé Premium ;
 - Ajouter Free au début d'un nouveau mois avec message d'archive chaleureux/non bloquant ;
-- Score réel/pondéré + historique filtré ;
-- version Free de Score limitée au mois courant avec archive Premium honnête ;
-- To-do Premium peuplée + modal de complétion ;
-- interaction Free tentant de créer une To-do et déclenchant seulement alors l'upsell contextuel ;
+- Score Premium réel/pondéré + historique filtré ;
+- Score Free limité au mois courant ;
+- To-do Premium peuplée ;
+- mini-formulaire de complétion ;
+- To-do Free avant/après tentative d'une action Premium ;
+- upsell historique ;
+- Options ;
+- share card ;
 - au moins un état vide/erreur pertinent.
 
 Les preuves peuvent être captures Android ou autre rendu déterministe suffisamment fidèle au produit mobile. Elles doivent être conservées comme artefacts d'audit. Les checks accessibilité incluent contraste, labels, ordre de focus/lecture, touch targets, grandes tailles de texte et reduce-motion lorsque pertinent.
