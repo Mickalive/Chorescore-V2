@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Canonical deterministic fixtures for domain, UI, Score and release smoke tests. Test/demo only; never production user data.",
+  "scenarios": [
+    {
+      "id": "two-member-core",
+      "household": {"id": "h-core", "name": "Appartement démo"},
+      "members": [
+        {"id": "m-alex", "name": "Alex"},
+        {"id": "m-sam", "name": "Sam"}
+      ],
+      "persistentTasks": [
+        {"id": "pt-dishes", "name": "Vaisselle", "defaultWeight": 1}
+      ],
+      "entries": [
+        {
+          "id": "e1",
+          "label": "Vaisselle du soir",
+          "persistentTaskId": "pt-dishes",
+          "performedByMemberId": "m-alex",
+          "beneficiaryMemberIds": ["m-alex", "m-sam"],
+          "durationMinutes": 60,
+          "weight": 1,
+          "occurredAt": "2026-08-24T18:00:00+02:00"
+        },
+        {
+          "id": "e2",
+          "label": "Nettoyer le balcon",
+          "persistentTaskId": null,
+          "performedByMemberId": "m-sam",
+          "beneficiaryMemberIds": ["m-alex", "m-sam"],
+          "durationMinutes": 30,
+          "weight": 1.5,
+          "occurredAt": "2026-08-25T10:00:00+02:00"
+        }
+      ],
+      "todos": [
+        {
+          "id": "t1",
+          "title": "Sortir les cartons",
+          "assigneeMemberId": "m-sam",
+          "beneficiaryMemberIds": ["m-alex", "m-sam"],
+          "dueAt": null,
+          "status": "todo"
+        }
+      ],
+      "expected": {
+        "filters": ["Toutes", "Vaisselle", "Autres"],
+        "realBalancesMinutes": {"m-alex": 15, "m-sam": -15},
+        "realCompensations": [{"fromMemberId": "m-sam", "toMemberId": "m-alex", "minutes": 15}],
+        "performedMinutes": {"m-alex": 60, "m-sam": 30},
+        "weightedBalancesMinutes": {"m-alex": 7.5, "m-sam": -7.5},
+        "filterBalances": {
+          "Vaisselle": {"m-alex": 30, "m-sam": -30},
+          "Autres": {"m-alex": -22.5, "m-sam": 22.5}
+        }
+      }
+    },
+    {
+      "id": "three-member-beneficiaries",
+      "household": {"id": "h-three", "name": "Colocation démo"},
+      "members": [
+        {"id": "m-a", "name": "Ari"},
+        {"id": "m-b", "name": "Noa"},
+        {"id": "m-c", "name": "Lou"}
+      ],
+      "entries": [
+        {
+          "id": "e3",
+          "label": "Courses communes",
+          "persistentTaskId": null,
+          "performedByMemberId": "m-a",
+          "beneficiaryMemberIds": ["m-a", "m-b", "m-c"],
+          "durationMinutes": 90,
+          "weight": 1,
+          "occurredAt": "2026-08-26T18:00:00+02:00"
+        },
+        {
+          "id": "e4",
+          "label": "Aide pour Lou",
+          "persistentTaskId": null,
+          "performedByMemberId": "m-b",
+          "beneficiaryMemberIds": ["m-c"],
+          "durationMinutes": 30,
+          "weight": 1,
+          "occurredAt": "2026-08-27T18:00:00+02:00"
+        }
+      ],
+      "expected": {
+        "realBalancesMinutes": {"m-a": 60, "m-b": 0, "m-c": -60},
+        "realCompensations": [{"fromMemberId": "m-c", "toMemberId": "m-a", "minutes": 60}],
+        "sumOfBalances": 0
+      }
+    }
+  ],
+  "goldenPath": {
+    "scenarioId": "two-member-core",
+    "steps": [
+      "Open Appartement démo",
+      "Verify household tabs Ajouter une tâche, Score, To-do",
+      "Add a 20 minute one-off entry performed by Alex for Sam",
+      "Verify the new entry appears in full history",
+      "Open Score and verify balances update according to performed-by/beneficiaries math",
+      "Open To-do and complete Sortir les cartons as Sam in 10 minutes for Alex and Sam",
+      "Verify Todo is completed and exactly one new CompletedEntry is created",
+      "Verify full history and Score both update",
+      "Invoke native system share from a supported Score/history context"
+    ]
+  }
+}
