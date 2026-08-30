@@ -4,18 +4,20 @@
   "builder": {
     "enabled": true,
     "criterionId": "V2-00",
-    "objective": "Construire le socle ChoreScore V2 GREENFIELD dans ce dépôt vide. Ne pas copier l'ancienne application. Créer un projet Expo/React Native TypeScript propre et testable, avec une architecture simple séparant domaine/application/infrastructure/UI, scripts check/test et export Android. Définir dès maintenant les ports AuthGateway, Entitlement/BillingGateway, SystemShareGateway (share sheet natif, aucun SDK réseau social spécifique), NotificationGateway, CalendarGateway, SecureStorageGateway et SyncGateway. Fournir des adapters locaux honnêtes nécessaires au développement, sans simuler OAuth/paiement/push/sync réels. Poser un shell de navigation minimal cohérent avec foyers -> Ajouter une tâche | Score | To-do, sans prétendre que les fonctionnalités futures sont déjà terminées.",
+    "objective": "Construire le socle ChoreScore V2 GREENFIELD dans ce dépôt vide. Ne pas copier l'ancienne application. Créer un projet Expo/React Native TypeScript propre et testable, avec une architecture simple séparant domaine/application/infrastructure/UI, scripts check/test et export Android. Pour ce bootstrap, utiliser le stack déjà validé par le run précédent : Expo SDK 57 avec React Native 0.86.3 et React 19.2.x ; laisser Expo aligner ses paquets compatibles plutôt que deviner des versions. Ne pas revenir à RN 0.79/0.87. Définir dès maintenant les ports AuthGateway, Entitlement/BillingGateway, SystemShareGateway, NotificationGateway, CalendarGateway, SecureStorageGateway, SyncGateway et ResearchAnalyticsGateway désactivable. Fournir des adapters locaux honnêtes, sans simuler OAuth/paiement/push/sync/analytics réels. Poser un shell de navigation minimal cohérent avec foyers -> Ajouter une tâche | Score | To-do et la charte graphique canonique chaleureuse/self-care, sans prétendre que les fonctionnalités futures sont déjà terminées.",
     "acceptance": [
       "Le code applicatif est créé depuis zéro dans Chorescore-V2 ; aucune arborescence app/src/tests de V1 n'est copiée comme fondation.",
-      "package.json + lockfile sont propres et les dépendances choisies sont compatibles avec le SDK Expo retenu.",
+      "package.json + lockfile sont propres ; Expo SDK 57 / React Native 0.86.3 / React 19.2.x et les paquets Expo sont compatibles entre eux.",
       "npm run check exécute au minimum typecheck et tests déterministes.",
       "Un export Android Expo réussit.",
+      "Expo prebuild Android réussit sans dépendre d'assets corrompus ou placeholders invalides.",
       "Les couches domaine/application/infrastructure/UI sont explicites et le domaine ne dépend d'aucun fournisseur externe.",
-      "Les ports Auth, Entitlement/Billing, SystemShare, Notification, Calendar, SecureStorage et Sync existent avec contrats testables.",
+      "Les ports Auth, Entitlement/Billing, SystemShare, Notification, Calendar, SecureStorage, Sync et ResearchAnalytics existent avec contrats testables.",
+      "ResearchAnalytics est une sortie secondaire désactivable et ne conditionne aucune fonction produit.",
       "SystemShare représente le share sheet natif du système ; aucune dépendance Instagram/Facebook/WhatsApp de partage n'est ajoutée.",
       "Les services externes non configurés sont explicitement indisponibles et jamais présentés comme réussis.",
-      "Le shell de navigation reflète le modèle mental foyers -> trois onglets du foyer sans réintroduire l'ancienne UI.",
-      "Le design de base part dans une direction feel-good avec fond teinté, sans dépendre d'une grande surface blanche."
+      "Le shell de navigation reflète foyers -> trois onglets sans réintroduire l'ancienne UI.",
+      "Le design de base utilise une charte unique chaleureuse/self-care conforme à DESIGN_BRIEF/DESIGN_CONTRACT, avec fond teinté et composants cohérents, pas une collection d'écrans génériques."
     ]
   }
 }
