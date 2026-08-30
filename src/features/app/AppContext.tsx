@@ -25,6 +25,7 @@ import {
   InMemoryEntryRepository,
   InMemoryPersistentTaskRepository,
   InMemoryTodoRepository,
+  InMemoryChronoTimerRepository,
 } from '../../infrastructure/repositories/InMemoryRepositories';
 import { AuthUser } from '../../application/ports';
 
@@ -65,6 +66,7 @@ export function AppProvider({ children }: AppProviderProps) {
     entries: new InMemoryEntryRepository(),
     persistentTasks: new InMemoryPersistentTaskRepository(),
     todos: new InMemoryTodoRepository(),
+    chronoTimer: new InMemoryChronoTimerRepository(),
   });
 
   // Create stable service instances

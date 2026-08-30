@@ -130,6 +130,17 @@ export interface AccountEntitlement {
   hasActiveTrial: boolean;
 }
 
+/**
+ * ChronoTimerState tracks an active chrono session.
+ * Persists across app backgrounding so the timer can resume.
+ */
+export interface ChronoTimerState {
+  householdId: string;
+  memberId: string;
+  startedAt: string; // ISO date string
+  isRunning: boolean;
+}
+
 export type FilterType = 'all' | 'persistent-task' | 'others';
 
 export interface Balance {

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33336089448",
+  "role": "builder",
+  "decision": "repair",
+  "summary": "V2-02 — Réalisations, chrono et historique. Le cœur transactionnel est largement présent et correct : CompletedEntry avec Fait par/Fait pour multi-sélection, durée manuelle/chrono, PersistentTask facultative (= filtre Score, ne crée pas d'entrée), historique sous « Ajouter une tâche », navigation Ajouter | Score | To-do, modification/suppression, fenêtre Free = mois civil courant via getVisibleEntries/hasOlderEntries, archive complète en Trial/Standard/Pro, aucune suppression au downgrade/changement de mois, analytics minimisé sans ID opérationnel. Vérification de confiance exit code 0 (npm run check vert, export Android, assembleDebug BUILD SUCCESSFUL). Checks indépendants : typecheck exit 0, 183 tests / 8 suites verts, diff candidat limité aux 16 fichiers attendus, design chaleureux conforme au DESIGN_BRIEF (fond crème, terracotta, ArchiveMessage non bloquant). MAIS un finding mustFix : la « persistance locale » et la « reprise du chrono » ne sont pas réelles — tous les repositories (entries, persistentTasks, chronoTimer) sont en mémoire uniquement (InMemory*Repository), aucune persistance disque/AsyncStorage ; au redémarrage de l'app toutes les données et l'état du chrono sont perdus. Le test « chrono resume » est tautologique (relit la même map en mémoire, ne simule aucun redémarrage). Ceci viole le critère d'acceptation explicite « Local persistence and chrono resume work » et le scope « local persistence ». Décision : repair.",
+  "checks": [
+    "Trusted verification exit code 0 (reports/audits/TRUSTED_33336089448.md) : npm run check vert, export Android OK, ./gradlew :app:assembleDebug BUILD SUCCESSFUL",
+    "npx tsc --noEmit exécuté indépendamment : exit 0",
+    "npx jest exécuté indépendamment : 8 suites, 183 tests, 0 échec",
+    "Diff candidat vs arbre pristine accepté : 16 fichiers (2 tests, _layout.tsx, ports, ChoreScoreApp.ts, civilMonth.ts, entities, AppContext, AddTaskScreen, ScoreScreen, InMemoryRepositories, 4 composants UI, index.ts) + rapport TRUSTED non suivi",
+    "CompletedEntry créée avec label, performedByMemberId, beneficiaryMemberIds[], durationMinutes, householdId, occurredAt, persistentTaskId facultatif, createdBy — vérifié",
+    "Fait par par défaut = membre de l'utilisateur connecté, modifiable vers tout membre — vérifié (AddTaskScreen loadData + MemberSelector allowMultiple=false)",
+    "Fait pour : 'Tout le monde' ou sous-ensemble non vide — vérifié (MemberSelector showEveryone + validation non-vide au submit)",
+    "Deux modes de durée : manuel (DurationInput h/min) et chrono (ChronoTimer + startChrono/stopChrono) — vérifié",
+    "PersistentTask facultative : crée un filtre Score (filterEntries 'persistent-task'), ne crée pas d'entrée — vérifié",
+    "Historique Free = mois civil courant (getVisibleEntries filtre via isInCivilMonth quand historyArchiveAccess=false) — vérifié",
+    "Historique Trial/Standard/Pro = archive complète (getVisibleEntries retourne tout quand historyArchiveAccess=true) — vérifié",
+    "Aucune CompletedEntry détruite au downgrade/changement de mois (filtrage seul, repository intact) — vérifié",
+    "Modification (updateEntry) et suppression (deleteEntry) — vérifié",
+    "Analytics createEntry minimisé : durationMinutes, beneficiaryCount, hasPersistentTask — aucun ID opérationnel, texte libre, email, IP — vérifié (test analytics vert)",
+    "Design : fond crème chaud (#FFF8F0), primaire terracotta, ArchiveMessage chaleureux non bloquant, composition Ajouter conforme au DESIGN_BRIEF — vérifié",
+    "Navigation Ajouter | Score | To-do dans app/household/[id]/_layout.tsx — vérifié",
+    "Régression V2-00/V2-01 : 183 tests verts, ports/adapters honnêtes, grille tarifaire canonique, analytics secondaire désactivable — vérifié"
+  ],
+  "findings": [
+    {
+      "path": "src/infrastructure/repositories/InMemoryRepositories.ts + src/features/app/AppContext.tsx + src/application/use-cases/ChoreScoreApp.ts (chrono)",
+      "problem": "La « persistance locale » et la « reprise du chrono » exigées par le critère d'acceptation V2-02 (« Local persistence and chrono resume work ») et le scope (« local persistence ») ne sont pas réelles. Tous les repositories (entries, persistentTasks, chronoTimer) sont des InMemory*Repository : aucune persistance disque/AsyncStorage/SecureStore. Au redémarrage réel de l'application, toutes les CompletedEntry, PersistentTask et l'état du chrono sont perdus. Le test « should persist chrono state for resume » est tautologique : il relit la même map en mémoire (getChronoState deux fois de suite) sans simuler de redémarrage, donc il ne prouve aucune persistance. Le composant ChronoTimer recalcule l'affichage depuis startedAt (gère le backgrounding), mais l'état persisted est en mémoire et disparaît au redémarrage.",
+      "evidence": "grep sur src/ et app/ : aucun AsyncStorage/SecureStore/MMKV/sqlite/localStorage. AppContext.tsx instancie uniquement InMemory*Repository (lignes 60-70). InMemoryRepositories.ts déclare « Local in-memory storage for development and testing. In production, these would be backed by a database or sync service. ». Test V2-02-acceptance.test.ts lignes 285-294 : startChrono puis getChronoState deux fois — aucune simulation de redémarrage, aucune persistance disque.",
+      "mustFix": true,
+      "requiredFix": "Introduire une vraie persistance locale (ex. AsyncStorage ou SecureStorage via un port SecureStorageGateway existant) pour les repositories entries/persistentTasks/chronoTimer, de sorte que les données et l'état du chrono survivent à un redémarrage réel de l'app. Remplacer le test tautologique par un test qui prouve la persistance (écrire, recréer une nouvelle instance de repository/app, relire et vérifier que les données et l'état du chrono sont restaurés).",
+      "verification": "Redémarrer l'app (ou recréer l'instance de repository/app) après avoir créé des entrées et démarré un chrono, puis vérifier que les entrées et l'état du chrono sont restaurés ; test déterministe de persistance non tautologique."
+    }
+  ]
+}

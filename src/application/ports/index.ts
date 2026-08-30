@@ -1,3 +1,5 @@
+import { ChronoTimerState } from '../../domain/entities';
+
 /**
  * ChoreScore V2 — Application Ports (Interfaces)
  *
@@ -222,4 +224,16 @@ export interface AnalyticsFact {
   data: Record<string, unknown>;
   timestamp: string;
   // Never include: userId, householdId, memberId, email, free text, IP, device ID
+}
+
+/**
+ * ChronoTimerRepository — persists chrono timer state for resume across app backgrounding.
+ */
+export interface ChronoTimerRepository {
+  /** Get the current chrono timer state for a household */
+  getState(householdId: string): Promise<ChronoTimerState | null>;
+  /** Save/update chrono timer state */
+  setState(householdId: string, state: ChronoTimerState | null): Promise<void>;
+  /** Clear chrono timer state */
+  clearState(householdId: string): Promise<void>;
 }

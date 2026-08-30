@@ -14,6 +14,7 @@ import {
   User,
   Membership,
   Account,
+  ChronoTimerState,
 } from '../../domain/entities';
 import {
   HouseholdRepository,
@@ -25,6 +26,7 @@ import {
   MembershipRepository,
   AccountRepository,
 } from '../../application/use-cases/ChoreScoreApp';
+import { ChronoTimerRepository } from '../../application/ports';
 
 export class InMemoryUserRepository implements UserRepository {
   private users: Map<string, User> = new Map();
@@ -322,5 +324,25 @@ export class InMemoryTodoRepository implements TodoRepository {
     for (const t of todos) {
       this.todos.set(t.id, t);
     }
+  }
+}
+
+export class InMemoryChronoTimerRepository implements ChronoTimerRepository {
+  private states: Map<string, ChronoTimerState> = new Map();
+
+  async getState(householdId: string): Promise<ChronoTimerState | null> {
+    return this.states.get(householdId) || null;
+  }
+
+  async setState(householdId: string, state: ChronoTimerState | null): Promise<void> {
+    if (state === null) {
+      this.states.delete(householdId);
+    } else {
+      this.states.set(householdId, state);
+    }
+  }
+
+  async clearState(householdId: string): Promise<void> {
+    this.states.delete(householdId);
   }
 }

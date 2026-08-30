@@ -9,3 +9,7 @@ export { Text } from './Text';
 export { TabBar } from './TabBar';
 export { ArchiveMessage } from './ArchiveMessage';
 export { BarChart } from './BarChart';
+export { MemberSelector } from './MemberSelector';
+export { DurationInput } from './DurationInput';
+export { ChronoTimer } from './ChronoTimer';
+export { EntryRow } from './EntryRow';

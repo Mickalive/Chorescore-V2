@@ -17,8 +17,13 @@ import {
   ScoreResult,
   FilterType,
   AccountEntitlement,
+  ChronoTimerState,
 } from '../../domain/entities';
 import { calculateScore, filterEntries } from '../../domain/calculations/score';
+import {
+  isInCivilMonth,
+  getCurrentCivilMonth,
+} from '../../domain/calculations/civilMonth';
 import {
   AuthGateway,
   EntitlementGateway,
@@ -31,6 +36,7 @@ import {
   ResearchAnalyticsGateway,
   EntitlementState,
   AccountEntitlementState,
+  ChronoTimerRepository,
 } from '../ports';
 
 // ── Repository Interfaces ──────────────────────────────────────
@@ -118,6 +124,7 @@ export class ChoreScoreApp {
       entries: EntryRepository;
       persistentTasks: PersistentTaskRepository;
       todos: TodoRepository;
+      chronoTimer?: ChronoTimerRepository;
     }
   ) {}
 
@@ -305,6 +312,116 @@ export class ChoreScoreApp {
     }
 
     return entry;
+  }
+
+  async updateEntry(
+    entryId: string,
+    data: Partial<{
+      label: string;
+      performedByMemberId: string;
+      beneficiaryMemberIds: string[];
+      durationMinutes: number;
+      weight: number;
+      persistentTaskId: string | null;
+      occurredAt: string;
+    }>
+  ): Promise<CompletedEntry> {
+    return this.repositories.entries.update(entryId, data);
+  }
+
+  async deleteEntry(entryId: string): Promise<void> {
+    return this.repositories.entries.delete(entryId);
+  }
+
+  /**
+   * Get entries for a specific civil month.
+   * Used by Free mode to filter to current month only.
+   */
+  async getEntriesForMonth(
+    householdId: string,
+    year: number,
+    month: number
+  ): Promise<CompletedEntry[]> {
+    const allEntries = await this.repositories.entries.getByHousehold(householdId);
+    return allEntries.filter(e => isInCivilMonth(e.occurredAt, year, month));
+  }
+
+  /**
+   * Get entries visible to the current user based on their household's entitlement.
+   * Free mode: only current civil month.
+   * Trial/Standard/Pro: full archive.
+   */
+  async getVisibleEntries(householdId: string): Promise<CompletedEntry[]> {
+    const entitlement = await this.services.entitlements.getEntitlement(householdId);
+    const allEntries = await this.repositories.entries.getByHousehold(householdId);
+
+    if (entitlement.historyArchiveAccess) {
+      return allEntries;
+    }
+
+    // Free mode: only current civil month
+    const [year, month] = getCurrentCivilMonth();
+    return allEntries.filter(e => isInCivilMonth(e.occurredAt, year, month));
+  }
+
+  /**
+   * Check if the household has entries older than the current civil month.
+   * Used to show the archive message in Free mode.
+   */
+  async hasOlderEntries(householdId: string): Promise<boolean> {
+    const entitlement = await this.services.entitlements.getEntitlement(householdId);
+    if (entitlement.historyArchiveAccess) return false;
+
+    const allEntries = await this.repositories.entries.getByHousehold(householdId);
+    const [year, month] = getCurrentCivilMonth();
+    return allEntries.some(e => !isInCivilMonth(e.occurredAt, year, month));
+  }
+
+  // ── Persistent Task Use Cases ────────────────────────────────
+
+  async createPersistentTask(data: {
+    householdId: string;
+    name: string;
+    defaultWeight?: number;
+  }): Promise<PersistentTask> {
+    return this.repositories.persistentTasks.create({
+      householdId: data.householdId,
+      name: data.name,
+      defaultWeight: data.defaultWeight ?? 1,
+    });
+  }
+
+  async deletePersistentTask(taskId: string): Promise<void> {
+    return this.repositories.persistentTasks.delete(taskId);
+  }
+
+  // ── Chrono Timer Use Cases ───────────────────────────────────
+
+  async startChrono(householdId: string, memberId: string): Promise<void> {
+    if (!this.repositories.chronoTimer) return;
+    await this.repositories.chronoTimer.setState(householdId, {
+      householdId,
+      memberId,
+      startedAt: new Date().toISOString(),
+      isRunning: true,
+    });
+  }
+
+  async stopChrono(householdId: string): Promise<number> {
+    if (!this.repositories.chronoTimer) return 0;
+    const state = await this.repositories.chronoTimer.getState(householdId);
+    if (!state || !state.isRunning) return 0;
+
+    const elapsed = Math.round(
+      (Date.now() - new Date(state.startedAt).getTime()) / 60000
+    );
+    await this.repositories.chronoTimer.clearState(householdId);
+    return Math.max(1, elapsed); // minimum 1 minute
+  }
+
+  async getChronoState(householdId: string): Promise<ChronoTimerState | null> {
+    if (!this.repositories.chronoTimer) return null;
+    return this.repositories.chronoTimer.getState(householdId);
   }
 
   // ── Score Use Cases ──────────────────────────────────────────
