@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33336089448",
+  "decision": "continue",
+  "reason": "V2-02 audit decision: repair. One mustFix finding: local persistence is not real — all repositories (entries, persistentTasks, chronoTimer) are InMemory*Repository with no disk persistence (AsyncStorage/SecureStore). Chrono resume test is tautological (reads same in-memory map twice, never simulates app restart). This violates acceptance criterion 'Local persistence and chrono resume work' and scope 'local persistence'. Repair baseline committed by trusted shell (commit efb218f). V2-02 stays active. Builder must replace InMemory repositories with AsyncStorage-backed persistent repositories for entries, persistentTasks, and chronoTimer, then replace the tautological chrono test with a test that proves persistence survives instance recreation.",
+  "progressEvidence": [
+    "V2-00 complete: architecture greenfield, ports/adapters, 67+ tests, analytics minimized",
+    "V2-01 complete: identity/households/subscription/options, trial expiry, 133 tests green",
+    "V2-02 repair baseline committed: CompletedEntry, PersistentTask, chrono, history, navigation, Free/Trial archive filtering all present and correct",
+    "183 tests green on repair baseline, typecheck clean, Android build OK",
+    "V2-02 mustFix finding: InMemory-only repositories, no real local persistence",
+    "V2-02 mustFix finding: tautological chrono resume test (no app restart simulation)",
+    "Repair assigned: AsyncStorage-backed repos + non-tautological persistence test",
+    "V2-02 remains active until repair accepted"
+  ]
+}

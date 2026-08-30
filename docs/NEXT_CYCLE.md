@@ -1,9 +1,9 @@
 # Next cycle
 
-Active criterion: **V2-00 — Socle greenfield** (REPAIR).
+Active criterion: **V2-02 — Réalisations, chrono et historique** (REPAIR).
 
-Two mustFix findings from audit cycle 33292303527:
-1. Expo package versions guessed with old scheme → native Android compilation fails → must use SDK 57 aligned versions via `npx expo install`
-2. `createEntry` leaks `householdId` into analytics fact → must strip all operational IDs from emitted analytics data
+One mustFix finding from audit cycle 33336089448:
+1. Local persistence not real — all repositories (entries, persistentTasks, chronoTimer) are InMemory*Repository with no disk persistence. Data lost on app restart. Must introduce AsyncStorage-backed persistent repositories.
+2. Chrono resume test tautological — reads same in-memory map twice, never simulates restart. Must replace with non-tautological test that recreates instances and verifies data survives.
 
-No new feature scope. Fix findings, verify compilation, add analytics leak test, confirm all existing tests pass.
+No new feature scope. Fix persistence, add proper test, confirm all 183 existing tests pass.

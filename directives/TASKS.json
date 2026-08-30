@@ -4,21 +4,27 @@
   "builder": {
     "enabled": true,
     "criterionId": "V2-02",
-    "objective": "V2-02 — Réalisations, chrono et historique. Build the transactional heart of ChoreScore: CompletedEntry with Fait par/Fait pour, manual/chrono duration, PersistentTask (optional, = Score filter), history under 'Ajouter une tâche', navigation Ajouter | Score | To-do, modification/deletion, local persistence. Free shows current civil month only; Trial/Standard/Pro show full archive. No CompletedEntry deleted on month change or downgrade.",
-    "scope": "Greenfield slice: domain CompletedEntry/PersistentTask entities, use-cases for entry creation/listing/deletion, UI screens (Ajouter une tâche with chrono toggle, entry form, history list), PersistentTask as Score filter placeholder, local persistence. Prepare analytical normalization of labels (text stays free in product, but no future research data must depend on raw text export).",
+    "objective": "V2-02 REPAIR — Fix local persistence. Replace InMemory repositories (entries, persistentTasks, chronoTimer) with AsyncStorage-backed persistent repositories. Add non-tautological persistence test that proves data survives instance recreation. No new feature scope.",
+    "scope": "Repair only: (1) create AsyncStorage-backed PersistentEntryRepository, PersistentTaskRepository, PersistentChronoTimerRepository; (2) update AppContext.tsx to use persistent repos; (3) replace tautological chrono test with a test that recreates repo instances and verifies data survives; (4) ensure all 183 existing tests still pass.",
     "acceptance": [
-      "CompletedEntry created with label, performedByMemberId, beneficiaryMemberIds[], duration, household, date/time, optional persistentTaskId",
-      "Fait par defaults to connected user, changeable to any household member",
-      "Fait pour allows 'Tout le monde' or any non-empty subset of members",
-      "Two duration modes: manual input and chrono (1 real minute = 1 minute)",
-      "PersistentTask optional: creates Score filter, does not create entries",
-      "History shows current civil month in Free mode",
-      "History shows full archive in Trial/Standard/Pro mode",
-      "No CompletedEntry destroyed on month change or downgrade",
-      "Modification and deletion of entries possible",
-      "Local persistence and chrono resume work",
-      "npm run check green, no regressions in V2-00/V2-01",
-      "Design follows DESIGN_BRIEF.md (feel-good, warm, contemporary)"
+      "Entries, persistentTasks, and chronoTimer state persist to disk (AsyncStorage or equivalent)",
+      "Data survives app restart (proven by non-tautological test: write → recreate instance → read back)",
+      "Chrono timer state persists and resumes after restart",
+      "All 183 existing tests pass with no regressions",
+      "npm run check green",
+      "Design and V2-00/V2-01 invariants preserved"
+    ],
+    "repairFindings": [
+      {
+        "path": "src/infrastructure/repositories/InMemoryRepositories.ts + src/features/app/AppContext.tsx",
+        "problem": "All repositories are InMemory only. No disk persistence. Data lost on restart.",
+        "requiredFix": "Introduce AsyncStorage-backed repositories for entries, persistentTasks, chronoTimer"
+      },
+      {
+        "path": "__tests__/application/V2-02-acceptance.test.ts (chrono resume test)",
+        "problem": "Tautological test: reads getChronoState() twice from same in-memory map, never simulates restart",
+        "requiredFix": "Replace with test that recreates repo instance and verifies chrono state survives"
+      }
     ],
     "previousCriteriaPreserved": [
       "V2-00: architecture greenfield, ports/adapters, 67+ tests",
