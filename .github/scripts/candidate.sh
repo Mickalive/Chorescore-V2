@@ -3,13 +3,29 @@ set -euo pipefail
 cycle="${CYCLE_KEY:?}"; out="${RUNNER_TEMP:?}/candidate-builder"; mkdir -p "$out"
 criterion=$(jq -r '.builder.criterionId' directives/TASKS.json); objective=$(jq -r '.builder.objective' directives/TASKS.json); acceptance=$(jq -c '.builder.acceptance' directives/TASKS.json)
 
+# A repair cycle must repair the audited candidate, not rebuild it from an empty accepted branch.
+# Historical fallback: before repair baselines were persisted, the audited candidate lived only as
+# a workflow artifact. Recover that artifact deterministically when the branch has no product code.
+if [[ "$criterion" == "V2-00" && "$objective" == REPAIR* && ! -f package.json ]]; then
+  baseline_cycle=$(jq -r '.lastCycle // empty' docs/RELEASE_STATUS.json)
+  if [[ -n "$baseline_cycle" && "$baseline_cycle" != "null" && -n "${GH_TOKEN:-}" ]]; then
+    recovery="$RUNNER_TEMP/v2-repair-baseline-$baseline_cycle"
+    rm -rf "$recovery"; mkdir -p "$recovery"
+    echo "Recovering audited V2-00 candidate from factory cycle $baseline_cycle"
+    gh run download "$baseline_cycle" --repo "$GITHUB_REPOSITORY" -n candidate-builder -D "$recovery"
+    test -s "$recovery/candidate.patch"
+    git apply --check --binary "$recovery/candidate.patch"
+    git apply --binary "$recovery/candidate.patch"
+  fi
+fi
+
 # V2-00 is a one-time greenfield bootstrap and legitimately needs more time than later tranches.
 if [[ "$criterion" == "V2-00" ]]; then
   export OPENCODE_ATTEMPT_TIMEOUT_SECONDS="7200"
 fi
 
 set +e
-OPENCODE_RETRY_LABEL=builder bash .github/scripts/run-ox.sh opencode run --model "${OX_MODEL:?}" --agent greenfield-builder "Build ChoreScore V2 factory cycle $cycle. Active criterion: $criterion. Objective: $objective. Acceptance: $acceptance. Read all canonical files first. Finish a coherent tested tranche. For V2-00 use the pinned validated Expo/RN stack from TASKS and avoid re-exploring incompatible framework versions."
+OPENCODE_RETRY_LABEL=builder bash .github/scripts/run-ox.sh opencode run --model "${OX_MODEL:?}" --agent greenfield-builder "Build ChoreScore V2 factory cycle $cycle. Active criterion: $criterion. Objective: $objective. Acceptance: $acceptance. Read all canonical files first. Finish a coherent tested tranche. For V2-00 use Expo SDK 57 with React Native 0.86.3 and React 19.2.x, and use Expo's own install alignment instead of guessing package generations. Never rebuild an existing repair baseline from scratch."
 agent_rc=$?
 set -e
 
@@ -38,7 +54,10 @@ if [[ -f package.json ]]; then
   npm ci --ignore-scripts --no-audit --no-fund
   npm run check
   if jq -e '.dependencies.expo or .devDependencies.expo' package.json >/dev/null; then
+    npx --no-install expo install --check
     npx --no-install expo export --platform android --output-dir "$RUNNER_TEMP/v2-candidate-export"
+    npx --no-install expo prebuild --platform android --no-install
+    (cd android && ./gradlew :app:assembleDebug --no-daemon)
   fi
 fi
 
