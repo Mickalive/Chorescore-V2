@@ -1,32 +1,19 @@
 {
   "schemaVersion": 1,
   "milestone": "v2-rc",
-  "lastCycle": "33336089448",
-  "activeCriteria": ["V2-02"],
+  "lastCycle": "33338762850",
+  "activeCriteria": ["V2-03"],
   "pendingArtifact": null,
-  "progressSummary": "V2-00 complete: Expo SDK 57 aligned, Android build successful, analytics fact minimized, 67 tests green. V2-01 complete: identity/households/subscription/options with trial expiry (F1), Options screens (F2), AccountRepository resolution (F3), demo-premium consistency (F4) all fixed and verified. 133 tests green, typecheck clean, Android build OK. V2-02 repair baseline committed: CompletedEntry, PersistentTask, chrono, history, navigation all present. 183 tests green. mustFix: InMemory-only repositories — no real local persistence. Builder must replace with AsyncStorage-backed repos and add non-tautological persistence test.",
+  "progressSummary": "V2-00 complete: Expo SDK 57 aligned, Android build successful, analytics fact minimized, 67 tests green. V2-01 complete: identity/households/subscription/options with trial expiry (F1), Options screens (F2), AccountRepository resolution (F3), demo-premium consistency (F4) all fixed and verified. 133 tests green, typecheck clean, Android build OK. V2-02 complete: CompletedEntry with Fait par/Fait pour multi-select, manual/chrono duration, PersistentTask as Score filter, history under Ajouter, navigation Ajouter|Score|To-do, Free=current month / Trial-Std-Pro=full archive, AsyncStorage-backed persistence, 195 tests green, typecheck clean, Android build OK. V2-03 activated: Score, balances and free window.",
   "criteria": [
     {"id":"V2-00","status":"complete","evidence":["architecture-greenfield-confirmed","ports-honest-adapters","visual-design-coherent","67-tests-passing","js-bundle-success","expo-prebuild-success","expo-sdk57-packages-aligned","android-build-successful","analytics-fact-minimized-no-operational-ids","dedicated-analytics-leakage-test","npm-run-check-green"]},
     {"id":"V2-01","status":"complete","evidence":["trial-expiry-wired-F1","options-personal-screen-F2","options-household-screen-F2","owner-payer-guard-F2","account-repository-resolution-F3","demo-premium-canCreateFreeHousehold-constant-F4","133-tests-green","typecheck-clean","android-export-ok","audit-accepted-33333661536"]},
-    {"id":"V2-02","status":"in_progress","evidence":["repair-baseline-committed-efb218f","completedEntry-persistentTask-chrono-history-present","183-tests-green","typecheck-clean","android-build-ok","mustFix-local-persistence-not-real","mustFix-chrono-resume-test-tautological"]},
-    {"id":"V2-03","status":"pending","evidence":[]},
+    {"id":"V2-02","status":"complete","evidence":["repair-baseline-committed-efb218f","completedEntry-persistentTask-chrono-history-present","asyncStorage-backed-persistent-repositories","non-tautological-persistence-tests-12","195-tests-green","typecheck-clean","android-build-ok","audit-accepted-33338762850"]},
+    {"id":"V2-03","status":"in_progress","evidence":[]},
     {"id":"V2-04","status":"pending","evidence":[]},
     {"id":"V2-05","status":"pending","evidence":[]},
     {"id":"V2-06","status":"pending","evidence":[]},
     {"id":"V2-07","status":"pending","evidence":[]}
   ],
-  "openFindings": [
-    {
-      "criterionId": "V2-02",
-      "finding": "InMemory-only repositories (entries, persistentTasks, chronoTimer). No AsyncStorage/SecureStore persistence. All data lost on app restart.",
-      "mustFix": true,
-      "assignedCycle": "33336089448"
-    },
-    {
-      "criterionId": "V2-02",
-      "finding": "Chrono resume test is tautological — reads same in-memory map twice without simulating app restart.",
-      "mustFix": true,
-      "assignedCycle": "33336089448"
-    }
-  ]
+  "openFindings": []
 }

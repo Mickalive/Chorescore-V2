@@ -3,32 +3,29 @@
   "milestone": "v2-rc",
   "builder": {
     "enabled": true,
-    "criterionId": "V2-02",
-    "objective": "V2-02 REPAIR — Fix local persistence. Replace InMemory repositories (entries, persistentTasks, chronoTimer) with AsyncStorage-backed persistent repositories. Add non-tautological persistence test that proves data survives instance recreation. No new feature scope.",
-    "scope": "Repair only: (1) create AsyncStorage-backed PersistentEntryRepository, PersistentTaskRepository, PersistentChronoTimerRepository; (2) update AppContext.tsx to use persistent repos; (3) replace tautological chrono test with a test that recreates repo instances and verifies data survives; (4) ensure all 183 existing tests still pass.",
+    "criterionId": "V2-03",
+    "objective": "V2-03 — Score, équilibres et fenêtre gratuite. Transformer les CompletedEntry en équilibres de temps compréhensibles avec soldes fait-par/fait-pour, compensations pair-à-pair, graphes nommés, pondération secondaire Premium et historique filtré. La fenêtre Free est limitée au mois civil courant.",
+    "scope": "Score screen with: period selectors (Semaine/Mois/Année/Depuis le début), filters (Toutes/each PersistentTask/Autres), balance algorithm (+D performedBy, -D/N beneficiaries, sum=0), peer-to-peer compensation, real time performed per member, named bar charts, weighted secondary section (Premium), contextual filtered history. Free: current civil month only, upsell for Année/Depuis le début/archive. Monthly reset without data destruction. Upgrade restores archive immediately.",
     "acceptance": [
-      "Entries, persistentTasks, and chronoTimer state persist to disk (AsyncStorage or equivalent)",
-      "Data survives app restart (proven by non-tautological test: write → recreate instance → read back)",
-      "Chrono timer state persists and resumes after restart",
-      "All 183 existing tests pass with no regressions",
-      "npm run check green",
-      "Design and V2-00/V2-01 invariants preserved"
-    ],
-    "repairFindings": [
-      {
-        "path": "src/infrastructure/repositories/InMemoryRepositories.ts + src/features/app/AppContext.tsx",
-        "problem": "All repositories are InMemory only. No disk persistence. Data lost on restart.",
-        "requiredFix": "Introduce AsyncStorage-backed repositories for entries, persistentTasks, chronoTimer"
-      },
-      {
-        "path": "__tests__/application/V2-02-acceptance.test.ts (chrono resume test)",
-        "problem": "Tautological test: reads getChronoState() twice from same in-memory map, never simulates restart",
-        "requiredFix": "Replace with test that recreates repo instance and verifies chrono state survives"
-      }
+      "Period selectors Semaine/Mois/Année/Depuis le début functional",
+      "Filters Toutes/each PersistentTask/Autres functional",
+      "Balance algorithm correct: +D to performedBy, -D/N to each beneficiary, sum of all balances = 0",
+      "Peer-to-peer compensation proposals generated correctly",
+      "Real time performed per member displayed",
+      "Named bar charts with names + values directly readable",
+      "Weighted secondary section displayed only when Premium entitlement active",
+      "Contextual filtered history shown under Score matching period + filter",
+      "Free tier: Score limited to current civil month (Semaine/Mois work, Année/Depuis le début show upsell)",
+      "Monthly reset: old data hidden in Free but persisted, upgrade restores immediately",
+      "Reference scenario values verified (two-member-core, three-member-beneficiaries, free-month-rollover)",
+      "Visual audit against DESIGN_BRIEF.md: neutral balance presentation, no winning/losing ranking, simple bar charts",
+      "All existing 195 tests pass with no regressions",
+      "npm run check green"
     ],
     "previousCriteriaPreserved": [
       "V2-00: architecture greenfield, ports/adapters, 67+ tests",
-      "V2-01: identity, households, subscription, Options, trial expiry, demo-premium consistency"
+      "V2-01: identity, households, subscription, Options, trial expiry, demo-premium consistency",
+      "V2-02: CompletedEntry, PersistentTask, chrono, history, navigation, AsyncStorage-backed persistence"
     ]
   }
 }

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33338762850",
+  "decision": "continue",
+  "reason": "V2-02 audit decision: accept. The V2-02 REPAIR cycle resolved both mustFix findings. InMemory-only repositories for entries, persistentTasks and chronoTimer have been replaced with AsyncStorage-backed PersistentRepositories (PersistentRepositories.ts). The tautological chrono resume test was replaced with 12 non-tautological persistence tests proving write → instance recreation → read-back for all three repository types. 195 tests green (183 pristine + 12 new), typecheck clean, Android build OK. No mustFix finding remains open. V2-02 criterion is fully satisfied and marked complete. Next criterion V2-03 (Score, équilibres et fenêtre gratuite) is now active.",
+  "progressEvidence": [
+    "V2-00 complete: architecture greenfield, ports/adapters, 67+ tests, analytics minimized, Android build successful",
+    "V2-01 complete: identity/households/subscription/options, trial expiry (F1), Options screens (F2), AccountRepository resolution (F3), demo-premium consistency (F4), 133 tests green, typecheck clean",
+    "V2-02 complete: CompletedEntry with Fait par/Fait pour multi-select, manual/chrono duration, PersistentTask as Score filter only, history under AddTask, navigation Ajouter|Score|To-do, Free=current month / Trial-Std-Pro=full archive, no data destruction on downgrade/month change, AsyncStorage-backed persistence for entries/persistentTasks/chronoTimer, non-tautological persistence tests, 195 tests green, typecheck clean, Android build OK",
+    "V2-03 activated: Score, balances and free window — period selectors, filters, +/-D/N algorithm, zero-sum balances, peer compensation, named bar charts, weighted secondary section, contextual history, Free month rollover",
+    "Criteria complete: V2-00, V2-01, V2-02",
+    "Criteria in progress: V2-03",
+    "Criteria pending: V2-04, V2-05, V2-06, V2-07"
+  ]
+}
