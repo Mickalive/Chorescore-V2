@@ -46,6 +46,17 @@ La V1 attachait la facturation au foyer. V2 conserve ce principe : le plan effec
 
 Les prix restent configurables pour localisation, stores et évolutions commerciales ; **2,99 € / 5,99 € sont les références canoniques V1**, pas des constantes métier à répéter dans le code.
 
+## Mode démo / test
+
+La version testable utilisée par la Factory, les QA, les captures et le golden path doit disposer d'un **entitlement Premium complet débloqué** afin que l'intégralité du produit soit testable sans achat réel.
+
+Règles :
+- ce mode est explicitement `demo/test`, jamais présenté comme un abonnement réel ;
+- aucune transaction ni faux checkout n'est nécessaire pour accéder aux fonctions Premium dans ce mode ;
+- pondération, archive, To-do et autres fonctions Premium doivent être réellement utilisables dans la démo ;
+- le mode démo doit aussi pouvoir basculer vers un **état Free déterministe** pour tester les restrictions, les messages d'archive et les transitions d'entitlement ;
+- le code de production ne doit pas pouvoir activer silencieusement cet entitlement de test.
+
 ## Entitlements
 
 Le modèle expose au minimum :
@@ -73,12 +84,26 @@ Pour le plan gratuit, les vues d'historique et Score n'affichent que les Complet
 - soldes, graphes, statistiques et historique filtré antérieurs quittent la fenêtre gratuite ;
 - **aucune CompletedEntry n'est supprimée ni écrasée** ;
 - les données antérieures restent persistées ;
-- l'app peut signaler honnêtement qu'un historique antérieur existe derrière Premium ;
 - un upgrade Trial/Standard/Pro les rend immédiatement à nouveau visibles partout.
 
 `Semaine` reste disponible lorsqu'elle tombe dans le mois courant. `Mois` = mois courant. `Année`, `Depuis le début` et la consultation de mois antérieurs nécessitent `scoreArchiveAccess`.
 
 Le reset mensuel ne supprime jamais les PersistentTask : elles restent les filtres/raccourcis stables du foyer.
+
+### Message d'archive gratuit
+
+Sur les écrans comportant un historique, lorsqu'un utilisateur Free possède des données plus anciennes que le mois courant, afficher un **petit message chaleureux et non bloquant**, intégré à la page.
+
+Intention de ton : léger, rassurant, feel-good, pas culpabilisant et pas anxiogène. Exemple de référence :
+
+> « Nouveau mois 🌿 Ton historique précédent est bien au chaud. Avec ChoreScore Premium, tu peux le retrouver à tout moment. »
+
+Le texte exact peut évoluer avec le design, mais il doit toujours communiquer trois choses :
+1. la fenêtre gratuite a changé de mois ;
+2. les données ne sont pas perdues ;
+3. Premium permet de les retrouver.
+
+Pas de modal automatique pour ce message, pas de compte à rebours, pas de faux danger, pas de paywall plein écran au lancement.
 
 ## Pondération Premium
 
@@ -119,16 +144,23 @@ La règle canonique V2 est :
 
 Cette règle préserve la viralité des invitations tout en restant cohérente avec une facturation **par foyer**.
 
-## Upgrade et FOMO honnête
+## Upgrade : contextuel, jamais agressif
 
-L'écran racine Foyers montre une action **Upgrade / Premium** lorsque pertinente. Des invitations contextuelles à upgrader peuvent apparaître lorsque l'utilisateur tente :
-- d'ouvrir un historique antérieur au mois courant ;
-- `Année` / `Depuis le début` ;
-- la pondération ;
-- la planification To-do ;
-- de créer/posséder un foyer supplémentaire.
+L'utilisateur ne doit pas être accueilli par un paywall ni subir une sollicitation de paiement avant d'avoir utilisé le produit.
 
-Le produit peut montrer qu'il existe des données historiques conservées, mais ne doit jamais prétendre qu'elles sont détruites ou créer une fausse urgence. L'intérêt commercial vient du fait que l'utilisateur sait que son historique continue d'exister et peut être réactivé.
+L'upgrade apparaît surtout **au moment où une action Premium est demandée** :
+- ouvrir un historique antérieur au mois courant ;
+- choisir `Année` / `Depuis le début` ;
+- activer/modifier une pondération ;
+- créer ou planifier une To-do ;
+- créer/posséder un foyer supplémentaire ;
+- utiliser une autre fonction explicitement Premium.
+
+Le paywall contextuel explique brièvement **ce que cette action débloque**, permet de revenir immédiatement au produit et n'efface jamais la saisie en cours.
+
+L'écran racine peut contenir un accès Premium/Upgrade discret dans Options ou dans une zone secondaire, mais pas une bannière omniprésente ni une interruption automatique.
+
+Le produit peut montrer qu'il existe des données historiques conservées, mais ne doit jamais prétendre qu'elles sont détruites. L'intérêt commercial vient de la valeur accumulée, pas d'une fausse urgence.
 
 ## BillingGateway / EntitlementGateway
 
