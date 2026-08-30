@@ -50,7 +50,11 @@
         "realCompensations": [{"fromMemberId": "m-sam", "toMemberId": "m-alex", "minutes": 15}],
         "performedMinutes": {"m-alex": 60, "m-sam": 30},
         "weightedBalancesMinutes": {"m-alex": 7.5, "m-sam": -7.5},
-        "filterBalances": {
+        "realFilterBalancesMinutes": {
+          "Vaisselle": {"m-alex": 30, "m-sam": -30},
+          "Autres": {"m-alex": -15, "m-sam": 15}
+        },
+        "weightedFilterBalancesMinutes": {
           "Vaisselle": {"m-alex": 30, "m-sam": -30},
           "Autres": {"m-alex": -22.5, "m-sam": 22.5}
         }
