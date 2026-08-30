@@ -36,6 +36,9 @@ import {
   InMemoryTodoRepository,
   InMemoryChronoTimerRepository,
 } from '../../src/infrastructure/repositories/InMemoryRepositories';
+import {
+  PersistentChronoTimerRepository,
+} from '../../src/infrastructure/repositories/PersistentRepositories';
 import { CompletedEntry, Member, User, Household } from '../../src/domain/entities';
 import { isInCivilMonth, getCurrentCivilMonth } from '../../src/domain/calculations/civilMonth';
 
@@ -283,14 +286,21 @@ describe('V2-02 Acceptance Criteria', () => {
     });
 
     it('should persist chrono state for resume', async () => {
-      await app.startChrono('h-test', 'm-alex');
-      const state1 = await app.getChronoState('h-test');
-      expect(state1?.isRunning).toBe(true);
+      // Use a persistent chrono timer to prove data survives instance recreation
+      const chronoRepo1 = new PersistentChronoTimerRepository();
+      await chronoRepo1.setState('h-test', {
+        householdId: 'h-test',
+        memberId: 'm-alex',
+        startedAt: new Date().toISOString(),
+        isRunning: true,
+      });
 
-      // Simulate app restart - state should persist
-      const state2 = await app.getChronoState('h-test');
-      expect(state2?.isRunning).toBe(true);
-      expect(state2?.startedAt).toBe(state1?.startedAt);
+      // Simulate app restart: create a completely new repo instance
+      const chronoRepo2 = new PersistentChronoTimerRepository();
+      const state = await chronoRepo2.getState('h-test');
+      expect(state).not.toBeNull();
+      expect(state?.isRunning).toBe(true);
+      expect(state?.memberId).toBe('m-alex');
     });
   });
 
@@ -541,10 +551,18 @@ describe('V2-02 Acceptance Criteria', () => {
 
   describe('10. Local persistence and chrono resume work', () => {
     it('should persist chrono state across app restarts', async () => {
-      await app.startChrono('h-test', 'm-alex');
+      // Use persistent repo to prove data survives instance recreation
+      const chronoRepo1 = new PersistentChronoTimerRepository();
+      await chronoRepo1.setState('h-test', {
+        householdId: 'h-test',
+        memberId: 'm-alex',
+        startedAt: new Date().toISOString(),
+        isRunning: true,
+      });
 
-      // Simulate app restart
-      const state = await app.getChronoState('h-test');
+      // Simulate app restart: create a completely new repo instance
+      const chronoRepo2 = new PersistentChronoTimerRepository();
+      const state = await chronoRepo2.getState('h-test');
       expect(state).not.toBeNull();
       expect(state?.isRunning).toBe(true);
     });

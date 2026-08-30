@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33338762850",
+  "role": "builder",
+  "decision": "accept",
+  "summary": "V2-02 REPAIR accepted. The candidate replaces the InMemory repositories for entries, persistentTasks and chronoTimer with AsyncStorage-backed persistent repositories (PersistentRepositories.ts), wires them into AppContext production wiring, adds a global AsyncStorage jest mock (jest.setup.js) and a 12-test non-tautological persistence suite proving write -> instance recreation -> read-back for all three repositories (create/read/sort/update/delete, per-household chrono isolation, null state, cross-repository persistence). The two tautological chrono resume tests in V2-02-acceptance.test.ts (which read the same in-memory map twice) were replaced with instance-recreation tests. Dependency @react-native-async-storage/async-storage@2.2.0 exactly matches the Expo SDK 57 bundled version. Trusted verification exit code is 0 (Android debug build successful, AsyncStorage native module compiled). npm run check is green: typecheck clean, 195 tests pass (183 pre-existing + 12 new), no regressions on V2-00/V2-01 invariants. Independent auditor check (app-level: write via ChoreScoreApp instance 1 with persistent repos, recreate full app instance 2, read back entries/persistentTasks/chrono; update/delete survive recreation) passed. No new feature scope introduced. No mustFix finding remains.",
+  "checks": [
+    "trusted-verification-exit-code-0 (reports/audits/TRUSTED_33338762850.md: BUILD SUCCESSFUL, react-native-async-storage_async-storage compiled)",
+    "npm run typecheck -> tsc --noEmit clean",
+    "npm test -> 9 suites, 195 tests passed (183 pristine + 12 new persistence tests)",
+    "npm run check -> green",
+    "pristine test count verified: 183 tests in accepted-pristine tree",
+    "AsyncStorage version 2.2.0 matches expo/bundledNativeModules.json for SDK 57",
+    "PersistentEntryRepository/PersistentPersistentTaskRepository/PersistentChronoTimerRepository implement EntryRepository/PersistentTaskRepository/ChronoTimerRepository interfaces exactly",
+    "AppContext production wiring uses persistent repos for entries/persistentTasks/chronoTimer; other repos unchanged (out of scope)",
+    "AddTaskScreen hydrates entries/persistentTasks/chrono from persistent repos on mount (getVisibleEntries/getPersistentTasks/getChronoState)",
+    "Independent app-level persistence check: entry + persistentTask + chrono survive full ChoreScoreApp instance recreation; update + delete survive recreation (2/2 passed)",
+    "Acceptance test chrono tests are now non-tautological (write via repo instance 1, read via fresh instance 2)",
+    "App-level chrono start/stop/clear flows still covered by acceptance tests",
+    "Lint errors are all pre-existing (files/lines untouched by candidate); lint is not part of npm run check",
+    "No governance/constitution/roadmap/task files modified by candidate",
+    "No new feature scope: diff limited to persistence repair, test infra and tests"
+  ],
+  "findings": [
+    {
+      "path": "src/infrastructure/repositories/PersistentRepositories.ts",
+      "problem": "None. AsyncStorage-backed repositories correctly implement the three interfaces with namespaced keys, defensive JSON parsing and preserved entry sort order (descending occurredAt).",
+      "evidence": "Interfaces in src/application/use-cases/ChoreScoreApp.ts (EntryRepository, PersistentTaskRepository) and src/application/ports/index.ts (ChronoTimerRepository) are fully satisfied; typecheck clean.",
+      "mustFix": false,
+      "requiredFix": "None",
+      "verification": "npm run typecheck; 12 persistence tests green; independent app-level recreation check green"
+    },
+    {
+      "path": "__tests__/infrastructure/persistence.test.ts",
+      "problem": "None. Tests are non-tautological: they write via one repository instance and read back via a freshly created instance sharing the AsyncStorage mock store, which would fail if data lived only in instance memory.",
+      "evidence": "12 tests covering entries (create/read, sort order, update, delete), persistentTasks (create/read, multiple, delete), chrono (set/get, clear, per-household isolation, null state) and cross-repository persistence all pass.",
+      "mustFix": false,
+      "requiredFix": "None",
+      "verification": "npm test -> persistence.test.ts PASS"
+    },
+    {
+      "path": "__tests__/application/V2-02-acceptance.test.ts",
+      "problem": "None. The two tautological chrono resume tests (reading the same in-memory map twice) were replaced with instance-recreation tests using PersistentChronoTimerRepository; app-level start/stop/clear chrono flows remain covered.",
+      "evidence": "Diff shows replacement of 'should persist chrono state for resume' and 'should persist chrono state across app restarts'; 'should support chrono timer start/stop' and 'should clear chrono state after stopping' unchanged and passing.",
+      "mustFix": false,
+      "requiredFix": "None",
+      "verification": "npm test -> V2-02-acceptance.test.ts PASS"
+    },
+    {
+      "path": "src/features/app/AppContext.tsx",
+      "problem": "None. Production wiring now injects PersistentEntryRepository, PersistentPersistentTaskRepository and PersistentChronoTimerRepository; diff is minimal and does not touch V2-00/V2-01 wiring.",
+      "evidence": "git diff shows only import changes and reposRef entries; V2-01 acceptance tests still pass.",
+      "mustFix": false,
+      "requiredFix": "None",
+      "verification": "npm test -> V2-01-acceptance.test.ts PASS; typecheck clean"
+    },
+    {
+      "path": "package.json / jest.setup.js",
+      "problem": "None. @react-native-async-storage/async-storage@2.2.0 matches the Expo SDK 57 bundled version; the official AsyncStorage jest mock is applied globally and does not break any existing suite.",
+      "evidence": "expo/bundledNativeModules.json reports 2.2.0; all 9 test suites pass with the mock active.",
+      "mustFix": false,
+      "requiredFix": "None",
+      "verification": "npm test -> 9 suites, 195 tests passed"
+    }
+  ]
+}

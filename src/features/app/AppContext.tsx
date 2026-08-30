@@ -22,11 +22,13 @@ import {
   InMemoryAccountRepository,
   InMemoryHouseholdRepository,
   InMemoryMemberRepository,
-  InMemoryEntryRepository,
-  InMemoryPersistentTaskRepository,
   InMemoryTodoRepository,
-  InMemoryChronoTimerRepository,
 } from '../../infrastructure/repositories/InMemoryRepositories';
+import {
+  PersistentEntryRepository,
+  PersistentPersistentTaskRepository,
+  PersistentChronoTimerRepository,
+} from '../../infrastructure/repositories/PersistentRepositories';
 import { AuthUser } from '../../application/ports';
 
 interface AppState {
@@ -57,16 +59,18 @@ export function AppProvider({ children }: AppProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   // Create stable repository instances
+  // Entries, persistentTasks, and chronoTimer use AsyncStorage-backed persistent repos
+  // so data survives app restart. Other repos remain InMemory for now.
   const reposRef = useRef({
     users: new InMemoryUserRepository(),
     memberships: new InMemoryMembershipRepository(),
     accounts: new InMemoryAccountRepository(),
     households: new InMemoryHouseholdRepository(),
     members: new InMemoryMemberRepository(),
-    entries: new InMemoryEntryRepository(),
-    persistentTasks: new InMemoryPersistentTaskRepository(),
+    entries: new PersistentEntryRepository(),
+    persistentTasks: new PersistentPersistentTaskRepository(),
     todos: new InMemoryTodoRepository(),
-    chronoTimer: new InMemoryChronoTimerRepository(),
+    chronoTimer: new PersistentChronoTimerRepository(),
   });
 
   // Create stable service instances
