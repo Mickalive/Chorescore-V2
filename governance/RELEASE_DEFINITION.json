@@ -13,49 +13,49 @@
       "id": "V2-01",
       "priority": 20,
       "title": "Identité, foyers, abonnement et options",
-      "outcome": "Flux local/testable de session et foyers, identité fixe, membres, écran racine foyers + Options + Upgrade, facturation/plan attaché au foyer, essai complet 30 jours, un foyer gratuit créé/possédé, Standard 2,99 EUR/mois/foyer jusqu'à 7 membres, Pro 5,99 EUR/mois/foyer à partir de 8 membres. Un compte gratuit peut rejoindre plusieurs foyers par invitation ; les droits viennent du plan de chaque foyer. Frontières production email/Google/Facebook et permissions propriétaire/payeur propres et non simulées.",
+      "outcome": "Flux local/testable de session et foyers, identité fixe, membres, écran racine foyers + Options + Upgrade discret, facturation/plan attaché au foyer, essai complet 30 jours, un foyer gratuit créé/possédé, Standard 2,99 EUR/mois/foyer jusqu'à 7 membres, Pro 5,99 EUR/mois/foyer à partir de 8 membres. Un compte gratuit peut rejoindre plusieurs foyers par invitation ; les droits viennent du plan de chaque foyer. Frontières production email/Google/Facebook et permissions propriétaire/payeur propres et non simulées.",
       "requiredEvidence": ["tests", "audit"]
     },
     {
       "id": "V2-02",
       "priority": 30,
       "title": "Réalisations et historique",
-      "outcome": "Dans un foyer : Ajouter une tâche / Score / To-do. Ajouter crée CompletedEntry par durée manuelle ou chrono avec Fait par et Fait pour multi-sélection, PersistentTask facultative, pondération uniquement selon entitlement, modification/suppression et historique façon Tricount. Trial/Standard/Pro voient l'archive complète ; Free voit le mois civil courant. Aucune donnée historique n'est détruite au reset mensuel ou downgrade.",
+      "outcome": "Dans un foyer : Ajouter une tâche / Score / To-do. Ajouter crée CompletedEntry par durée manuelle ou chrono avec Fait par et Fait pour multi-sélection, PersistentTask facultative, pondération uniquement selon entitlement, modification/suppression et historique façon Tricount. Trial/Standard/Pro voient l'archive complète ; Free voit le mois civil courant avec message d'archive non bloquant lorsqu'une archive existe. Aucune donnée historique n'est détruite au reset mensuel ou downgrade.",
       "requiredEvidence": ["tests", "audit"]
     },
     {
       "id": "V2-03",
       "priority": 40,
       "title": "Score, équilibres et fenêtre gratuite",
-      "outcome": "Score propose semaine/mois/année/depuis le début, filtres Toutes/une par PersistentTask/Autres, calcul fait-par/fait-pour à somme nulle, compensations pair-à-pair, temps effectués, graphes nommés réel et pondéré, historique filtré contextuel. Gratuit : historique analytique et Score limités au mois civil courant, sans pondération ; les données antérieures persistent et redeviennent visibles après upgrade. Année/Depuis le début/archive sont Premium.",
+      "outcome": "Score propose semaine/mois/année/depuis le début, filtres Toutes/une par PersistentTask/Autres, calcul fait-par/fait-pour à somme nulle, compensations pair-à-pair, temps effectués, graphes nommés réel et pondéré, historique filtré contextuel. Gratuit : historique analytique et Score limités au mois civil courant, sans pondération ; les données antérieures persistent et redeviennent visibles après upgrade. Année/Depuis le début/archive sont Premium avec upsell contextuel, jamais paywall automatique au lancement.",
       "requiredEvidence": ["tests", "audit", "reference-scenarios"]
     },
     {
       "id": "V2-04",
       "priority": 50,
       "title": "To-do Premium et conversion en réalisation",
-      "outcome": "Trial/Standard/Pro : To-do datée ou non, assignable, bénéficiaires, notes, deadline/reminder et calendrier via port. Le check demande fait-par + durée + fait-pour, termine la To-do et crée exactement une CompletedEntry visible immédiatement dans historique et Score. Gratuit : état Premium/upgrade propre, sans création de planning ; downgrade sans destruction des TodoItem.",
+      "outcome": "Trial/Standard/Pro : To-do datée ou non, assignable, bénéficiaires, notes, deadline/reminder et calendrier via port. Le check demande fait-par + durée + fait-pour, termine la To-do et crée exactement une CompletedEntry visible immédiatement dans historique et Score. Gratuit : onglet présent, création/planification déclenche seulement alors un upsell contextuel ; downgrade sans destruction des TodoItem.",
       "requiredEvidence": ["tests", "audit"]
     },
     {
       "id": "V2-05",
       "priority": 60,
       "title": "Partage, notifications, design et accessibilité",
-      "outcome": "Share sheet système pour entrée/historique/Score/graphes/To-do avec cartes partageables quand pertinent, notifications configurables via port, UX KISS feel-good peu blanche conforme au design contract, états Free/Trial/Standard/Pro cohérents, preuves visuelles reproductibles des écrans cœur et audit accessibilité complet.",
+      "outcome": "Share sheet système pour entrée/historique/Score/graphes/To-do avec cartes partageables quand pertinent, notifications configurables via port, UX KISS feel-good peu blanche conforme au design contract, Premium non intrusif et contextuel, message mensuel Free chaleureux/non bloquant, états Free/Trial/Standard/Pro cohérents, preuves visuelles reproductibles des écrans cœur et audit accessibilité complet.",
       "requiredEvidence": ["tests", "audit", "visual-evidence"]
     },
     {
       "id": "V2-06",
       "priority": 70,
       "title": "Sync, auth, billing production-ready et sécurité",
-      "outcome": "Frontières backend/sync/auth/invitations/billing prêtes pour production, plan et facturation par foyer, règles d'autorisation membres/propriétaire/payeur/permissions, restauration d'entitlements, stockage sécurisé et documentation honnête. Les services nécessitant secrets restent désactivés tant qu'ils ne sont pas configurés.",
+      "outcome": "Frontières backend/sync/auth/invitations/billing prêtes pour production, plan et facturation par foyer, règles d'autorisation membres/propriétaire/payeur/permissions, restauration d'entitlements, stockage sécurisé et documentation honnête. Les services nécessitant secrets restent désactivés tant qu'ils ne sont pas configurés. L'entitlement demo/test Premium reste strictement isolé de la production.",
       "requiredEvidence": ["tests", "audit", "documentation"]
     },
     {
       "id": "V2-07",
       "priority": 80,
       "title": "APK Android final",
-      "outcome": "APK release reproductible depuis lab/chorescore-v2, tests complets verts, export Android, compilation native, installation et lancement sans Metro, puis exécution automatisée du golden path de REFERENCE_SCENARIOS avec checkpoints/captures, incluant CompletedEntry fait-par/fait-pour, historique, Score chiffré, To-do vers CompletedEntry, reset mensuel non destructif et au moins un comportement Free/Premium. Aucun finding release-blocking ouvert.",
+      "outcome": "APK release reproductible depuis lab/chorescore-v2, tests complets verts, export Android, compilation native, installation et lancement sans Metro, puis exécution automatisée du golden path de REFERENCE_SCENARIOS. La démo démarre Premium test entièrement débloqué sans achat réel, traverse CompletedEntry fait-par/fait-pour, historique, Score chiffré, To-do vers CompletedEntry et partage, puis bascule en Free pour vérifier reset mensuel non destructif, message d'archive et upsell contextuel avant de restaurer Premium. Aucun finding release-blocking ouvert.",
       "requiredEvidence": ["artifact", "runtime-smoke", "e2e-golden-path", "visual-evidence"]
     }
   ]
