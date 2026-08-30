@@ -10,7 +10,24 @@ else
   git -c "http.extraheader=AUTHORIZATION: basic $auth" push origin "$main_sha:refs/heads/$branch"
 fi
 work="${RUNNER_TEMP:?}/v2-prepare"; rm -rf "$work"; git worktree add --detach "$work" "$accepted_sha"
-human_paths=(MAIN_PROMPT.md AGENTS.md governance docs/ROADMAP.md docs/architecture.md docs/agent-workflow.md directives/DIRECTOR.md .opencode .github opencode.json)
+human_paths=(
+  MAIN_PROMPT.md
+  AGENTS.md
+  governance
+  docs/ROADMAP.md
+  docs/PRODUCT_BLUEPRINT.md
+  docs/DESIGN_CONTRACT.md
+  docs/MONETIZATION.md
+  docs/SUBSCRIPTION_REFERENCE_V1.md
+  docs/REFERENCE_SCENARIOS.json
+  docs/QUALITY_GATES.md
+  docs/architecture.md
+  docs/agent-workflow.md
+  directives/DIRECTOR.md
+  .opencode
+  .github
+  opencode.json
+)
 for path in "${human_paths[@]}"; do
   rm -rf "$work/$path"
   if git cat-file -e "$main_sha:$path" 2>/dev/null; then mkdir -p "$work/$(dirname "$path")"; git archive "$main_sha" "$path" | tar -x -C "$work"; fi
