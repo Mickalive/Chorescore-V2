@@ -156,6 +156,8 @@ jobs:
       - run: |
           npm ci --ignore-scripts --no-audit --no-fund
           npm run check
+          npm run | grep -q 'privacy:check' || { echo '::error::Missing required npm script privacy:check'; exit 1; }
+          npm run privacy:check
           npm run | grep -q 'e2e:android' || { echo '::error::Missing required npm script e2e:android'; exit 1; }
           npx --no-install expo export --platform android --output-dir "$RUNNER_TEMP/v2-final-export"
       - id: build
@@ -189,7 +191,7 @@ jobs:
         run: |
           set -euo pipefail
           tmp=$(mktemp)
-          jq --arg run "$GITHUB_RUN_ID" --arg sha "$APK_SHA" '(.criteria[]|select(.id=="V2-07")|.status)="complete" | (.criteria[]|select(.id=="V2-07")|.evidence)=[{"kind":"artifact","reference":("Actions run "+$run+" APK sha256 "+$sha)},{"kind":"runtime-smoke","reference":("Android API35 install/launch run "+$run)},{"kind":"e2e-golden-path","reference":("Android golden path run "+$run)},{"kind":"visual-evidence","reference":("Android E2E checkpoints run "+$run)}] | .pendingArtifact=null | .activeCriteria=[] | .lastCycle=$run | .progressSummary="V2 RC complete with installable Android APK and golden-path evidence"' docs/RELEASE_STATUS.json > "$tmp"; mv "$tmp" docs/RELEASE_STATUS.json
+          jq --arg run "$GITHUB_RUN_ID" --arg sha "$APK_SHA" '(.criteria[]|select(.id=="V2-07")|.status)="complete" | (.criteria[]|select(.id=="V2-07")|.evidence)=[{"kind":"artifact","reference":("Actions run "+$run+" APK sha256 "+$sha)},{"kind":"runtime-smoke","reference":("Android API35 install/launch run "+$run)},{"kind":"e2e-golden-path","reference":("Android golden path run "+$run)},{"kind":"visual-evidence","reference":("Android E2E checkpoints run "+$run)}] | .pendingArtifact=null | .activeCriteria=[] | .lastCycle=$run | .progressSummary="V2 RC complete with installable Android APK, privacy contract check and golden-path evidence"' docs/RELEASE_STATUS.json > "$tmp"; mv "$tmp" docs/RELEASE_STATUS.json
           git config user.name chorescore-v2-factory; git config user.email chorescore-v2-factory@users.noreply.github.com
           git add docs/RELEASE_STATUS.json; git commit -m "release: attest ChoreScore V2 Android RC"
           auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0); git -c "http.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:refs/heads/lab/chorescore-v2
