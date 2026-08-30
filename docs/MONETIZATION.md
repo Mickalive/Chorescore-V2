@@ -12,11 +12,13 @@ Ce document reprend **la dernière grille V1 effectivement codée** puis l'adapt
 
 ### Gratuit
 
-- **1 foyer** ;
+- l'utilisateur peut **créer/posséder un foyer gratuit** ;
+- il peut rejoindre sans payer les foyers auxquels il est invité ;
 - saisie CompletedEntry manuelle ou chrono ;
 - `Fait par` et `Fait pour` ;
 - PersistentTask ;
 - partage système ;
+- historique visible limité au **mois civil courant** ;
 - Score limité au **mois civil courant** ;
 - aucune pondération ;
 - aucune planification To-do.
@@ -26,10 +28,11 @@ Ce document reprend **la dernière grille V1 effectivement codée** puis l'adapt
 - **2,99 € / mois / foyer** ;
 - jusqu'à **7 membres** dans le foyer ;
 - fonctions Premium du foyer ;
-- multi-foyers autorisé ;
-- historique Score complet ;
+- historique complet ;
 - pondération ;
 - To-do ;
+- export PDF/avancé ;
+- possibilité de créer/posséder plusieurs foyers, chaque foyer payant gardant son propre abonnement ;
 - fonctions avancées prévues par l'entitlement.
 
 ### Pro
@@ -41,35 +44,39 @@ Ce document reprend **la dernière grille V1 effectivement codée** puis l'adapt
 
 La V1 attachait la facturation au foyer. V2 conserve ce principe : le plan effectif et les droits payants sont résolus au niveau du foyer, avec un propriétaire/payeur. L'utilisateur peut appartenir à plusieurs foyers sans mélanger leurs abonnements ni leurs données.
 
-Les prix devront rester configurables pour localisation, stores et évolutions commerciales ; **2,99 € / 5,99 € sont les références canoniques V1**, pas des constantes métier à répéter dans le code.
+Les prix restent configurables pour localisation, stores et évolutions commerciales ; **2,99 € / 5,99 € sont les références canoniques V1**, pas des constantes métier à répéter dans le code.
 
 ## Entitlements
 
 Le modèle expose au minimum :
 - `plan: free | trial | standard | pro` ;
 - `memberLimit` ;
-- `canUseMultipleHouseholds` ;
+- `canCreateAdditionalOwnedHousehold` ou équivalent ;
 - `scoreArchiveAccess` ;
+- `historyArchiveAccess` ;
 - `weightingEnabled` ;
 - `todoPlanningEnabled` ;
-- `advancedExportEnabled` si retenu ;
+- `advancedExportEnabled` ;
 - `finePermissionsEnabled` si retenu.
+
+Le nombre de foyers **rejoints par invitation** n'est pas limité par le fait que le compte soit gratuit. La limite gratuite concerne la création/possession d'un foyer gratuit. Un foyer invité apporte ses propres droits selon son propre plan.
 
 Ne jamais déduire tous les droits uniquement du nom du plan dans l'UI. Les écrans consomment des capacités résolues par `EntitlementGateway`.
 
-## Score gratuit et reset mensuel intelligent
+## Historique gratuit et reset mensuel intelligent
 
-Pour le plan gratuit, Score ne calcule et n'affiche que les CompletedEntry appartenant au **mois civil courant**.
+Pour le plan gratuit, les vues d'historique et Score n'affichent que les CompletedEntry appartenant au **mois civil courant**.
 
 À chaque changement de mois :
+- l'historique visible sous Ajouter une tâche repart sur le nouveau mois ;
 - le Score gratuit repart visuellement sur le nouveau mois ;
-- les soldes, graphes, statistiques et historique filtré antérieurs quittent la fenêtre gratuite ;
+- soldes, graphes, statistiques et historique filtré antérieurs quittent la fenêtre gratuite ;
 - **aucune CompletedEntry n'est supprimée ni écrasée** ;
 - les données antérieures restent persistées ;
 - l'app peut signaler honnêtement qu'un historique antérieur existe derrière Premium ;
-- un upgrade Trial/Standard/Pro les rend immédiatement à nouveau visibles.
+- un upgrade Trial/Standard/Pro les rend immédiatement à nouveau visibles partout.
 
-`Semaine` reste disponible lorsqu'elle tombe dans le mois courant. `Mois` = mois courant. `Année` et `Depuis le début`, ainsi que la consultation de mois antérieurs, nécessitent `scoreArchiveAccess`.
+`Semaine` reste disponible lorsqu'elle tombe dans le mois courant. `Mois` = mois courant. `Année`, `Depuis le début` et la consultation de mois antérieurs nécessitent `scoreArchiveAccess`.
 
 Le reset mensuel ne supprime jamais les PersistentTask : elles restent les filtres/raccourcis stables du foyer.
 
@@ -101,11 +108,16 @@ En gratuit, l'onglet To-do reste à sa place dans la navigation canonique mais a
 
 Après downgrade, aucune TodoItem existante n'est détruite. Elle reste persistée et redevient accessible après upgrade.
 
-## Multi-foyers
+## Multi-foyers et invitations
 
-Comme dans la V1, `canUseMultipleHouseholds` est Premium. Le gratuit est limité à un seul foyer utilisable/créable dans le modèle produit.
+La règle canonique V2 est :
+- un compte gratuit peut créer/posséder **un foyer gratuit** ;
+- il peut **rejoindre plusieurs foyers par invitation** sans devoir devenir Premium lui-même ;
+- les capacités disponibles dans un foyer invité dépendent du plan de ce foyer ;
+- pour créer/posséder des foyers supplémentaires, chacun doit disposer de son propre état de plan/billing (trial, Standard ou Pro selon le cas) ;
+- les droits d'un foyer ne se propagent jamais à un autre foyer.
 
-L'écran racine montre les foyers auxquels l'utilisateur a accès et une action de création cohérente avec ses droits. Les abonnements étant attachés aux foyers, l'architecture doit permettre des foyers avec propriétaires/payeur/plans différents sans propager les droits d'un foyer dans un autre.
+Cette règle préserve la viralité des invitations tout en restant cohérente avec une facturation **par foyer**.
 
 ## Upgrade et FOMO honnête
 
@@ -114,7 +126,7 @@ L'écran racine Foyers montre une action **Upgrade / Premium** lorsque pertinent
 - `Année` / `Depuis le début` ;
 - la pondération ;
 - la planification To-do ;
-- l'usage multi-foyers.
+- de créer/posséder un foyer supplémentaire.
 
 Le produit peut montrer qu'il existe des données historiques conservées, mais ne doit jamais prétendre qu'elles sont détruites ou créer une fausse urgence. L'intérêt commercial vient du fait que l'utilisateur sait que son historique continue d'exister et peut être réactivé.
 
@@ -123,7 +135,7 @@ Le produit peut montrer qu'il existe des données historiques conservées, mais 
 Le domaine et l'UI ne dépendent jamais directement d'un fournisseur de paiement.
 
 La V1 utilisait Stripe côté backend ; V2 garde le contrat fournisseur-agnostique :
-- `BillingGateway` gère achat/restauration/état de facturation ;
+- `BillingGateway` gère achat/restauration/état de facturation du foyer ;
 - `EntitlementGateway` traduit cet état en capacités produit ;
 - adapters StoreKit / Google Play Billing lorsque les règles des stores l'exigent ;
 - Stripe ou autre adapter sur les canaux où il est permis ;
