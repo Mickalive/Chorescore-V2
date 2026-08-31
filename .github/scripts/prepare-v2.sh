@@ -51,6 +51,10 @@ final=$(jq -r 'all(.criteria[];.status=="complete") and .pendingArtifact==null a
 if [[ "$pending" == true ]]; then
   jq -e 'all(.criteria[]; if .id=="V2-07" then .status=="in_progress" else .status=="complete" end) and (.activeCriteria|length)==0 and (.openFindings|length)==0' "$status" >/dev/null
   jq -e '.builder.enabled==false and .builder.criterionId==null' "$tasks" >/dev/null
+  test -s "$work/package.json"
+  jq -e '.scripts["privacy:check"] and .scripts["e2e:android"]' "$work/package.json" >/dev/null
+  test -s "$work/scripts/privacy-check.js"
+  test -s "$work/scripts/e2e-android.js"
   builder=false
 elif [[ "$final" == true ]]; then
   jq -e '.builder.enabled==false' "$tasks" >/dev/null
