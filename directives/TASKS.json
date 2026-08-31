@@ -4,16 +4,27 @@
   "builder": {
     "enabled": true,
     "criterionId": "V2-06",
-    "objective": "V2-06 phase 1 — Establish the Research Analytics Plane contracts, PrivacyTransformPipeline, PrivacyReleaseGate, and ResearchAnalyticsGateway. Prove analytics can be disabled without breaking any product function. Begin Operational Store / Research Analytics Store separation architecture.",
-    "scope": "V2-06 has two major halves per ROADMAP.md: (1) Backend operational (auth/sync/billing/permissions/invitations) and (2) Research Analytics Plane (privacy-first data pipeline). This cycle covers the foundational analytics privacy architecture:\n\nRequired:\n1. `ResearchAnalyticsGateway` port — contract for emitting minimized statistical facts from the operational domain to the analytics plane. Must be disableable with zero product-side breakage.\n2. `TaskTaxonomyService` — versioned taxonomy mapping free-text task labels to statistical categories. The product keeps free text; analytics never sees raw labels.\n3. `PrivacyTransformPipeline` — transforms operational facts into analytics-safe records: strips all account/household/member IDs, replaces free text with taxonomy references, generalizes timestamps and demographics, suppresses rare cells/cohortes.\n4. `PrivacyReleaseGate` — gates every external analytics output. Must check: no operational IDs, no free text, minimum cohort sizes, rare cell suppression, differencing/reconstruction risk, provenance, re-identification risk.\n5. Analytics disableability proof — demonstrate that disabling the ResearchAnalyticsGateway adapter produces zero broken tests, zero runtime errors, and identical product behavior.\n6. Research Analytics Store schema (TypeScript types) — must contain NO operational IDs, NO free text, NO join keys. Only statistical aggregates, taxonomy IDs, and generalized variables.\n7. Tests proving the analytics boundary: no operational IDs leak into analytics types, no free text enters the pipeline, PrivacyReleaseGate rejects non-compliant outputs.\n\nDo NOT yet implement: backend operational adapters (auth/sync/billing), network sync, push notifications, calendar integration, or differential privacy API. Those are V2-06 phase 2.\n\nPreserve all V2-00..V2-05 invariants. No regression. Navigation stays 3 tabs. Premium contextuel non agressif.",
+    "objective": "V2-06 phase 2 — Backend operational adapters (auth/sync/invitations/billing/permissions/SecureStorage/push/calendar) and remaining Research Analytics Plane features (query budget/rate limit, differential privacy capacity, consent/purpose/jurisdiction policy, buyer contracts, audit/export log).",
+    "scope": "V2-06 phase 2 covers the backend operational half and remaining analytics features per ROADMAP.md V2-06 section.\n\nRequired — Backend operational:\n1. Production-ready auth adapter or clearly bounded local-test adapter with honest contract (no fake OAuth).\n2. Sync adapter with offline support, conflict resolution, and honest network boundary.\n3. Invitations system: create/accept/decline household invitations.\n4. Billing adapter provider-agnostic per household (honest port, no fake Stripe).\n5. Member/owner/payer permission system enforced server-side.\n6. SecureStorage adapter for sensitive data.\n7. Push notification adapter behind honest port (no fake Firebase).\n8. Calendar integration adapter behind honest port (no fake Google Calendar).\n9. Purchase/entitlement restoration logic.\n10. Tenant isolation and encryption documentation.\n11. No secrets in repo, no fake active services.\n\nRequired — Research Analytics Plane (remaining):\n12. Query budget/rate limit configuration for flexible analytics API.\n13. Differential privacy capacity (epsilon/delta parameters) with configurable threshold.\n14. Consent/purpose/jurisdiction configurable policy document and code types.\n15. Buyer contracts types/interface prohibiting re-identification and unauthorized redistribution.\n16. Audit/export log persistence for external data product releases.\n\nDo NOT yet implement: actual network calls, actual payment processing, actual push delivery, actual calendar sync, actual OAuth flows. All external services remain behind honest ports with local adapters. The product must remain fully testable offline.\n\nPreserve all V2-00..V2-05 invariants and V2-06 phase 1 invariants. No regression. Navigation stays 3 tabs. Premium contextuel non agressif.",
     "acceptance": [
-      "ResearchAnalyticsGateway port defined with disableability contract",
-      "TaskTaxonomyService versioned with deterministic mapping",
-      "PrivacyTransformPipeline strips all operational IDs and free text",
-      "PrivacyReleaseGate checks cohort size, rare cells, IDs, free text, provenance",
-      "Research Analytics Store types contain zero operational IDs, zero free text, zero join keys",
-      "Analytics disableability: disabling gateway produces zero test failures and identical product behavior",
-      "Dedicated tests for analytics boundary (negative tests for ID/text leakage)",
+      "Auth adapter with honest contract (no fake OAuth)",
+      "Sync adapter with offline/conflict resolution design",
+      "Invitations system create/accept/decline functional",
+      "Billing adapter provider-agnostic per household",
+      "Member/owner/payer permissions enforced",
+      "SecureStorage adapter functional",
+      "Push notification adapter behind honest port",
+      "Calendar integration adapter behind honest port",
+      "Purchase/entitlement restoration logic",
+      "Tenant isolation and encryption documented",
+      "No secrets in repo",
+      "No fake active services",
+      "Query budget/rate limit for analytics API",
+      "Differential privacy capacity configurable",
+      "Consent/purpose/jurisdiction policy types",
+      "Buyer contracts types prohibiting re-identification",
+      "Audit/export log for data product releases",
+      "All V2-06 phase 1 invariants preserved",
       "393+ tests green (no regression)",
       "npm run check green",
       "3-tab navigation preserved",
@@ -27,7 +38,8 @@
       "V2-02: CompletedEntry, PersistentTask, chrono, history, navigation, AsyncStorage-backed persistence",
       "V2-03: Score/balances/free-window, period selectors, filters, +D/-D/N, compensations, charts, weighted, upsell repair",
       "V2-04: To-do Premium, conversion to CompletedEntry, 4 mustFix all fixed, CTAs honest, 304 tests green",
-      "V2-05: share sheet natif, ShareCard, notifications honesty, WCAG AA, visual evidence gallery 13 PNG, 393 tests green"
+      "V2-05: share sheet natif, ShareCard, notifications honesty, WCAG AA, visual evidence gallery 13 PNG, 393 tests green",
+      "V2-06-phase1: ResearchAnalyticsGateway, TaskTaxonomyService, PrivacyTransformPipeline, PrivacyReleaseGate, analytics types, disableability, 465 tests green"
     ]
   }
 }
