@@ -3,24 +3,27 @@
   "milestone": "v2-rc",
   "builder": {
     "enabled": true,
-    "criterionId": "V2-04",
-    "objective": "V2-04 repair — Fix 1 mustFix finding from audit RUN 33350663645. The previous 3 mustFix items are all fixed (Fait par defaults to validator, reminder capability present, Premium buttons wired). The new mustFix: premium screen purchase CTAs ('Commencer l'essai', 'Choisir Standard', 'Choisir Pro') are fake — they call router.back() with no real action and are not marked unavailable.",
-    "scope": "Repairs only within V2-04 scope. Fix Premium screen CTAs (app/premium/index.tsx): disable with explicit 'Bientôt disponible' label or wire to real entitlement action. Preserve canonical pricing grid, screen layout, and informational content. Optional: reorder completeTodo atomicity (NB-1), add deleteTodo use-case (NB-2). No new features, no scope expansion, no governance/constitution/roadmap modification.",
+    "criterionId": "V2-05",
+    "objective": "V2-05 — Partage, notifications, design et accessibilité. Le produit existant (V2-00..V2-04) fonctionne avec 304 tests verts, architecture greenfield, entitlements prouvés sans destruction, Premium contextuel non agressif. Ce critère doit rendre le produit réellement agréable et partageable dès le premier APK.",
+    "scope": "Livrables V2-05 : share sheet natif pour les contextes utiles (entrée, historique, Score, équilibres, To-do) ; share cards ChoreScore générées côté client ; notifications via NotificationGateway port ; aucun SDK social spécifique ; design conforme à DESIGN_CONTRACT.md et DESIGN_BRIEF.md — pas de fond blanc dominant, fonds teintés doux, surfaces colorées légères, typographie nette Premium contextuel ; message d'archive Free chaleureux et non bloquant dans l'historique quand archive Premium existe ; états Free/Trial/Standard/Pro cohérents dans toutes les vues ; accessibilité : grandes tailles de texte, contrastes WCAG AA, états vides informatifs, erreurs lisibles ; galerie de captures reproductibles définie dans la fiche design. La navigation reste Ajouter|Score|To-do. Pas de quatrième onglet.",
     "acceptance": [
-      "Premium screen purchase CTAs are either disabled with explicit 'indisponible'/'Bientôt disponible' label, or wired to real entitlement action",
-      "No active-looking purchase button is a no-op",
-      "Canonical pricing grid (Trial 30d, Free, Standard 2.99/7, Pro 5.99/8) preserved",
-      "Root Premium button and Score 'Decouvrir Premium' CTA still navigate to /premium",
-      "In demo-free, tap a Premium CTA and observe explicit unavailable state or real action (no dead tap)",
-      "All existing 298 tests pass with no regressions",
-      "npm run check green"
+      "Share sheet natif fonctionne depuis au moins 2 contextes (historique + Score ou équilibres)",
+      "Share cards ChoreScore générées et partageables",
+      "Notifications via NotificationGateway honest adapter — pas de faux push",
+      "Design conforme à DESIGN_CONTRACT.md et DESIGN_BRIEF.md : fonds teintés, pas de blanc dominant, typographie nette, surfaces colorées",
+      "Message d'archive Free présent et non bloquant dans l'historique",
+      "États Free/Trial/Standard/Pro cohérents dans Ajouter, Score et To-do",
+      "Accessibilité : contrastes AA, textes lisibles, états vides, erreurs",
+      "Les 304 tests existants passent sans régression",
+      "npm run check green",
+      "Pas de quatrième onglet ajouté à la navigation"
     ],
     "previousCriteriaPreserved": [
       "V2-00: architecture greenfield, ports/adapters, 67+ tests",
       "V2-01: identity, households, subscription, Options, trial expiry, demo-premium consistency",
       "V2-02: CompletedEntry, PersistentTask, chrono, history, navigation, AsyncStorage-backed persistence",
       "V2-03: Score/balances/free-window, period selectors, filters, +D/-D/N, compensations, charts, weighted, upsell repair",
-      "V2-04 baseline: core conversion flow working, 298 tests green, MF-1/MF-2/MF-3 all fixed"
+      "V2-04: To-do Premium, conversion to CompletedEntry, 4 mustFix all fixed, CTAs honest, 304 tests green"
     ]
   }
 }

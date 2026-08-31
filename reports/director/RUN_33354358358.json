@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33354358358",
+  "decision": "continue",
+  "reason": "V2-04 audit accepted. All 4 mustFix findings resolved across 2 repair cycles. The final mustFix — premium screen purchase CTAs — is fixed: all three buttons ('Commencer l'essai', 'Choisir Standard', 'Choisir Pro') are disabled with explicit 'Bientôt disponible' labels. Canonical pricing grid (Trial 30d, Free, Standard 2.99€/mois/7, Pro 5.99€/mois/8) preserved. No active purchase button is a no-op. Conversion flow complete: TodoItem → completion mini-form → CompletedEntry → history + Score update. Downgrade preserves TodoItems. 304 tests green, typecheck clean, Android build OK. V2-04 marked complete. V2-05 (Partage, notifications, design et accessibilité) assigned as next criterion.",
+  "progressEvidence": [
+    "304-tests-green",
+    "typecheck-clean",
+    "android-build-ok",
+    "v2-00-v2-03-evidence-preserved",
+    "v2-04-all-4-mustFix-resolved",
+    "mustFix-1-fait-par-defaults-to-validator",
+    "mustFix-2-reminder-at-persisted",
+    "mustFix-3-premium-buttons-wired-to-route",
+    "mustFix-4-cta-disabled-with-unavailable-label",
+    "canonical-pricing-grid-preserved",
+    "conversion-flow-complete",
+    "downgrade-preserves-todos",
+    "no-active-purchase-button-is-no-op",
+    "premium-contextuel-non-agressif"
+  ],
+  "nextTask": {
+    "criterionId": "V2-05",
+    "mode": "greenfield",
+    "description": "Partage, notifications, design et accessibilité. Share sheet natif depuis les contextes utiles. Share cards ChoreScore. Notifications via port honnête. Design conforme DESIGN_CONTRACT.md/DESIGN_BRIEF.md (fonds teintés, pas de blanc dominant, typographie nette). Message d'archive Free chaleureux. Accessibilité AA. Galerie de captures reproductibles."
+  }
+}
