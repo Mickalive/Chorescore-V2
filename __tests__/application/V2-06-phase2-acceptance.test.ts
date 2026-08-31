@@ -1532,7 +1532,7 @@ describe('V2-06 Phase 2 — Backend Operational Adapters & Analytics Features', 
     });
 
     it('should log conflict resolutions', () => {
-      syncAdapter.logConflict({
+      syncAdapter.logConflict('h-test', {
         entityId: 'e-1',
         entityType: 'entry',
         resolution: 'remote-wins',
@@ -1543,6 +1543,40 @@ describe('V2-06 Phase 2 — Backend Operational Adapters & Analytics Features', 
       const log = syncAdapter.getConflictLog('h-test');
       expect(log).toHaveLength(1);
       expect(log[0].resolution).toBe('remote-wins');
+    });
+
+    it('should isolate conflict logs between two households', () => {
+      // Log conflict for household A
+      syncAdapter.logConflict('h-test', {
+        entityId: 'e-1',
+        entityType: 'entry',
+        resolution: 'remote-wins',
+        localTimestamp: '2026-08-30T10:00:00Z',
+        remoteTimestamp: '2026-08-30T11:00:00Z',
+      });
+
+      // Log conflict for household B
+      syncAdapter.logConflict('h-other', {
+        entityId: 'e-2',
+        entityType: 'todo',
+        resolution: 'local-wins',
+        localTimestamp: '2026-08-30T12:00:00Z',
+        remoteTimestamp: '2026-08-30T11:30:00Z',
+      });
+
+      // Household A should only see its own conflict
+      const logA = syncAdapter.getConflictLog('h-test');
+      expect(logA).toHaveLength(1);
+      expect(logA[0].entityId).toBe('e-1');
+
+      // Household B should only see its own conflict
+      const logB = syncAdapter.getConflictLog('h-other');
+      expect(logB).toHaveLength(1);
+      expect(logB[0].entityId).toBe('e-2');
+
+      // Unknown household returns empty
+      const logC = syncAdapter.getConflictLog('h-unknown');
+      expect(logC).toHaveLength(0);
     });
 
     it('should clear queue after push', async () => {
@@ -1726,8 +1760,12 @@ describe('V2-06 Phase 2 — Backend Operational Adapters & Analytics Features', 
     });
 
     it('should resolve default MEMBER for non-member', async () => {
-      const level = await app.getMemberPermissionLevel('u-stranger', 'h-test');
-      expect(level).toBe('MEMBER');
+      try {
+        await app.getMemberPermissionLevel('u-stranger', 'h-test');
+        expect(true).toBe(false); // Should not reach here
+      } catch (error: any) {
+        expect(error.message).toContain('not a member');
+      }
     });
   });
 
@@ -1763,10 +1801,38 @@ describe('V2-06 Phase 2 — Backend Operational Adapters & Analytics Features', 
       expect(result.success).toBe(true);
     });
 
-    it('should get pending invitations', async () => {
+    it('should get pending invitations via userId (resolves to email)', async () => {
+      // Seed a user with known userId and email
+      users.seed([{
+        id: 'u-pending',
+        email: 'pending@example.com',
+        displayName: 'Pending User',
+        createdAt: '2026-08-30T00:00:00Z',
+      }]);
+
+      // Create invitation addressed to that email
       await app.createInvitation('u-1', 'h-test', 'pending@example.com');
-      const pending = await app.getPendingInvitations('pending@example.com');
+
+      // Pass userId (not email) — the app resolves userId→email internally
+      const pending = await app.getPendingInvitations('u-pending');
       expect(pending.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should not match invitations by substring', async () => {
+      // Seed user with partial-match email
+      users.seed([{
+        id: 'u-partial',
+        email: 'other@example.com',
+        displayName: 'Partial User',
+        createdAt: '2026-08-30T00:00:00Z',
+      }]);
+
+      // Create invitation for exact email
+      await app.createInvitation('u-1', 'h-test', 'pending@example.com');
+
+      // The partial user should NOT see the invitation (no substring match)
+      const pending = await app.getPendingInvitations('u-partial');
+      expect(pending.length).toBe(0);
     });
 
     it('should get household invitations', async () => {

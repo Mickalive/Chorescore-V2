@@ -80,12 +80,9 @@ export class LocalInvitationAdapter implements InvitationGateway {
     return { success: true };
   }
 
-  async getPendingInvitations(userIdOrEmail: string): Promise<Invitation[]> {
+  async getPendingInvitations(email: string): Promise<Invitation[]> {
     return Array.from(this.invitations.values()).filter(
-      inv => inv.status === 'pending' && (
-        inv.invitedEmail === userIdOrEmail ||
-        inv.invitedEmail.includes(userIdOrEmail)
-      )
+      inv => inv.status === 'pending' && inv.invitedEmail === email
     );
   }
 

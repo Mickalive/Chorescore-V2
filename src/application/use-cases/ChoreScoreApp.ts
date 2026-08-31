@@ -666,7 +666,9 @@ export class ChoreScoreApp {
     householdId: string
   ): Promise<MemberPermissionLevel> {
     const membership = await this.repositories.memberships.getByUserAndHousehold(userId, householdId);
-    if (!membership) return 'MEMBER'; // Default: no membership = member-level
+    if (!membership) {
+      throw new Error('User is not a member of this household');
+    }
 
     // Check if user is the payer (billing owner) of the household
     const household = await this.repositories.households.getById(householdId);
@@ -763,10 +765,14 @@ export class ChoreScoreApp {
 
   /**
    * Get pending invitations for a user.
+   * Resolves userId to email before passing to the adapter,
+   * so matching is always by exact email, never by substring.
    */
   async getPendingInvitations(userId: string): Promise<Invitation[]> {
     if (!this.services.invitations) return [];
-    return this.services.invitations.getPendingInvitations(userId);
+    const user = await this.repositories.users.getById(userId);
+    if (!user) return [];
+    return this.services.invitations.getPendingInvitations(user.email);
   }
 
   /**

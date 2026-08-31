@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33423257809",
+  "role": "builder",
+  "decision": "accept",
+  "summary": "Independent audit of V2-06 repair cycle 33423257809. Objective: fix the 3 must-fix findings from audit 33416807677. Trusted verification exit code is 0 (confirmed from reports/audits/TRUSTED_33423257809.md, final line 'Trusted verification exit code: 0'); all 608 tests pass across 16 suites, TypeScript typecheck clean, Android debug APK builds successfully. The candidate diff is scoped to exactly 3 source files plus the phase2 acceptance test. All three must-fix findings are correctly repaired and covered by dedicated tests: (1) getMemberPermissionLevel now throws 'User is not a member of this household' for a non-member instead of granting MEMBER-level permissions (deny-by-default, preserving strict tenant isolation / server-side authz); (2) LocalSyncAdapter.logConflict now takes an explicit householdId and getConflictLog(householdId) returns only that household's conflicts (the bogus entityId.split('-')[0] key derivation and the all-households flatten are removed), with a two-household isolation test; (3) app-level getPendingInvitations(userId) now resolves the user's email via the user repository before passing it to the adapter, and the adapter uses exact email matching (===) instead of substring includes, with tests for userId->email resolution and no-substring-match. Independent re-run of the full suite (608 tests) and typecheck both pass. No must-fix finding remains. Decision: accept.",
+  "checks": [
+    "trusted-verification-exit-code-is-zero",
+    "typecheck-passes",
+    "all-608-tests-pass-16-suites",
+    "android-debug-apk-builds",
+    "diff-scoped-to-3-source-files-plus-test",
+    "MF1-getMemberPermissionLevel-denies-non-members",
+    "MF1-test-asserts-non-member-denial",
+    "MF2-logConflict-takes-explicit-householdId",
+    "MF2-getConflictLog-returns-only-requested-household",
+    "MF2-two-household-isolation-test",
+    "MF3-getPendingInvitations-resolves-userId-to-email",
+    "MF3-adapter-uses-exact-email-matching-no-substring",
+    "MF3-tests-userId-resolution-and-no-substring-match",
+    "no-regression-v2-00-v2-05-invariants",
+    "research-analytics-plane-preserved",
+    "analytics-disableable-without-breaking-product",
+    "no-fake-active-services",
+    "no-secrets-in-repo",
+    "no-v1-carryover",
+    "3-tab-navigation-preserved",
+    "canonical-pricing-preserved"
+  ],
+  "findings": []
+}

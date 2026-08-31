@@ -133,16 +133,15 @@ export class LocalSyncAdapter implements SyncGateway {
     return [...(this.changeQueues.get(householdId) ?? [])];
   }
 
-  /** Log a conflict resolution (for audit trail) */
-  logConflict(resolution: ConflictResolution): void {
-    const householdId = resolution.entityId.split('-')[0]; // simplified
+  /** Log a conflict resolution (for audit trail), scoped to a household */
+  logConflict(householdId: string, resolution: ConflictResolution): void {
     const log = this.conflictLog.get(householdId) ?? [];
     log.push(resolution);
     this.conflictLog.set(householdId, log);
   }
 
-  /** Get conflict log for a household */
-  getConflictLog(_householdId: string): ConflictResolution[] {
-    return Array.from(this.conflictLog.values()).flat();
+  /** Get conflict log for a specific household only */
+  getConflictLog(householdId: string): ConflictResolution[] {
+    return [...(this.conflictLog.get(householdId) ?? [])];
   }
 }
