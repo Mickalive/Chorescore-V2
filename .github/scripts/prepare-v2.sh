@@ -55,6 +55,8 @@ if [[ "$pending" == true ]]; then
   jq -e '.scripts["privacy:check"] and .scripts["e2e:android"]' "$work/package.json" >/dev/null
   test -s "$work/scripts/privacy-check.js"
   test -s "$work/scripts/e2e-android.js"
+  node --check "$work/scripts/privacy-check.js"
+  node --check "$work/scripts/e2e-android.js"
   builder=false
 elif [[ "$final" == true ]]; then
   jq -e '.builder.enabled==false' "$tasks" >/dev/null
