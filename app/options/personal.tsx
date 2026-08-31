@@ -32,6 +32,8 @@ function OptionRow({ label, value, onPress, danger, unavailable }: OptionRowProp
       onPress={onPress}
       activeOpacity={onPress ? 0.6 : 1}
       style={[styles.optionRow, unavailable && styles.optionRowUnavailable]}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? label : undefined}
     >
       <Text
         variant="body"
@@ -60,40 +62,33 @@ function SectionHeader({ title }: { title: string }) {
 
 export default function PersonalOptionsScreen() {
   const router = useRouter();
-  const { currentUser, signOut, app } = useApp();
+  const {
+    currentUser,
+    signOut,
+    app,
+    demoEntitlementMode,
+    setDemoEntitlementMode,
+  } = useApp();
 
-  // Check real notification availability
   const notificationsAvailable = app.services.notifications.isAvailable();
 
   return (
     <ScreenContainer>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Retour">
           <Text variant="bodyBold" color={colors.primary}>Retour</Text>
         </TouchableOpacity>
         <Text variant="screenTitle">Options</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Profile */}
         <SectionHeader title="Profil" />
         <Card variant="default" style={styles.sectionCard}>
-          <OptionRow
-            label="Nom"
-            value={currentUser?.displayName || 'Utilisateur'}
-          />
-          <OptionRow
-            label="Email"
-            value={currentUser?.email || 'non connecté'}
-          />
-          <OptionRow
-            label="Changer le mot de passe"
-            unavailable
-            value="Indisponible"
-          />
+          <OptionRow label="Nom" value={currentUser?.displayName || 'Utilisateur'} />
+          <OptionRow label="Email" value={currentUser?.email || 'non connecté'} />
+          <OptionRow label="Changer le mot de passe" unavailable value="Indisponible" />
         </Card>
 
-        {/* Notifications */}
         <SectionHeader title="Notifications" />
         <Card variant="default" style={styles.sectionCard}>
           <OptionRow
@@ -106,40 +101,44 @@ export default function PersonalOptionsScreen() {
             value={notificationsAvailable ? 'Activées' : 'Non configuré'}
             unavailable={!notificationsAvailable}
           />
-          <OptionRow
-            label="Résumé hebdomadaire"
-            value="Désactivé"
-          />
+          <OptionRow label="Résumé hebdomadaire" value="Désactivé" />
         </Card>
 
-        {/* Confidentialité */}
         <SectionHeader title="Confidentialité" />
         <Card variant="default" style={styles.sectionCard}>
           <OptionRow label="Données de recherche" value="Désactivées" />
           <OptionRow label="Visible par les membres du foyer" value="Oui" />
         </Card>
 
-        {/* Légal */}
+        {/* Local/demo build only. This is deliberately labelled as test state, never as a purchase. */}
+        {demoEntitlementMode && (
+          <>
+            <SectionHeader title="Mode de démonstration" />
+            <Card variant="default" style={styles.sectionCard}>
+              <OptionRow
+                label="Premium de démo"
+                value={demoEntitlementMode === 'demo-premium' ? 'Actif' : 'Tester'}
+                onPress={() => setDemoEntitlementMode('demo-premium')}
+              />
+              <OptionRow
+                label="Gratuit de démo"
+                value={demoEntitlementMode === 'demo-free' ? 'Actif' : 'Tester'}
+                onPress={() => setDemoEntitlementMode('demo-free')}
+              />
+              <Text variant="caption" style={styles.demoNote}>
+                Mode de test local uniquement : aucun achat ni abonnement réel n'est créé.
+              </Text>
+            </Card>
+          </>
+        )}
+
         <SectionHeader title="Légal" />
         <Card variant="default" style={styles.sectionCard}>
-          <OptionRow
-            label="Conditions d'utilisation"
-            unavailable
-            value="Indisponible"
-          />
-          <OptionRow
-            label="Politique de confidentialité"
-            unavailable
-            value="Indisponible"
-          />
-          <OptionRow
-            label="Mentions légales"
-            unavailable
-            value="Indisponible"
-          />
+          <OptionRow label="Conditions d'utilisation" unavailable value="Indisponible" />
+          <OptionRow label="Politique de confidentialité" unavailable value="Indisponible" />
+          <OptionRow label="Mentions légales" unavailable value="Indisponible" />
         </Card>
 
-        {/* Préférences */}
         <SectionHeader title="Préférences" />
         <Card variant="default" style={styles.sectionCard}>
           <OptionRow label="Langue" value="Français" />
@@ -151,7 +150,6 @@ export default function PersonalOptionsScreen() {
           />
         </Card>
 
-        {/* Déconnexion */}
         <View style={styles.signOutContainer}>
           <OptionRow
             label="Se déconnecter"
@@ -185,7 +183,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: spacing.md,
-    minHeight: 44, // WCAG touch target
+    minHeight: 44,
     borderBottomWidth: 1,
     borderBottomColor: colors.divider,
   },
@@ -200,6 +198,10 @@ const styles = StyleSheet.create({
   },
   unavailableValue: {
     color: colors.textMuted,
+  },
+  demoNote: {
+    color: colors.textMuted,
+    paddingVertical: spacing.md,
   },
   signOutContainer: {
     marginTop: spacing.xxl,
