@@ -634,6 +634,7 @@ export class ChoreScoreApp {
     title?: string;
     message?: string;
     url?: string;
+    files?: string[];
   }): Promise<boolean> {
     if (!this.services.share.isAvailable()) {
       return false;

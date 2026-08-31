@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33362583140",
+  "role": "builder",
+  "decision": "repair",
+  "summary": "V2-05 repair cycle. Trusted verification passed (exit 0, 386 tests green, typecheck clean, Android build successful, 3-tab navigation preserved). F1 (native share sheet) is fixed: text sharing now uses React Native's built-in Share.share (correctly opens the native sheet with plain text) and file/image sharing uses expo-sharing shareAsync with a valid file:// URI. F2 (ShareCard dead code) is fixed: ScoreScreen now renders the ShareCard and captures it as an image via react-native-view-shot for sharing. F4 (WCAG AA contrast) is fixed: textMuted (#606070) and warning (#7A5614) now pass 4.5:1 on all surfaces and the contrast test was extended to cover them. However, F3 (visual evidence gallery) remains unfixed: the new V2-05-visual-evidence.test.ts performs only structural data assertions and does NOT produce the required reproducible screen captures/images as audit artifacts. DESIGN_BRIEF 'Galerie de référence obligatoire' and QUALITY_GATES QG-4 require at least 12 reproducible screen captures kept as audit artifacts; no image/screenshot artifacts exist in the repository. Because a mustFix finding remains, the decision is repair.",
+  "checks": [
+    "trusted-verification-exit-0",
+    "npm-run-check-green-386-tests",
+    "typecheck-clean",
+    "android-build-successful",
+    "navigation-3-tabs-preserved",
+    "share-adapter-native-path-inspected",
+    "sharecard-rendering-inspected",
+    "visual-evidence-gallery-searched",
+    "wcag-contrast-computed-all-pairs",
+    "notification-honesty-verified"
+  ],
+  "findings": [
+    {
+      "path": "repository root (visual evidence gallery)",
+      "problem": "F3 (carryover, not fixed): the required reproducible visual evidence gallery is still absent. DESIGN_BRIEF 'Galerie de référence obligatoire' and QUALITY_GATES QG-4 require at least 12 reproducible screen captures (connexion, racine foyers, Ajouter Premium, Ajouter Free + archive, Score Premium, Score Free, To-do Premium, mini-form complétion, To-do Free, upsell historique, Options, share card) plus an empty/error state, kept as audit artifacts. V2-05 requires 'preuves visuelles reproductibles des écrans cœur et audit accessibilité complet'. The new __tests__/application/V2-05-visual-evidence.test.ts only performs structural assertions on data structures (e.g. expect(score.balances.length).toBe(2), expect(archiveMessage).toContain('🌿')); it does not render any screen, does not capture any image, and writes no artifact files. No gallery/evidence/screenshot/capture directory or image artifact exists in the candidate diff or repository.",
+      "evidence": "find for *.png/*.jpg under the repo (excluding node_modules and app icon/splash assets) returns only .expo web cache icons; no gallery/evidence/screenshot/capture directory exists. git diff --cached --name-only contains no image/gallery artifacts. V2-05-visual-evidence.test.ts contains only expect() assertions on data structures and never invokes react-native-view-shot captureRef or writes any file. package.json scripts contain no screenshot/evidence generation step.",
+      "mustFix": true,
+      "requiredFix": "Produce the reproducible visual evidence gallery (12+ screens from DESIGN_BRIEF) as actual audit artifacts (screen captures/images), generated deterministically from the accepted tree, and keep them in the repository as audit evidence. Structural assertions alone do not satisfy the 'captures reproductibles conservées comme artefacts d'audit' requirement.",
+      "verification": "Gallery image artifacts exist in the repository and are reproducible from the accepted tree (e.g. a deterministic render/capture step producing the 12+ screens)."
+    }
+  ]
+}

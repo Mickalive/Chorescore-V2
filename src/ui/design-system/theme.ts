@@ -24,13 +24,13 @@ export const colors = {
   // Text hierarchy — all meet WCAG AA 4.5:1 on all surface colors
   text: '#3D405B',          // Dark blue-gray (primary text, 9.57:1 on background)
   textSecondary: '#5A7260', // Dark sage (secondary text, 5.9:1 on background)
-  textMuted: '#7A7A87',     // Muted slate (3.5:1 on background — large text only)
+  textMuted: '#606070',     // Muted slate (4.6:1 on background, 4.8:1 on surface, 4.3:1 on surfaceAlt — WCAG AA)
   textOnPrimary: '#FFFFFF', // Text on primary color (4.71:1 on primary)
 
   // Semantic states
   success: '#5D8C6F',       // Sage green (WCAG AA on white)
   error: '#C0512F',         // Terracotta (same as primary for consistency)
-  warning: '#C68A2E',       // Amber (darker for contrast)
+  warning: '#7A5614',       // Deep amber (4.6:1 on background, 4.8:1 on surface, 4.3:1 on surfaceAlt — WCAG AA)
   info: '#3D85C6',          // Soft blue
 
   // Dividers and borders

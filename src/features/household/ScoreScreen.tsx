@@ -13,7 +13,7 @@
  * 6. Contextual filtered history
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
 import { Text } from '../../ui/components/Text';
 import { Card } from '../../ui/components/Card';
@@ -21,11 +21,13 @@ import { Button } from '../../ui/components/Button';
 import { BarChart } from '../../ui/components/BarChart';
 import { ArchiveMessage } from '../../ui/components/ArchiveMessage';
 import { EntryRow } from '../../ui/components/EntryRow';
-import { generateShareText } from '../../ui/components/ShareCard';
+import { ShareCard, ShareCardData, generateShareText } from '../../ui/components/ShareCard';
 import { colors, spacing, borderRadius } from '../../ui/design-system/theme';
 import { useApp } from '../app/AppContext';
 import { Member, PersistentTask, ScoreResult, CompletedEntry, FilterType } from '../../domain/entities';
 import { useRouter } from 'expo-router';
+import { captureRef } from 'react-native-view-shot';
+import { cacheDirectory, copyAsync } from 'expo-file-system/legacy';
 
 interface ScoreScreenProps {
   householdId: string;
@@ -43,6 +45,7 @@ const PERIOD_LABELS: Record<Period, string> = {
 export function ScoreScreen({ householdId }: ScoreScreenProps) {
   const { app } = useApp();
   const router = useRouter();
+  const shareCardRef = useRef<View>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [persistentTasks, setPersistentTasks] = useState<PersistentTask[]>([]);
   const [score, setScore] = useState<ScoreResult | null>(null);
@@ -53,6 +56,7 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
   const [hasOlderEntries, setHasOlderEntries] = useState(false);
   const [isPremium, setIsPremium] = useState(true);
   const [needsPremium, setNeedsPremium] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -125,7 +129,8 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
   const handleShareScore = async () => {
     if (!score || score.balances.length === 0) return;
 
-    const shareText = generateShareText({
+    // Build share card data for visual card
+    const shareCardData: ShareCardData = {
       type: 'balance',
       period: PERIOD_LABELS[period],
       balances: score.balances.map(b => ({
@@ -145,8 +150,46 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
             ])
           )
         : undefined,
-    });
+    };
 
+    // Try to capture the ShareCard as an image for visual sharing
+    if (shareCardRef.current) {
+      try {
+        setIsCapturing(true);
+        const uri = await captureRef(shareCardRef, {
+          format: 'png',
+          quality: 1.0,
+        });
+
+        // Copy to cache directory for sharing
+        const fileName = `chorescore-share-${Date.now()}.png`;
+        const cacheUri = `${cacheDirectory}${fileName}`;
+        await copyAsync({ from: uri, to: cacheUri });
+
+        // Share the image file via the file sharing path
+        const shared = await app.shareContent({
+          title: `ChoreScore — ${PERIOD_LABELS[period]}`,
+          files: [cacheUri],
+        });
+
+        if (!shared) {
+          // Fallback to text sharing
+          const shareText = generateShareText(shareCardData);
+          await app.shareContent({
+            title: `ChoreScore — ${PERIOD_LABELS[period]}`,
+            message: shareText,
+          });
+        }
+        return;
+      } catch {
+        // Image capture failed, fall through to text sharing
+      } finally {
+        setIsCapturing(false);
+      }
+    }
+
+    // Fallback: text-based sharing
+    const shareText = generateShareText(shareCardData);
     const shared = await app.shareContent({
       title: `ChoreScore — ${PERIOD_LABELS[period]}`,
       message: shareText,
@@ -435,6 +478,36 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
           </Text>
         </View>
       )}
+
+      {/* Hidden ShareCard for image capture — rendered off-screen for sharing */}
+      {score && score.balances.length > 0 && (
+        <View style={styles.hiddenShareCard}>
+          <ShareCard
+            ref={shareCardRef}
+            data={{
+              type: 'balance',
+              period: PERIOD_LABELS[period],
+              balances: score.balances.map(b => ({
+                name: getMemberName(b.memberId),
+                minutes: b.minutes,
+              })),
+              compensations: score.compensations.map(c => ({
+                from: getMemberName(c.fromMemberId),
+                to: getMemberName(c.toMemberId),
+                minutes: c.minutes,
+              })),
+              performedMinutes: score.performedMinutes
+                ? Object.fromEntries(
+                    Object.entries(score.performedMinutes).map(([id, mins]) => [
+                      getMemberName(id),
+                      mins,
+                    ])
+                  )
+                : undefined,
+            }}
+          />
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -540,5 +613,11 @@ const styles = StyleSheet.create({
   emptyText: {
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  hiddenShareCard: {
+    position: 'absolute',
+    left: -1000,
+    top: -1000,
+    opacity: 0,
   },
 });

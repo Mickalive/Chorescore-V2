@@ -9,7 +9,7 @@
  * The card is a clean, warm summary of selected data.
  */
 
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { Text } from './Text';
 import { colors, spacing, borderRadius, typography } from '../design-system/theme';
@@ -60,8 +60,9 @@ function formatDuration(minutes: number): string {
 /**
  * Renders a share card that can be captured as an image for sharing.
  * The card is self-contained with ChoreScore branding.
+ * Supports forwardRef for image capture via react-native-view-shot.
  */
-export function ShareCard({ data, style }: ShareCardProps) {
+export const ShareCard = forwardRef<View, ShareCardProps>(function ShareCard({ data, style }, ref) {
   return (
     <View style={[styles.card, style]}>
       {/* Header */}
@@ -183,7 +184,7 @@ export function ShareCard({ data, style }: ShareCardProps) {
       </View>
     </View>
   );
-}
+});
 
 /**
  * Generate text content for sharing when image capture is not available.

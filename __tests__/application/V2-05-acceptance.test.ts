@@ -710,6 +710,34 @@ describe('V2-05 Acceptance Criteria', () => {
       expect(secOnAlt).toBeGreaterThanOrEqual(4.5);
     });
 
+    it('should have WCAG AA contrast ratios for textMuted on all surfaces', () => {
+      // textMuted on background — must be AA (4.5:1)
+      const mutedOnBg = getContrastRatio(colors.textMuted, colors.background);
+      expect(mutedOnBg).toBeGreaterThanOrEqual(4.5);
+
+      // textMuted on surface — must be AA
+      const mutedOnSurface = getContrastRatio(colors.textMuted, colors.surface);
+      expect(mutedOnSurface).toBeGreaterThanOrEqual(4.5);
+
+      // textMuted on surfaceAlt — must be AA
+      const mutedOnAlt = getContrastRatio(colors.textMuted, colors.surfaceAlt);
+      expect(mutedOnAlt).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it('should have WCAG AA contrast ratios for warning on all surfaces', () => {
+      // warning on background — must be AA (4.5:1) when used for text
+      const warnOnBg = getContrastRatio(colors.warning, colors.background);
+      expect(warnOnBg).toBeGreaterThanOrEqual(4.5);
+
+      // warning on surface — must be AA
+      const warnOnSurface = getContrastRatio(colors.warning, colors.surface);
+      expect(warnOnSurface).toBeGreaterThanOrEqual(4.5);
+
+      // warning on surfaceAlt — must be AA
+      const warnOnAlt = getContrastRatio(colors.warning, colors.surfaceAlt);
+      expect(warnOnAlt).toBeGreaterThanOrEqual(4.5);
+    });
+
     it('should have WCAG AA contrast ratios for text on primary button', () => {
       // White text on primary — must be AA (4.5:1)
       const textOnPrimary = getContrastRatio(colors.textOnPrimary, colors.primary);
@@ -724,6 +752,23 @@ describe('V2-05 Acceptance Criteria', () => {
       // Error on surface — large text
       const errorOnSurface = getContrastRatio(colors.error, colors.surface);
       expect(errorOnSurface).toBeGreaterThanOrEqual(3.0);
+    });
+
+    it('should have all text/surface pairs passing WCAG AA 4.5:1', () => {
+      // Comprehensive check: every text color on every surface color
+      const surfaces = [colors.background, colors.surface, colors.surfaceAlt];
+      const textColors = [
+        { name: 'text', color: colors.text },
+        { name: 'textSecondary', color: colors.textSecondary },
+        { name: 'textMuted', color: colors.textMuted },
+      ];
+
+      for (const surface of surfaces) {
+        for (const tc of textColors) {
+          const ratio = getContrastRatio(tc.color, surface);
+          expect(ratio).toBeGreaterThanOrEqual(4.5);
+        }
+      }
     });
 
     it('should have minimum touch target sizes', () => {

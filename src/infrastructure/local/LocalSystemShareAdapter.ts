@@ -1,16 +1,16 @@
 /**
  * ChoreScore V2 — System Share Adapter
  *
- * Uses the actual system share sheet via expo-sharing on native platforms,
- * or the Web Share API on web. This is NOT a social media SDK — it uses
- * only the native share sheet. No Instagram/Facebook/WhatsApp dependencies
- * are added.
+ * Uses the actual system share sheet:
+ * - React Native's built-in Share API for text content (works on Android/iOS)
+ * - expo-sharing for file/image content (requires file:// URI)
+ * - Web Share API on web as fallback
  *
- * expo-sharing is the honest adapter: it opens the OS-level share sheet
- * and lets the user choose which app to share with.
+ * This is NOT a social media SDK — it uses only the native share sheet.
+ * No Instagram/Facebook/WhatsApp dependencies are added.
  */
 
-import { Platform } from 'react-native';
+import { Platform, Share } from 'react-native';
 import { SystemShareGateway, ShareOptions, ShareResult } from '../../application/ports';
 
 /**
@@ -43,26 +43,34 @@ export class SystemShareAdapter implements SystemShareGateway {
       return { completed: false };
     }
 
-    // Try expo-sharing first (native platforms)
+    // If file URIs are provided, use expo-sharing (requires file:// URI)
+    if (options.files && options.files.length > 0) {
+      return this.shareFiles(options);
+    }
+
+    // For text content on native platforms, use React Native's built-in Share API
+    // This opens the native share sheet with plain text — no file URI needed
     if (Platform.OS === 'android' || Platform.OS === 'ios') {
       try {
-        const sharing = await loadExpoSharing();
-        if (sharing) {
-          // Build a text content for sharing
-          const parts: string[] = [];
-          if (options.title) parts.push(options.title);
-          if (options.message) parts.push(options.message);
-          if (options.url) parts.push(options.url);
-          const text = parts.join('\n\n');
+        const parts: string[] = [];
+        if (options.title) parts.push(options.title);
+        if (options.message) parts.push(options.message);
+        if (options.url) parts.push(options.url);
+        const text = parts.join('\n\n');
 
-          await sharing.shareAsync(text, {
-            mimeType: 'text/plain',
-            dialogTitle: options.title || 'Partager via ChoreScore',
-          });
+        const result = await Share.share(
+          { message: text },
+          { dialogTitle: options.title || 'Partager via ChoreScore' }
+        );
+
+        if (result.action === Share.sharedAction) {
           return { completed: true, method: 'system-share-sheet' };
         }
+        // result.action === Share.dismissedAction means user cancelled
+        return { completed: false };
       } catch {
-        // expo-sharing not available or user cancelled — try Web Share API fallback
+        // Share failed
+        return { completed: false };
       }
     }
 
@@ -78,6 +86,29 @@ export class SystemShareAdapter implements SystemShareGateway {
       }
     } catch {
       // User cancelled or share failed
+    }
+
+    return { completed: false };
+  }
+
+  /**
+   * Share files using expo-sharing. expo-sharing requires a file:// URI,
+   * not plain text. This method handles image/file sharing.
+   */
+  private async shareFiles(options: ShareOptions): Promise<ShareResult> {
+    if (Platform.OS === 'android' || Platform.OS === 'ios') {
+      try {
+        const sharing = await loadExpoSharing();
+        if (sharing && options.files && options.files.length > 0) {
+          // Share the first file (expo-sharing supports one file at a time)
+          await sharing.shareAsync(options.files[0], {
+            dialogTitle: options.title || 'Partager via ChoreScore',
+          });
+          return { completed: true, method: 'system-share-sheet-file' };
+        }
+      } catch {
+        // expo-sharing not available or user cancelled
+      }
     }
 
     return { completed: false };
