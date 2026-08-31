@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33409834437",
+  "role": "builder",
+  "decision": "accept",
+  "summary": "Independent audit of V2-06 phase 2 (backend operational adapters + remaining Research Analytics Plane features). Trusted verification exit code is 0 (confirmed from reports/audits/TRUSTED_33409834437.md, final line 'Trusted verification exit code: 0'). The candidate working tree is byte-identical to the pristine accepted tree (diff -rq excluding node_modules/.git/android/.expo/package-lock.json/.opencode/reports is empty), confirming this is a re-audit of the already-accepted phase 2 content. All 577 tests pass across 16 suites, TypeScript typecheck clean, Android debug APK builds successfully. Backend operational adapters (auth, sync, invitations, billing, permissions, SecureStorage, push, calendar) are honest local adapters behind proper ports with no fake OAuth/payment/push/calendar/sync. Research Analytics Plane is complete: query budget/rate limit, differential privacy (Laplace and Gaussian with correct math), consent/purpose/jurisdiction policy, buyer contracts always prohibiting re-identification/redistribution, and audit/export log with provenance. Strict Operational Store / Research Analytics Store separation maintained; analytics store types contain zero operational IDs, free text, or join keys; analytics is disableable without breaking the product. No must-fix finding remains.",
+  "checks": [
+    "trusted-verification-exit-code-is-zero",
+    "typecheck-passes",
+    "all-577-tests-pass-16-suites",
+    "candidate-identical-to-pristine-accepted-tree",
+    "auth-adapter-honest-no-fake-oauth",
+    "sync-adapter-offline-honest-no-fake-network",
+    "invitations-create-accept-decline-revoke-functional",
+    "billing-adapter-provider-agnostic-per-household",
+    "member-owner-payer-admin-permissions-enforced",
+    "securestorage-adapter-functional",
+    "push-notification-behind-honest-port",
+    "calendar-integration-behind-honest-port",
+    "entitlement-restoration-no-data-destruction",
+    "tenant-isolation-and-encryption-documented",
+    "no-secrets-in-repo",
+    "no-fake-active-services",
+    "query-budget-rate-limit-enforced",
+    "differential-privacy-configurable-correct-math",
+    "consent-purpose-jurisdiction-policy-multi-jurisdiction",
+    "buyer-contracts-prohibit-reidentification-and-redistribution",
+    "audit-export-log-tracks-releases-with-provenance",
+    "privacy-transform-pipeline-strips-ids-and-free-text",
+    "privacy-release-gate-validates-all-outputs",
+    "taxonomy-versioned-deterministic",
+    "analytics-store-types-free-of-operational-ids-free-text-join-keys",
+    "analytics-disableable-without-breaking-product",
+    "domain-layer-zero-analytics-dependency",
+    "v2-06-phase1-invariants-preserved",
+    "v2-00-v2-05-invariants-intact",
+    "no-social-sdk-added",
+    "3-tab-navigation-preserved",
+    "canonical-pricing-preserved",
+    "no-v1-carryover"
+  ],
+  "findings": [
+    {
+      "path": "src/features/app/AppContext.tsx",
+      "problem": "LocalBillingAdapter is imported but never wired into the AppServices object (which has no billing field), and the V2-06 phase 2 acceptance test section 4 exercises the entitlement adapter rather than the LocalBillingAdapter class itself. The billing adapter therefore has no direct test coverage and is not integrated into the running app.",
+      "evidence": "AppContext.tsx line 12 imports LocalBillingAdapter but the servicesRef object (lines 80-89) omits it; AppServices interface (ChoreScoreApp.tsx lines 102-111) has no billing field; V2-06-phase2-acceptance.test.ts section 4 uses entitlementAdapter.getEntitlement/resolveEffectivePlan instead of LocalBillingAdapter; grep for 'new LocalBillingAdapter' in __tests__ returns nothing.",
+      "mustFix": false,
+      "requiredFix": "Wire LocalBillingAdapter into AppServices and add direct acceptance tests exercising its honest contract (isAvailable=false, purchase/restorePurchases returning explicit unavailable errors, per-household subscription state, simulateEntitlementRestoration).",
+      "verification": "Confirm LocalBillingAdapter is instantiated in AppContext services and that V2-06 phase 2 section 4 (or a dedicated test) directly asserts the billing adapter's honest unavailable behavior and per-household subscription/restoration logic."
+    }
+  ]
+}
