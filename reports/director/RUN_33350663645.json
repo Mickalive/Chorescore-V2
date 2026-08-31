@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33350663645",
+  "decision": "continue",
+  "reason": "V2-04 audit returned repair. The 3 mustFix findings from RUN 33347059436 are all fixed: (1) completion mini-form defaults 'Fait par' to validating member, not assignee — verified in code and V2-04-repair.test.ts; (2) TodoItem.reminderAt field, createTodo accepts it, create form exposes reminder input, NotificationGateway scheduled via honest adapter — verified; (3) all 'Découvrir Premium' buttons wired to /premium route with real navigation — verified. Previous criteria V2-00..V2-03 remain complete with all evidence preserved. 298 tests green, typecheck clean, Android build successful. However, the new premium offers screen (app/premium/index.tsx) introduces a mustFix: its purchase CTAs ('Commencer l'essai', 'Choisir Standard', 'Choisir Pro') are styled as active primary/secondary buttons but each only calls router.back() and performs no real action, and none is marked unavailable/disabled. This violates QG-1 ('aucun bouton visible sans comportement réel ou état explicitement indisponible') and the constitution's prohibition on fake payments ('Aucun paiement factice ne doit être présenté comme réel'). Builder must fix this single mustFix item in the next cycle.",
+  "progressEvidence": [
+    "298-tests-green",
+    "typecheck-clean",
+    "android-build-successful",
+    "v2-00-v2-03-evidence-preserved",
+    "mustFix-1-completed-fait-par-defaults-to-validator",
+    "mustFix-2-reminder-at-persisted-and-schedulable",
+    "mustFix-3-premium-buttons-all-wire-to-real-surface",
+    "core-conversion-flow-working",
+    "downgrade-persists-todos",
+    "scope-discipline-maintained"
+  ],
+  "nextTask": {
+    "criterionId": "V2-04",
+    "mode": "repair",
+    "fixes": [
+      {
+        "id": "MF-1",
+        "severity": "mustFix",
+        "file": "app/premium/index.tsx",
+        "problem": "The Premium offers screen presents three purchase CTAs ('Commencer l'essai', 'Choisir Standard', 'Choisir Pro') styled as active primary/secondary buttons, but each only calls router.back() and performs no real action, and none is marked as unavailable/disabled. This is a fake payment presented as real, violating QG-1 and the constitution's prohibition on fake payments.",
+        "fix": "Make the purchase CTAs honest: disable them with an explicit 'indisponible'/'Bientôt disponible' label (billing not configured in this environment) and optionally show a note that billing will be available in production. Alternatively, wire 'Commencer l'essai' to startTrial via EntitlementGateway in demo/test mode. Do not present an active-looking purchase button that does nothing.",
+        "verification": "Open /premium in demo-free and demo-premium; each purchase CTA must either perform a real, observable action or be visibly disabled/unavailable with explicit label. No active purchase button may be a no-op."
+      }
+    ],
+    "nonBlockingFixes": [
+      {
+        "id": "NB-1",
+        "severity": "non-blocking",
+        "file": "src/application/use-cases/ChoreScoreApp.ts",
+        "problem": "completeTodo not atomic — todo marked completed before entry creation",
+        "fix": "Create CompletedEntry first, then mark todo completed; on entry failure leave todo open for retry"
+      },
+      {
+        "id": "NB-2",
+        "severity": "non-blocking",
+        "file": "src/features/household/TodoScreen.tsx",
+        "problem": "handleDelete bypasses app layer; field names differ from task acceptance list",
+        "fix": "Add deleteTodo use-case in ChoreScoreApp; optionally align field names or document naming decision"
+      }
+    ]
+  }
+}

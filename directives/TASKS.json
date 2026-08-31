@@ -4,17 +4,15 @@
   "builder": {
     "enabled": true,
     "criterionId": "V2-04",
-    "objective": "V2-04 repair — Fix 3 mustFix findings from audit RUN 33347059436. The core V2-04 conversion flow is working (TodoItem create/complete/Score propagation, Free upsell, downgrade persistence). Fix: (1) completion mini-form defaults 'Fait par' to the validating member not the assignee; (2) add reminder capability to TodoItem and create form; (3) wire 'Découvrir Premium' buttons to a real surface. Optionally fix non-blocking: atomicity of completeTodo and repository reach-in for deletion.",
-    "scope": "Repairs only within V2-04 scope. Fix TodoScreen.tsx completion default (MF-1), add reminderAt to TodoItem entity/createTodo/create-form/NotificationGateway (MF-2), wire Decouvrir Premium buttons across TodoScreen/index/ScoreScreen (MF-3). Optional: reorder completeTodo to create entry before marking done (NB-1), add deleteTodo use-case (NB-2). No new features, no scope expansion, no governance/constitution/roadmap modification.",
+    "objective": "V2-04 repair — Fix 1 mustFix finding from audit RUN 33350663645. The previous 3 mustFix items are all fixed (Fait par defaults to validator, reminder capability present, Premium buttons wired). The new mustFix: premium screen purchase CTAs ('Commencer l'essai', 'Choisir Standard', 'Choisir Pro') are fake — they call router.back() with no real action and are not marked unavailable.",
+    "scope": "Repairs only within V2-04 scope. Fix Premium screen CTAs (app/premium/index.tsx): disable with explicit 'Bientôt disponible' label or wire to real entitlement action. Preserve canonical pricing grid, screen layout, and informational content. Optional: reorder completeTodo atomicity (NB-1), add deleteTodo use-case (NB-2). No new features, no scope expansion, no governance/constitution/roadmap modification.",
     "acceptance": [
-      "Completion mini-form defaults Fait par to current user's member id (the validator), modifiable; falls back to assignee only when validator is not a member",
-      "Test asserting the default equals the validating user's member id",
-      "TodoItem has reminderAt field; createTodo accepts it; create form exposes reminder input; NotificationGateway scheduled when available (honest adapter)",
-      "Test creating TodoItem with reminderAt asserting persistence/round-trip",
-      "'Decouvrir Premium' button navigates to real Premium/offers surface (household Options or dedicated screen with canonical grid)",
-      "Root 'Premium' button and Score 'Decouvrir Premium' CTA aligned to same surface",
-      "In demo-free, tap 'Decouvrir Premium' and observe real navigation (no dead tap)",
-      "All existing 277 tests pass with no regressions",
+      "Premium screen purchase CTAs are either disabled with explicit 'indisponible'/'Bientôt disponible' label, or wired to real entitlement action",
+      "No active-looking purchase button is a no-op",
+      "Canonical pricing grid (Trial 30d, Free, Standard 2.99/7, Pro 5.99/8) preserved",
+      "Root Premium button and Score 'Decouvrir Premium' CTA still navigate to /premium",
+      "In demo-free, tap a Premium CTA and observe explicit unavailable state or real action (no dead tap)",
+      "All existing 298 tests pass with no regressions",
       "npm run check green"
     ],
     "previousCriteriaPreserved": [
@@ -22,7 +20,7 @@
       "V2-01: identity, households, subscription, Options, trial expiry, demo-premium consistency",
       "V2-02: CompletedEntry, PersistentTask, chrono, history, navigation, AsyncStorage-backed persistence",
       "V2-03: Score/balances/free-window, period selectors, filters, +D/-D/N, compensations, charts, weighted, upsell repair",
-      "V2-04 baseline: core conversion flow working, 277 tests green"
+      "V2-04 baseline: core conversion flow working, 298 tests green, MF-1/MF-2/MF-3 all fixed"
     ]
   }
 }
