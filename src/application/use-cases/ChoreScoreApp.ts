@@ -534,6 +534,16 @@ export class ChoreScoreApp {
     const todo = await this.repositories.todos.getById(todoId);
     if (!todo) throw new Error('Todo not found');
 
+    // Idempotency guard: never create two CompletedEntry for the same todo
+    if (todo.status === 'completed') {
+      throw new Error('Todo is already completed');
+    }
+
+    // Validate duration is positive
+    if (durationMinutes <= 0) {
+      throw new Error('Duration must be greater than zero');
+    }
+
     // Mark todo as completed
     const updatedTodo = await this.repositories.todos.update(todoId, {
       status: 'completed',

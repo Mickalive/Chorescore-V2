@@ -12,11 +12,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   CompletedEntry,
   PersistentTask,
+  TodoItem,
   ChronoTimerState,
 } from '../../domain/entities';
 import {
   EntryRepository,
   PersistentTaskRepository,
+  TodoRepository,
 } from '../../application/use-cases/ChoreScoreApp';
 import { ChronoTimerRepository } from '../../application/ports';
 
@@ -25,6 +27,7 @@ import { ChronoTimerRepository } from '../../application/ports';
 const STORAGE_KEYS = {
   ENTRIES: '@chorescore/entries',
   PERSISTENT_TASKS: '@chorescore/persistent_tasks',
+  TODOS: '@chorescore/todos',
   CHRONO_TIMER: '@chorescore/chrono_timer',
 } as const;
 
@@ -144,6 +147,68 @@ export class PersistentPersistentTaskRepository
       STORAGE_KEYS.PERSISTENT_TASKS,
       JSON.stringify(filtered)
     );
+  }
+}
+
+// ── PersistentTodoRepository ─────────────────────────────────────
+
+export class PersistentTodoRepository implements TodoRepository {
+  async getByHousehold(householdId: string): Promise<TodoItem[]> {
+    const json = await AsyncStorage.getItem(STORAGE_KEYS.TODOS);
+    const todos: TodoItem[] = safeParse(json, []);
+    return todos
+      .filter((t) => t.householdId === householdId)
+      .sort((a, b) => {
+        // Completed todos at the end
+        if (a.status === 'completed' && b.status !== 'completed') return 1;
+        if (a.status !== 'completed' && b.status === 'completed') return -1;
+        // Sort by due date (undated last among active)
+        if (!a.dueAt) return 1;
+        if (!b.dueAt) return -1;
+        return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
+      });
+  }
+
+  async getById(id: string): Promise<TodoItem | null> {
+    const json = await AsyncStorage.getItem(STORAGE_KEYS.TODOS);
+    const todos: TodoItem[] = safeParse(json, []);
+    return todos.find((t) => t.id === id) ?? null;
+  }
+
+  async create(data: Omit<TodoItem, 'id' | 'createdAt'>): Promise<TodoItem> {
+    const id = `t-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const todo: TodoItem = {
+      ...data,
+      id,
+      createdAt: new Date().toISOString(),
+    };
+
+    const json = await AsyncStorage.getItem(STORAGE_KEYS.TODOS);
+    const todos: TodoItem[] = safeParse(json, []);
+    todos.push(todo);
+    await AsyncStorage.setItem(STORAGE_KEYS.TODOS, JSON.stringify(todos));
+
+    return todo;
+  }
+
+  async update(id: string, data: Partial<TodoItem>): Promise<TodoItem> {
+    const json = await AsyncStorage.getItem(STORAGE_KEYS.TODOS);
+    const todos: TodoItem[] = safeParse(json, []);
+    const index = todos.findIndex((t) => t.id === id);
+    if (index === -1) throw new Error(`Todo ${id} not found`);
+
+    const updated: TodoItem = { ...todos[index], ...data, id };
+    todos[index] = updated;
+    await AsyncStorage.setItem(STORAGE_KEYS.TODOS, JSON.stringify(todos));
+
+    return updated;
+  }
+
+  async delete(id: string): Promise<void> {
+    const json = await AsyncStorage.getItem(STORAGE_KEYS.TODOS);
+    const todos: TodoItem[] = safeParse(json, []);
+    const filtered = todos.filter((t) => t.id !== id);
+    await AsyncStorage.setItem(STORAGE_KEYS.TODOS, JSON.stringify(filtered));
   }
 }
 

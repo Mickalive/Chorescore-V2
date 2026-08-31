@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33347059436",
+  "role": "builder",
+  "decision": "repair",
+  "summary": "V2-04 — To-do Premium et conversion en réalisation. Independent audit of the candidate against MAIN_PROMPT, RELEASE_DEFINITION V2-04, ROADMAP, DESIGN_CONTRACT/BRIEF, MONETIZATION, SUBSCRIPTION_REFERENCE_V1, QUALITY_GATES and the Director task. Trusted verification exit code is 0 (npm run check green: typecheck clean, 277 tests pass; Android debug build BUILD SUCCESSFUL). Local npm run check reproduces the green state (11 suites, 277 tests). The core conversion flow is correctly delivered: TodoItem entity (title, assigneeMemberId, beneficiaryMemberIds, dueAt, notes, persistentTaskId, status, completedAt), Premium create with/without date, assignment, beneficiaries, notes, deadline, PersistentTask link, completion mini-form (Fait par + durée réelle + Fait pour), idempotency guard preventing double CompletedEntry creation, immediate Score/history propagation (verified against reference scenario math: Sam +5/Alex -5 for 10 min for 2 beneficiaries), Free tab visible with contextual upsell surface, downgrade preserves TodoItems (AsyncStorage-backed PersistentTodoRepository now wired in AppContext), and no regression on V2-00..V2-03 (all previous suites pass). Three mustFix findings remain: (1) the completion mini-form defaults 'Fait par' to the todo's assignee instead of the validating member, contradicting MAIN_PROMPT ('Fait par par défaut = membre qui valide, mais modifiable') and the task acceptance ('default=validator, modifiable'); (2) the reminder capability required by the criterion outcome ('deadline/reminder'), the roadmap ('deadline, reminder') and the constitution ('un rappel') is absent — no reminder field on TodoItem, no reminder input, NotificationGateway/CalendarGateway never used by the todo flow; (3) the Free-mode 'Découvrir Premium' Button is a no-op (onPress={() => {}}), violating QG-1 (no visible button without real behavior) and leaving the contextual upsell without any real destination. Non-blocking: completeTodo is not atomic (todo marked completed before entry creation; a failure between the two writes leaves the todo completed with no entry and the idempotency guard blocks retry), and the UI bypasses the app layer for todo deletion (app.repositories.todos.delete) while entity field names differ from the task's acceptance list (title/label, assigneeMemberId/assignedMemberId, dueAt/deadline) — functionally equivalent, traceability note. Decision: repair.",
+  "checks": [
+    "trusted-verification-exit-code-0 (reports/audits/TRUSTED_33347059436.md: npm run check green, 277 tests, Android debug BUILD SUCCESSFUL, 'Trusted verification exit code: 0')",
+    "npm run typecheck -> tsc --noEmit clean",
+    "npm test -> 11 suites, 277 tests passed (V2-04-acceptance.test.ts adds 42 tests; all V2-00..V2-03 suites still green)",
+    "npm run check -> green (reproduced locally)",
+    "TodoItem entity exists with title, assigneeMemberId, beneficiaryMemberIds, dueAt, notes, persistentTaskId, status, createdAt, completedAt (src/domain/entities/index.ts)",
+    "Premium create: TodoItem with or without date, assignment, beneficiaries, notes, deadline, optional PersistentTask link (createTodo in ChoreScoreApp.ts)",
+    "Completion mini-form asks Fait par + durée réelle + Fait pour; completion marks todo done and creates exactly one CompletedEntry (idempotency guard on status='completed')",
+    "Score and history update immediately after completion (shared entries repository; reference math verified: 10 min by Sam for Alex+Sam -> Sam +5, Alex -5, sum 0)",
+    "Free mode: To-do tab visible, create/planify gated by entitlement (todoPlanningEnabled=false throws in app layer; UI hides create button and shows upsell surface), no TodoItem created in Free",
+    "Downgrade does not destroy TodoItems: PersistentTodoRepository (AsyncStorage) wired in AppContext; tests prove persistence across demo-free/demo-premium transitions",
+    "PersistentTask link carried to CompletedEntry on completion (persistentTaskId preserved)",
+    "No governance/constitution/roadmap/task files modified by candidate (diff limited to 6 files: V2-04 test, ChoreScoreApp.ts, AppContext.tsx, TodoScreen.tsx, PersistentRepositories.ts, Card.tsx)",
+    "No V1 carry-over, no fake integrations, no domain/provider coupling introduced; calendar/notification remain honest ports",
+    "FAIL: completion mini-form defaults 'Fait par' to assignee, not the validating member (TodoScreen.tsx startCompletion)",
+    "FAIL: no reminder capability on TodoItem / todo flow (criterion outcome 'deadline/reminder' unmet)",
+    "FAIL: 'Découvrir Premium' Button in Free To-do tab is a no-op (QG-1)"
+  ],
+  "findings": [
+    {
+      "path": "src/features/household/TodoScreen.tsx",
+      "problem": "The completion mini-form defaults 'Fait par' to the todo's assignee instead of the member who validates the todo. MAIN_PROMPT states: 'Fait par par défaut = membre qui valide, mais modifiable', and the Director task acceptance states 'Fait par (default=validator, modifiable)'. The implementation prefers todo.assigneeMemberId when present, so a user who simply taps 'Valider' credits the assignee rather than themselves, contradicting the canonical conversion flow.",
+      "evidence": "TodoScreen.tsx startCompletion (lines 145-153): `const defaultPerformer = todo.assigneeMemberId ? [todo.assigneeMemberId] : currentUser ? [members.find((m) => m.userId === currentUser.userId)?.id]...` — the assignee wins over the validating user. AddTaskScreen (accepted V2-02 pattern) defaults 'Fait par' to the current user, confirming the established product behavior.",
+      "mustFix": true,
+      "requiredFix": "Default completePerformedBy to the current user's member id (the validator), modifiable as today; fall back to the assignee only when the validator is not a member of the household. Keep the mini-form modifiable.",
+      "verification": "Add a test asserting the mini-form default equals the validating user's member id (and that it is modifiable); manual check in demo-premium completing a todo assigned to another member."
+    },
+    {
+      "path": "src/domain/entities/index.ts",
+      "problem": "The reminder capability required by V2-04 is absent. The criterion outcome requires 'notes, deadline/reminder et calendrier via port', the ROADMAP V2-04 deliverable lists 'deadline, reminder, calendrier via port', MAIN_PROMPT says a TodoItem is 'accompagnée de notes et d'un rappel', and the task acceptance requires 'set deadline/reminder'. TodoItem has no reminder field, createTodo accepts no reminder, the create form has no reminder input, and NotificationGateway/CalendarGateway are never invoked by the todo flow (only the ports exist).",
+      "evidence": "TodoItem interface (src/domain/entities/index.ts lines 78-90) has no reminder field; createTodo signature (ChoreScoreApp.ts lines 500-508) has no reminder parameter; TodoScreen create form has no reminder control; grep for reminder/rappel in src returns only a comment in TodoScreen.tsx line 5; services.calendar and services.notifications are never called for todos.",
+      "mustFix": true,
+      "requiredFix": "Add a reminder field (e.g. reminderAt?: string | null) to TodoItem, accept it in createTodo, expose it in the create form, and schedule it through the NotificationGateway port when available (honest adapter, no fake scheduling). Wire CalendarGateway.createEvent for dated todos when a real calendar integration is configured.",
+      "verification": "Test creating a TodoItem with reminderAt and asserting persistence/round-trip and the completedAt/status behavior; UI check that the reminder input is present and stored."
+    },
+    {
+      "path": "src/features/household/TodoScreen.tsx",
+      "problem": "The Free-mode 'Découvrir Premium' Button is a no-op (onPress={() => {}}), violating QG-1 ('aucun bouton visible sans comportement réel ou état explicitement indisponible'). The contextual upsell required by V2-04 ('création/planification déclenche seulement un upsell contextuel') has no real destination: a Free user cannot discover the plans from the To-do tab, and the button is a fake control.",
+      "evidence": "TodoScreen.tsx lines 424-429: `<Button title=\"Découvrir Premium\" variant=\"secondary\" size=\"small\" onPress={() => {}} />`. The same dead pattern exists on the root screen 'Premium' button (app/index.tsx line 261) and the ScoreScreen 'Découvrir Premium' Text CTA (ScoreScreen.tsx line 250), so the fix should be coherent across screens.",
+      "mustFix": true,
+      "requiredFix": "Wire the button to a real Premium/offers surface (e.g. navigate to the household Options subscription section or a dedicated offers screen showing the canonical grid: 30-day trial, Standard 2,99 EUR/mois/foyer, Pro 5,99 EUR/mois/foyer) or replace it with an explicitly non-interactive informational element. Align the root 'Premium' and Score 'Découvrir Premium' CTAs to the same surface for screen-to-screen coherence.",
+      "verification": "In demo-free, tap 'Découvrir Premium' and observe a real navigation/action (no dead tap); visual check that the CTA is consistent with the rest of the app."
+    },
+    {
+      "path": "src/application/use-cases/ChoreScoreApp.ts",
+      "problem": "completeTodo is not atomic: the todo is marked completed before the CompletedEntry is created. If entry creation fails (e.g. AsyncStorage write error), the todo is left completed with no entry, and the idempotency guard (status==='completed' throws) permanently blocks retry, losing the realization. The task requires 'création atomique d'une CompletedEntry puis mise à jour historique + Score'.",
+      "evidence": "completeTodo (ChoreScoreApp.ts lines 528-567): `repositories.todos.update(todoId, { status: 'completed', completedAt })` runs before `repositories.entries.create(...)`; a failure between the two awaits leaves an inconsistent state with no recovery path.",
+      "mustFix": false,
+      "requiredFix": "Create the CompletedEntry first, then mark the todo completed (or wrap both writes in a transaction); on entry failure leave the todo open so the user can retry. Keep the idempotency guard.",
+      "verification": "Fault-injection test simulating an entry-repository failure and asserting the todo remains 'todo' and no entry exists."
+    },
+    {
+      "path": "src/features/household/TodoScreen.tsx",
+      "problem": "The UI bypasses the application layer for todo deletion (handleDelete calls app.repositories.todos.delete directly), and the TodoItem field names differ from the Director task's acceptance list (title vs label, assigneeMemberId vs assignedMemberId, dueAt vs deadline). Functionally equivalent, but the repository reach-in weakens the use-case boundary and the naming drift hurts traceability against the task contract.",
+      "evidence": "TodoScreen.tsx handleDelete (lines 200-207): `await app.repositories.todos.delete(todoId)`; TodoItem entity uses title/assigneeMemberId/dueAt while the task acceptance lists label/assignedMemberId/deadline.",
+      "mustFix": false,
+      "requiredFix": "Add a deleteTodo use-case in ChoreScoreApp and call it from the UI; optionally align field names with the task acceptance list or document the naming decision in the task traceability.",
+      "verification": "Code inspection; existing deletion test still green after moving through the app layer."
+    }
+  ]
+}

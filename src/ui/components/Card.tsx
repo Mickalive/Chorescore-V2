@@ -6,13 +6,13 @@
  */
 
 import React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
+import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { colors, borderRadius, spacing, shadows } from '../design-system/theme';
 
 interface CardProps {
   children: React.ReactNode;
   variant?: 'default' | 'highlighted' | 'elevated';
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function Card({ children, variant = 'default', style }: CardProps) {

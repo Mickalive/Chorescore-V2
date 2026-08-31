@@ -22,11 +22,11 @@ import {
   InMemoryAccountRepository,
   InMemoryHouseholdRepository,
   InMemoryMemberRepository,
-  InMemoryTodoRepository,
 } from '../../infrastructure/repositories/InMemoryRepositories';
 import {
   PersistentEntryRepository,
   PersistentPersistentTaskRepository,
+  PersistentTodoRepository,
   PersistentChronoTimerRepository,
 } from '../../infrastructure/repositories/PersistentRepositories';
 import { AuthUser } from '../../application/ports';
@@ -69,7 +69,7 @@ export function AppProvider({ children }: AppProviderProps) {
     members: new InMemoryMemberRepository(),
     entries: new PersistentEntryRepository(),
     persistentTasks: new PersistentPersistentTaskRepository(),
-    todos: new InMemoryTodoRepository(),
+    todos: new PersistentTodoRepository(),
     chronoTimer: new PersistentChronoTimerRepository(),
   });
 
