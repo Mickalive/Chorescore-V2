@@ -4,6 +4,14 @@
  * Manages consent records and policy rules per jurisdiction/purpose.
  * The architecture must allow consent/preference handling without
  * presupposing a single legal basis.
+ *
+ * Features:
+ * - Default policies per jurisdiction (EU-GDPR, US-CCPA, CH-DSG, UK-GDPR)
+ * - Dynamic policy addition for new jurisdictions
+ * - Consent recording, checking, and withdrawal
+ * - Retention period enforcement per jurisdiction
+ * - Deletion-on-withdrawal support
+ * - canProcessData() checks both consent and policy requirements
  */
 
 import {
@@ -89,7 +97,7 @@ export class ConsentPolicyService {
   private consentRecords: ConsentRecord[] = [];
 
   constructor(policies?: ConsentPolicy[]) {
-    this.policies = policies ?? DEFAULT_POLICIES;
+    this.policies = policies ?? [...DEFAULT_POLICIES];
   }
 
   /**
@@ -104,6 +112,19 @@ export class ConsentPolicyService {
    */
   getAllPolicies(): ConsentPolicy[] {
     return [...this.policies];
+  }
+
+  /**
+   * Add or update a consent policy for a jurisdiction.
+   * Used for dynamic policy management (e.g., adding new jurisdictions).
+   */
+  setPolicy(policy: ConsentPolicy): void {
+    const existingIndex = this.policies.findIndex(p => p.jurisdiction === policy.jurisdiction);
+    if (existingIndex >= 0) {
+      this.policies[existingIndex] = policy;
+    } else {
+      this.policies.push(policy);
+    }
   }
 
   /**
@@ -190,6 +211,29 @@ export class ConsentPolicyService {
   isDeletionRequiredOnWithdrawal(jurisdiction: Jurisdiction): boolean {
     const policy = this.getPolicyForJurisdiction(jurisdiction);
     return policy?.deletionOnWithdrawal ?? true;
+  }
+
+  /**
+   * Check if consent records have exceeded the retention period.
+   * Returns records that should be purged.
+   */
+  getExpiredRecords(jurisdiction: Jurisdiction): ConsentRecord[] {
+    const retentionDays = this.getRetentionDays(jurisdiction);
+    const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+    return this.consentRecords.filter(r => {
+      if (r.jurisdiction !== jurisdiction) return false;
+      return new Date(r.timestamp).getTime() < cutoff;
+    });
+  }
+
+  /**
+   * Purge expired consent records for a jurisdiction.
+   */
+  purgeExpiredRecords(jurisdiction: Jurisdiction): number {
+    const expired = this.getExpiredRecords(jurisdiction);
+    const expiredIds = new Set(expired.map(r => r.timestamp));
+    this.consentRecords = this.consentRecords.filter(r => !expiredIds.has(r.timestamp));
+    return expired.length;
   }
 }
 

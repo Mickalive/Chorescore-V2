@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33416807677",
+  "role": "builder",
+  "decision": "repair",
+  "summary": "Independent audit of V2-06 phase 2 (backend operational adapters + remaining Research Analytics Plane features). Trusted verification exit code is 0 (confirmed from reports/audits/TRUSTED_33416807677.md, final line 'Trusted verification exit code: 0'); all 606 tests pass across 16 suites, TypeScript typecheck clean, Android debug APK builds successfully. The candidate adds: enhanced tenant isolation utilities (TenantIsolation.ts), sync conflict-resolution queue/log, billing entitlement restoration, consent-policy retention enforcement, permission use cases, and invitation use cases with permission enforcement. The Research Analytics Plane (query budget/rate limit, differential privacy, consent/purpose/jurisdiction policy, buyer contracts, audit/export log, PrivacyTransformPipeline, PrivacyReleaseGate, taxonomy) is preserved and re-exported; strict Operational Store / Research Analytics Store separation is maintained and analytics remains disableable without breaking the product. However, three must-fix findings remain: (1) getMemberPermissionLevel grants MEMBER-level permissions (including canCreateEntry) to users with NO membership in a household, violating strict tenant isolation / server-side authz; (2) LocalSyncAdapter.getConflictLog ignores the householdId parameter and returns all households' conflicts flattened, and logConflict derives a bogus householdId from entityId.split('-')[0], violating tenant isolation of the conflict log; (3) the app-level getPendingInvitations(userId) passes a userId to the adapter which matches against invitedEmail (with privacy-risky substring includes matching), so the documented userId-based API is functionally broken. Decision: repair.",
+  "checks": [
+    "trusted-verification-exit-code-is-zero",
+    "typecheck-passes",
+    "all-606-tests-pass-16-suites",
+    "android-debug-apk-builds",
+    "auth-adapter-honest-no-fake-oauth",
+    "sync-adapter-offline-honest-no-fake-network",
+    "invitations-create-accept-decline-revoke-functional",
+    "billing-adapter-provider-agnostic-per-household",
+    "member-owner-payer-admin-permissions-enforced",
+    "securestorage-adapter-functional",
+    "push-notification-behind-honest-port",
+    "calendar-integration-behind-honest-port",
+    "entitlement-restoration-no-data-destruction",
+    "tenant-isolation-and-encryption-documented",
+    "no-secrets-in-repo",
+    "no-fake-active-services",
+    "query-budget-rate-limit-enforced",
+    "differential-privacy-configurable-correct-math",
+    "consent-purpose-jurisdiction-policy-multi-jurisdiction",
+    "buyer-contracts-prohibit-reidentification-and-redistribution",
+    "audit-export-log-tracks-releases-with-provenance",
+    "privacy-transform-pipeline-strips-ids-and-free-text",
+    "privacy-release-gate-validates-all-outputs",
+    "taxonomy-versioned-deterministic",
+    "analytics-store-types-free-of-operational-ids-free-text-join-keys",
+    "analytics-disableable-without-breaking-product",
+    "domain-layer-zero-analytics-dependency",
+    "v2-06-phase1-invariants-preserved",
+    "v2-00-v2-05-invariants-intact",
+    "no-social-sdk-added",
+    "3-tab-navigation-preserved",
+    "canonical-pricing-preserved",
+    "no-v1-carryover"
+  ],
+  "findings": [
+    {
+      "path": "src/application/use-cases/ChoreScoreApp.ts",
+      "problem": "getMemberPermissionLevel returns 'MEMBER' for a user with NO membership in the household (line 669: 'if (!membership) return MEMBER'). MEMBER-level permissions include canCreateEntry: true, so a stranger who is not a member of a household is granted the ability to create entries in that household. This violates the constitution's strict tenant isolation and server-side authz requirements ('strictement isolé par tenant/foyer', 'protégé par authz côté serveur'). A non-member should have NO access to a household they do not belong to.",
+      "evidence": "ChoreScoreApp.ts line 669: 'if (!membership) return \\'MEMBER\\'; // Default: no membership = member-level'. MemberPermissions.ts MEMBER level sets canCreateEntry: true. Test V2-06-phase2-acceptance.test.ts lines 1717-1720 explicitly asserts 'should resolve default MEMBER for non-member' expecting 'MEMBER' for 'u-stranger' in 'h-test'.",
+      "mustFix": true,
+      "requiredFix": "Return a no-access/denied level (or throw) for a user with no membership in the household instead of defaulting to MEMBER. MEMBER-level permissions (especially canCreateEntry) must only be granted to actual household members. Update the test to assert the correct no-access behavior.",
+      "verification": "Confirm getMemberPermissionLevel returns a no-access result for a non-member (e.g., a distinct 'NONE' level or an explicit denial) and that the acceptance test asserts this instead of expecting 'MEMBER'."
+    },
+    {
+      "path": "src/infrastructure/local/LocalSyncAdapter.ts",
+      "problem": "The conflict log violates tenant isolation. getConflictLog(_householdId) ignores the householdId parameter and returns Array.from(this.conflictLog.values()).flat(), i.e. ALL conflicts across ALL households flattened, regardless of the requested household. Additionally, logConflict derives the householdId from resolution.entityId.split('-')[0] (e.g. for entityId 'e-1' it derives householdId 'e'), which is a bogus key that does not correspond to any real household. This breaks the per-household isolation invariant that each household's sync state and audit data must be scoped to that household.",
+      "evidence": "LocalSyncAdapter.ts line 145-147: 'getConflictLog(_householdId: string): ConflictResolution[] { return Array.from(this.conflictLog.values()).flat(); }'. Line 138: 'const householdId = resolution.entityId.split('-')[0]; // simplified'. Test line 1543 calls getConflictLog('h-test') and expects length 1, which only passes because the method returns all households' conflicts regardless of the requested household.",
+      "mustFix": true,
+      "requiredFix": "Make logConflict accept an explicit householdId (or derive it correctly from the queued change context) and make getConflictLog(householdId) return only that household's conflicts. Add a test that creates conflicts for two different households and asserts getConflictLog returns only the requested household's entries.",
+      "verification": "Confirm getConflictLog(householdId) returns only conflicts belonging to that household, and that logConflict stores under the correct household key. Add a two-household isolation test."
+    },
+    {
+      "path": "src/application/use-cases/ChoreScoreApp.ts + src/infrastructure/local/LocalInvitationAdapter.ts",
+      "problem": "The app-level getPendingInvitations(userId) is documented as taking a userId but passes it directly to the adapter's getPendingInvitations(userIdOrEmail), which matches against invitedEmail. For a real userId (e.g. 'u-1') the adapter does invitedEmail.includes('u-1'), which never matches a real email, so the documented userId-based API is functionally broken. The adapter also uses substring includes matching (invitedEmail.includes(userIdOrEmail)) which is a privacy risk (a short query string can match multiple unrelated emails).",
+      "evidence": "ChoreScoreApp.ts line 767-770: 'async getPendingInvitations(userId: string) { ... return this.services.invitations.getPendingInvitations(userId); }'. LocalInvitationAdapter.ts lines 83-90: 'getPendingInvitations(userIdOrEmail) ... inv.invitedEmail === userIdOrEmail || inv.invitedEmail.includes(userIdOrEmail)'. The test (line 1768) masks the bug by passing an email string directly to app.getPendingInvitations.",
+      "mustFix": true,
+      "requiredFix": "Resolve the user's email from the userId before matching invitations (or have the adapter look up invitations by userId), and replace substring includes matching with exact email matching to avoid privacy leaks. Update the test to exercise the userId-based API correctly.",
+      "verification": "Confirm app.getPendingInvitations(userId) returns invitations for the user's actual email using exact matching, and that a short/partial query string does not match unrelated invitations."
+    }
+  ]
+}

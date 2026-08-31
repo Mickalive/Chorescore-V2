@@ -99,6 +99,7 @@ import {
   DataProcessingPurpose,
   Jurisdiction,
 } from '../../src/analytics/types';
+import { LocalBillingAdapter } from '../../src/infrastructure/local/LocalBillingAdapter';
 
 describe('V2-06 Phase 2 — Backend Operational Adapters & Analytics Features', () => {
   let app: ChoreScoreApp;
@@ -205,6 +206,7 @@ describe('V2-06 Phase 2 — Backend Operational Adapters & Analytics Features', 
         secureStorage,
         sync: syncAdapter,
         analytics: analyticsAdapter,
+        invitations: invitationAdapter,
       },
       {
         users,
@@ -1448,6 +1450,362 @@ describe('V2-06 Phase 2 — Backend Operational Adapters & Analytics Features', 
       entitlementAdapter.setMode('demo-free');
       const entries = await app.getVisibleEntries('h-test');
       expect(Array.isArray(entries)).toBe(true);
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // SECTION 18: Enhanced tenant isolation validation
+  // ══════════════════════════════════════════════════════════════
+  describe('18. Enhanced tenant isolation and encryption', () => {
+    it('should validate tenant scope utility', async () => {
+      const { validateTenantScope } = require('../../src/infrastructure/security/TenantIsolation');
+      expect(validateTenantScope('h-test', 'createEntry').valid).toBe(true);
+      expect(validateTenantScope(null, 'createEntry').valid).toBe(false);
+      expect(validateTenantScope('', 'createEntry').valid).toBe(false);
+      expect(validateTenantScope(undefined, 'createEntry').valid).toBe(false);
+    });
+
+    it('should provide default tenant config', async () => {
+      const { getDefaultTenantConfig } = require('../../src/infrastructure/security/TenantIsolation');
+      const config = getDefaultTenantConfig('h-123');
+      expect(config.householdId).toBe('h-123');
+      expect(config.encryptionEnabled).toBe(true);
+      expect(config.encryptionAlgorithm).toBe('AES-256-GCM');
+      expect(config.storageIsolated).toBe(true);
+    });
+
+    it('should document encryption at rest config', async () => {
+      const { ENCRYPTION_CONFIG } = require('../../src/infrastructure/security/TenantIsolation');
+      expect(ENCRYPTION_CONFIG.algorithm).toBe('AES');
+      expect(ENCRYPTION_CONFIG.keyLength).toBe(256);
+      expect(ENCRYPTION_CONFIG.mode).toBe('GCM');
+    });
+
+    it('should document security constants', async () => {
+      const { SECURITY_DOCS } = require('../../src/infrastructure/security/TenantIsolation');
+      expect(SECURITY_DOCS.MIN_TLS_VERSION).toBe('1.2');
+      expect(SECURITY_DOCS.AT_REST_ALGORITHM).toBe('AES-256-GCM');
+      expect(SECURITY_DOCS.SESSION_TOKEN_EXPIRY_MS).toBe(24 * 60 * 60 * 1000);
+    });
+
+    it('should enforce household-level data isolation in repositories', async () => {
+      entitlementAdapter.setMode('demo-premium');
+
+      // Create entries in household A
+      await app.createEntry({
+        householdId: 'h-test',
+        label: 'Household A entry',
+        performedByMemberId: 'm-alex',
+        beneficiaryMemberIds: ['m-alex', 'm-sam'],
+        durationMinutes: 30,
+        createdBy: 'u-1',
+      });
+
+      // Create entries in household B
+      await households.seed([
+        { id: 'h-other', name: 'Other', ownerId: 'u-2', createdAt: '2026-08-30T00:00:00Z' },
+      ]);
+
+      const entriesA = await app.getEntries('h-test');
+      const entriesB = await app.getEntries('h-other');
+
+      // No cross-tenant contamination
+      expect(entriesA.every(e => e.householdId === 'h-test')).toBe(true);
+      expect(entriesB.every(e => e.householdId === 'h-other')).toBe(true);
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // SECTION 19: Enhanced sync conflict resolution design
+  // ══════════════════════════════════════════════════════════════
+  describe('19. Enhanced sync conflict resolution design', () => {
+    it('should queue changes for offline operation', () => {
+      syncAdapter.queueChange('h-test', {
+        entityType: 'entry',
+        entityId: 'e-1',
+        operation: 'create',
+        localTimestamp: new Date().toISOString(),
+      });
+
+      expect(syncAdapter.hasUnsyncedChanges('h-test')).toBe(true);
+      expect(syncAdapter.getChangeQueue('h-test')).toHaveLength(1);
+    });
+
+    it('should log conflict resolutions', () => {
+      syncAdapter.logConflict({
+        entityId: 'e-1',
+        entityType: 'entry',
+        resolution: 'remote-wins',
+        localTimestamp: '2026-08-30T10:00:00Z',
+        remoteTimestamp: '2026-08-30T11:00:00Z',
+      });
+
+      const log = syncAdapter.getConflictLog('h-test');
+      expect(log).toHaveLength(1);
+      expect(log[0].resolution).toBe('remote-wins');
+    });
+
+    it('should clear queue after push', async () => {
+      syncAdapter.queueChange('h-test', {
+        entityType: 'entry',
+        entityId: 'e-1',
+        operation: 'create',
+        localTimestamp: new Date().toISOString(),
+      });
+
+      await syncAdapter.pushChanges('h-test');
+      expect(syncAdapter.getChangeQueue('h-test')).toHaveLength(0);
+      expect(syncAdapter.getPendingChangesCount('h-test')).toBe(0);
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // SECTION 20: Enhanced billing and purchase restoration
+  // ══════════════════════════════════════════════════════════════
+  describe('20. Enhanced billing and purchase restoration', () => {
+    let billingAdapter: LocalBillingAdapter;
+
+    beforeEach(() => {
+      billingAdapter = new LocalBillingAdapter();
+    });
+
+    it('should restore entitlements from stored subscriptions', async () => {
+      await billingAdapter.simulateEntitlementRestoration('h-test', 'standard');
+      const result = await billingAdapter.restoreEntitlements('h-test');
+      expect(result.restored).toBe(true);
+      expect(result.plan).toBe('standard');
+      expect(result.expiresAt).not.toBeNull();
+    });
+
+    it('should return not restored for missing subscription', async () => {
+      const result = await billingAdapter.restoreEntitlements('h-missing');
+      expect(result.restored).toBe(false);
+      expect(result.plan).toBeNull();
+    });
+
+    it('should return not restored for expired subscription', async () => {
+      billingAdapter.setSubscription('h-test', {
+        householdId: 'h-test',
+        plan: 'standard',
+        isActive: true,
+        expiresAt: new Date(Date.now() - 1000).toISOString(), // expired
+      });
+      const result = await billingAdapter.restoreEntitlements('h-test');
+      expect(result.restored).toBe(false);
+    });
+
+    it('should get active subscriptions', async () => {
+      await billingAdapter.simulateEntitlementRestoration('h-1', 'standard');
+      await billingAdapter.simulateEntitlementRestoration('h-2', 'pro');
+      const active = billingAdapter.getActiveSubscriptions();
+      expect(active).toHaveLength(2);
+    });
+
+    it('should not destroy data during entitlement restoration', async () => {
+      entitlementAdapter.setMode('demo-premium');
+
+      // Create entry
+      const entry = await app.createEntry({
+        householdId: 'h-test',
+        label: 'Test',
+        performedByMemberId: 'm-alex',
+        beneficiaryMemberIds: ['m-alex', 'm-sam'],
+        durationMinutes: 20,
+        createdBy: 'u-1',
+      });
+
+      // Simulate downgrade then restoration
+      entitlementAdapter.setMode('demo-free');
+      const freeEntries = await app.getEntries('h-test');
+      expect(freeEntries.some(e => e.id === entry.id)).toBe(true);
+
+      entitlementAdapter.setMode('demo-premium');
+      const restoredEntries = await app.getEntries('h-test');
+      expect(restoredEntries.some(e => e.id === entry.id)).toBe(true);
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // SECTION 21: Enhanced consent policy with retention enforcement
+  // ══════════════════════════════════════════════════════════════
+  describe('21. Enhanced consent policy with retention enforcement', () => {
+    let consentService: ConsentPolicyService;
+
+    beforeEach(() => {
+      consentService = createDefaultConsentPolicy();
+    });
+
+    it('should add dynamic policy', () => {
+      consentService.setPolicy({
+        policyId: 'us-other',
+        jurisdiction: 'US-other',
+        purposeConsentRequired: {
+          'product-improvement': false,
+          'research-statistics': false,
+          'anonymized-data-product': false,
+          'synthetic-data-generation': false,
+          'academic-collaboration': false,
+        },
+        explicitOptInRequired: false,
+        retroactiveWithdrawalSupported: false,
+        retentionDays: 365,
+        deletionOnWithdrawal: false,
+      });
+
+      const policy = consentService.getPolicyForJurisdiction('US-other');
+      expect(policy).toBeDefined();
+      expect(policy!.policyId).toBe('us-other');
+    });
+
+    it('should update existing policy', () => {
+      const original = consentService.getPolicyForJurisdiction('EU-GDPR');
+      expect(original!.retentionDays).toBe(365 * 3);
+
+      consentService.setPolicy({
+        ...original!,
+        retentionDays: 365 * 5,
+      });
+
+      const updated = consentService.getPolicyForJurisdiction('EU-GDPR');
+      expect(updated!.retentionDays).toBe(365 * 5);
+    });
+
+    it('should get expired records', () => {
+      // Record consent with old timestamp
+      consentService.recordConsent({
+        userId: 'u-old',
+        purpose: 'research-statistics',
+        granted: true,
+        jurisdiction: 'CH-DSG',
+        noticeVersion: '1.0.0',
+        withdrawable: true,
+      });
+
+      // CH-DSG has 3 year retention — no records should be expired yet
+      const expired = consentService.getExpiredRecords('CH-DSG');
+      expect(expired).toHaveLength(0);
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // SECTION 22: Permission enforcement in use cases
+  // ══════════════════════════════════════════════════════════════
+  describe('22. Permission enforcement in use cases', () => {
+    it('should resolve OWNER permission level for household owner', async () => {
+      const level = await app.getMemberPermissionLevel('u-1', 'h-test');
+      expect(level).toBe('OWNER');
+    });
+
+    it('should resolve MEMBER permission level for regular member', async () => {
+      const level = await app.getMemberPermissionLevel('u-2', 'h-test');
+      expect(level).toBe('MEMBER');
+    });
+
+    it('should get full permissions for OWNER', async () => {
+      const perms = await app.getMemberPermissions('u-1', 'h-test');
+      expect(perms.canCreateEntry).toBe(true);
+      expect(perms.canManageBilling).toBe(true);
+      expect(perms.canInviteMembers).toBe(true);
+      expect(perms.canRemoveMembers).toBe(true);
+    });
+
+    it('should get limited permissions for MEMBER', async () => {
+      const perms = await app.getMemberPermissions('u-2', 'h-test');
+      expect(perms.canCreateEntry).toBe(true);
+      expect(perms.canManageBilling).toBe(false);
+      expect(perms.canInviteMembers).toBe(false);
+      expect(perms.canRemoveMembers).toBe(false);
+    });
+
+    it('should check specific permission', async () => {
+      const canInvite = await app.checkPermission('u-1', 'h-test', 'canInviteMembers');
+      expect(canInvite).toBe(true);
+
+      const memberCanInvite = await app.checkPermission('u-2', 'h-test', 'canInviteMembers');
+      expect(memberCanInvite).toBe(false);
+    });
+
+    it('should resolve default MEMBER for non-member', async () => {
+      const level = await app.getMemberPermissionLevel('u-stranger', 'h-test');
+      expect(level).toBe('MEMBER');
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // SECTION 23: Invitation system with permission enforcement
+  // ══════════════════════════════════════════════════════════════
+  describe('23. Invitation system with permission enforcement', () => {
+    it('should create invitation with OWNER permission', async () => {
+      const invitation = await app.createInvitation('u-1', 'h-test', 'new@example.com');
+      expect(invitation.id).toBeDefined();
+      expect(invitation.householdId).toBe('h-test');
+    });
+
+    it('should reject invitation from MEMBER without invite permission', async () => {
+      try {
+        await app.createInvitation('u-2', 'h-test', 'another@example.com');
+        // Should not reach here
+        expect(true).toBe(false);
+      } catch (error: any) {
+        expect(error.message).toContain('Insufficient permissions');
+      }
+    });
+
+    it('should accept invitation', async () => {
+      const invitation = await app.createInvitation('u-1', 'h-test', 'new@example.com');
+      const result = await app.acceptInvitation(invitation.id, 'u-new');
+      expect(result.success).toBe(true);
+    });
+
+    it('should decline invitation', async () => {
+      const invitation = await app.createInvitation('u-1', 'h-test', 'new@example.com');
+      const result = await app.declineInvitation(invitation.id, 'u-new');
+      expect(result.success).toBe(true);
+    });
+
+    it('should get pending invitations', async () => {
+      await app.createInvitation('u-1', 'h-test', 'pending@example.com');
+      const pending = await app.getPendingInvitations('pending@example.com');
+      expect(pending.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should get household invitations', async () => {
+      await app.createInvitation('u-1', 'h-test', 'test@example.com');
+      const householdInvitations = await app.getHouseholdInvitations('h-test');
+      expect(householdInvitations.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should handle missing invitation gateway gracefully', async () => {
+      const appNoInvite = new ChoreScoreApp(
+        {
+          auth: authAdapter,
+          entitlements: entitlementAdapter,
+          share: new SystemShareAdapter(),
+          notifications: notificationAdapter,
+          calendar: calendarAdapter,
+          secureStorage,
+          sync: syncAdapter,
+          analytics: analyticsAdapter,
+          // No invitations gateway
+        },
+        {
+          users,
+          memberships,
+          accounts,
+          households,
+          members,
+          entries,
+          persistentTasks,
+          todos,
+        }
+      );
+
+      try {
+        await appNoInvite.createInvitation('u-1', 'h-test', 'test@example.com');
+        expect(true).toBe(false);
+      } catch (error: any) {
+        expect(error.message).toContain('not configured');
+      }
     });
   });
 });

@@ -67,3 +67,33 @@ export {
   AuditExportLogEntry,
   AuditExportLog,
 } from './types';
+
+export {
+  // Differential Privacy
+  DifferentialPrivacyService,
+  createDefaultDifferentialPrivacy,
+} from './differentialPrivacy';
+
+export {
+  // Query Budget
+  QueryBudgetService,
+  createDefaultQueryBudget,
+} from './queryBudget';
+
+export {
+  // Consent Policy
+  ConsentPolicyService,
+  createDefaultConsentPolicy,
+} from './consentPolicy';
+
+export {
+  // Buyer Contracts
+  BuyerContractsService,
+  createDefaultBuyerContracts,
+} from './buyerContracts';
+
+export {
+  // Audit Export Log
+  InMemoryAuditExportLog,
+  createDefaultAuditLog,
+} from './auditLog';

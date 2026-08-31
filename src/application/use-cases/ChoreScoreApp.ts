@@ -38,7 +38,18 @@ import {
   EntitlementState,
   AccountEntitlementState,
   ChronoTimerRepository,
+  MemberPermissionLevel,
+  MemberPermissions as MemberPermissionsType,
+  InvitationGateway,
+  InvitationCreateData,
+  Invitation,
+  InvitationResult,
 } from '../ports';
+import {
+  resolvePermissionLevel,
+  getPermissionsForLevel,
+  hasPermission,
+} from '../../infrastructure/local/MemberPermissions';
 
 // ── Repository Interfaces ──────────────────────────────────────
 
@@ -108,6 +119,7 @@ export interface AppServices {
   secureStorage: SecureStorageGateway;
   sync: SyncGateway;
   analytics: ResearchAnalyticsGateway;
+  invitations?: InvitationGateway;
 }
 
 /**
@@ -641,5 +653,147 @@ export class ChoreScoreApp {
     }
     const result = await this.services.share.share(options);
     return result.completed;
+  }
+
+  // ── Permission Use Cases ────────────────────────────────────
+
+  /**
+   * Resolve the permission level for a user in a household.
+   * OWNER > PAYER > ADMIN > MEMBER.
+   */
+  async getMemberPermissionLevel(
+    userId: string,
+    householdId: string
+  ): Promise<MemberPermissionLevel> {
+    const membership = await this.repositories.memberships.getByUserAndHousehold(userId, householdId);
+    if (!membership) return 'MEMBER'; // Default: no membership = member-level
+
+    // Check if user is the payer (billing owner) of the household
+    const household = await this.repositories.households.getById(householdId);
+    const isPayer = household?.ownerId === userId;
+
+    return resolvePermissionLevel(membership.role, isPayer);
+  }
+
+  /**
+   * Get the full permissions object for a user in a household.
+   */
+  async getMemberPermissions(
+    userId: string,
+    householdId: string
+  ): Promise<MemberPermissionsType> {
+    const level = await this.getMemberPermissionLevel(userId, householdId);
+    return getPermissionsForLevel(level);
+  }
+
+  /**
+   * Check if a user has a specific permission in a household.
+   */
+  async checkPermission(
+    userId: string,
+    householdId: string,
+    permission: keyof MemberPermissionsType
+  ): Promise<boolean> {
+    const level = await this.getMemberPermissionLevel(userId, householdId);
+    return hasPermission(level, permission);
+  }
+
+  // ── Invitation Use Cases ────────────────────────────────────
+
+  /**
+   * Create an invitation to join a household.
+   * Requires canInviteMembers permission.
+   */
+  async createInvitation(
+    inviterUserId: string,
+    householdId: string,
+    invitedEmail: string,
+    role: 'MEMBER' | 'ADMIN' = 'MEMBER'
+  ): Promise<Invitation> {
+    if (!this.services.invitations) {
+      throw new Error('Invitations are not configured');
+    }
+
+    // Check permission
+    const canInvite = await this.checkPermission(inviterUserId, householdId, 'canInviteMembers');
+    if (!canInvite) {
+      throw new Error('Insufficient permissions to invite members');
+    }
+
+    return this.services.invitations.createInvitation({
+      householdId,
+      invitedByUserId: inviterUserId,
+      invitedEmail,
+      role,
+    });
+  }
+
+  /**
+   * Accept an invitation to join a household.
+   * A free account can join multiple invited households without paying.
+   */
+  async acceptInvitation(
+    invitationId: string,
+    userId: string
+  ): Promise<InvitationResult> {
+    if (!this.services.invitations) {
+      throw new Error('Invitations are not configured');
+    }
+
+    const result = await this.services.invitations.acceptInvitation(invitationId, userId);
+    if (result.success) {
+      // The invitation system handles membership creation
+      // No billing check needed — joining is always free
+    }
+    return result;
+  }
+
+  /**
+   * Decline an invitation.
+   */
+  async declineInvitation(
+    invitationId: string,
+    userId: string
+  ): Promise<InvitationResult> {
+    if (!this.services.invitations) {
+      throw new Error('Invitations are not configured');
+    }
+    return this.services.invitations.declineInvitation(invitationId, userId);
+  }
+
+  /**
+   * Get pending invitations for a user.
+   */
+  async getPendingInvitations(userId: string): Promise<Invitation[]> {
+    if (!this.services.invitations) return [];
+    return this.services.invitations.getPendingInvitations(userId);
+  }
+
+  /**
+   * Get all invitations for a household (owner/payer view).
+   */
+  async getHouseholdInvitations(householdId: string): Promise<Invitation[]> {
+    if (!this.services.invitations) return [];
+    return this.services.invitations.getHouseholdInvitations(householdId);
+  }
+
+  /**
+   * Revoke an invitation. Requires canRemoveMembers permission.
+   */
+  async revokeInvitation(
+    inviterUserId: string,
+    invitationId: string,
+    householdId: string
+  ): Promise<void> {
+    if (!this.services.invitations) {
+      throw new Error('Invitations are not configured');
+    }
+
+    const canRemove = await this.checkPermission(inviterUserId, householdId, 'canRemoveMembers');
+    if (!canRemove) {
+      throw new Error('Insufficient permissions to revoke invitations');
+    }
+
+    return this.services.invitations.revokeInvitation(invitationId, householdId);
   }
 }
