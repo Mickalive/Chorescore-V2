@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33357496099",
+  "decision": "continue",
+  "reason": "V2-05 audit repair. Trusted shell committed repair baseline (b22e7d3) with ShareCard component, ScoreScreen share button, theme contrast adjustments, V2-05 acceptance tests, and all audit reports. 361 tests green, typecheck clean, Android build OK. Five mustFix findings remain: (1) Share sheet uses Web Share API (navigator.share) instead of native Share API — does not open on Android APK; (2) ShareCard is dead code, never rendered in any screen; (3) Visual evidence gallery required by QG-4/DESIGN_BRIEF is absent; (4) textSecondary/textMuted fail WCAG AA contrast on all surfaces; (5) Options screen shows 'Notifications push: Activées' while LocalNotificationAdapter.isAvailable()=false. Criterion V2-05 stays active. WIP repair baseline preserved. Next cycle must fix all 5 mustFix findings.",
+  "progressEvidence": [
+    "361-tests-green-13-suites",
+    "typecheck-clean",
+    "android-build-ok",
+    "v2-00-v2-04-evidence-preserved",
+    "repair-baseline-committed-b22e7d3",
+    "sharecard-component-created",
+    "score-screen-share-button-added",
+    "theme-contrast-adjustments-made",
+    "v2-05-acceptance-test-suite-976-lines",
+    "archive-message-warm-non-blocking",
+    "entitlement-badges-coherent",
+    "navigation-3-tabs-preserved",
+    "honest-notification-adapter",
+    "share-contexts-score-and-history"
+  ],
+  "nextTask": {
+    "criterionId": "V2-05",
+    "mode": "repair",
+    "objective": "V2-05 repair — fix all 5 mustFix findings from audit 33357496099. The WIP repair baseline is already committed (ShareCard, ScoreScreen share, theme adjustments). The next Builder must: (1) replace Web Share API with native Share API (react-native Share or expo-sharing) in LocalSystemShareAdapter; (2) integrate ShareCard into the share flow so visual cards are actually rendered and shared as images; (3) produce the visual evidence gallery required by QG-4; (4) darken textSecondary/textMuted to achieve ≥4.5:1 WCAG AA contrast on all surfaces; (5) fix Options notification display to show honest states reflecting adapter availability.",
+    "scope": "Repair findings mustFix #1-#5 from audit RUN_33357496099. Do not add new features. Do not weaken existing acceptance criteria. Preserve all V2-00..V2-04 evidence. All 361+ tests must remain green. Navigation stays exactly 3 tabs.",
+    "mustFixFindings": [
+      {
+        "id": "F1",
+        "path": "src/infrastructure/local/LocalSystemShareAdapter.ts",
+        "problem": "Share sheet relies on navigator.share (Web Share API) which does not exist on Android APK. isAvailable() always returns false on native. The share sheet never opens.",
+        "requiredFix": "Implement adapter using Share.share from react-native (or expo-sharing) for native platforms. Keep isAvailable() honest. Add test verifying delegation to native API.",
+        "verification": "On Android APK, sharing from Score and history opens native share sheet."
+      },
+      {
+        "id": "F2",
+        "path": "src/ui/components/ShareCard.tsx",
+        "problem": "ShareCard component is never rendered in any screen. Only generateShareText is used — sharing produces text only, not visual cards.",
+        "requiredFix": "Integrate ShareCard into the share flow: render it and share as image via SystemShareGateway (files option), or document why visual sharing is deferred.",
+        "verification": "Share from Score/history produces a visual card (image) via native share sheet."
+      },
+      {
+        "id": "F3",
+        "path": "reports/audits/ (gallery)",
+        "problem": "Required visual evidence gallery per QG-4/DESIGN_BRIEF is completely absent. No screenshots exist in the repository.",
+        "requiredFix": "Produce the gallery: login, root households, Add Premium, Add Free + archive, Score Premium, Score Free, To-do Premium, completion mini-form, To-do Free, upsell history, Options, share card, empty states/errors — as reproducible audit artifacts.",
+        "verification": "Gallery artifacts exist and are reproducible from the accepted tree."
+      },
+      {
+        "id": "F4",
+        "path": "src/ui/design-system/theme.ts",
+        "problem": "textSecondary #81B29A and textMuted #A8A8B3 fail WCAG AA (4.5:1) on all surfaces (2.03-2.40:1). Warning/surface=2.97. Primary/background=4.47.",
+        "requiredFix": "Darken textSecondary, textMuted, warning, and primary to achieve ≥4.5:1 on all surfaces. Extend contrast tests to all text/surface pairs actually used.",
+        "verification": "Automated contrast check passes WCAG AA for all used pairs."
+      },
+      {
+        "id": "F5",
+        "path": "app/options/personal.tsx",
+        "problem": "Options shows 'Notifications push: Activées', 'Rappels de tâches: Activés', 'Nouvelles assignations: Activées' while LocalNotificationAdapter.isAvailable()=false.",
+        "requiredFix": "Display honest states ('Non configuré' / 'Indisponible') or wire to real adapter availability.",
+        "verification": "Options notification states match actual adapter availability."
+      }
+    ],
+    "nonBlockingFindings": [
+      {
+        "id": "NB1",
+        "path": "__tests__/application/V2-05-acceptance.test.ts",
+        "problem": "Tautological assertions: expect(true).toBe(true) at lines 700/828, typeof boolean checks, hardcoded strings.",
+        "requiredFix": "Replace with real behavior assertions."
+      },
+      {
+        "id": "NB2",
+        "path": "src/features/household/ScoreScreen.tsx, TabBar",
+        "problem": "Touch targets too small (share button ~16px, tabs ~40px), no accessibilityRole/accessibilityLabel.",
+        "requiredFix": "Targets ≥44px, add roles/labels on interactive elements."
+      },
+      {
+        "id": "NB3",
+        "path": "app/options/personal.tsx, household/[id].tsx",
+        "problem": "Dead option rows (QG-1): 'Changer le mot de passe', 'Gérer l'abonnement', etc. — clickable without onPress or disabled state.",
+        "requiredFix": "Wire or explicitly mark unavailable."
+      },
+      {
+        "id": "NB4",
+        "path": "src/features/household/TodoScreen.tsx",
+        "problem": "Upsell To-do Free shown proactively on tab open instead of on creation attempt.",
+        "requiredFix": "Tab usable in Free, upsell triggered on attempt."
+      }
+    ]
+  }
+}
