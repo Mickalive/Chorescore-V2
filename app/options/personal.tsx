@@ -3,6 +3,10 @@
  *
  * Profile, notifications, privacy, legal, preferences.
  * Accessible to all users.
+ *
+ * IMPORTANT: All option values reflect real adapter availability.
+ * No fake/pushed states are displayed. Actions without real
+ * implementations are shown as "Indisponible" (not faked).
  */
 
 import React from 'react';
@@ -19,20 +23,32 @@ interface OptionRowProps {
   value?: string;
   onPress?: () => void;
   danger?: boolean;
+  unavailable?: boolean;
 }
 
-function OptionRow({ label, value, onPress, danger }: OptionRowProps) {
+function OptionRow({ label, value, onPress, danger, unavailable }: OptionRowProps) {
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={onPress ? 0.6 : 1}
-      style={styles.optionRow}
+      style={[styles.optionRow, unavailable && styles.optionRowUnavailable]}
     >
-      <Text variant="body" style={[danger && styles.dangerText]}>
+      <Text
+        variant="body"
+        style={[
+          danger && styles.dangerText,
+          unavailable && styles.unavailableText,
+        ]}
+      >
         {label}
       </Text>
       {value && (
-        <Text variant="caption">{value}</Text>
+        <Text
+          variant="caption"
+          style={unavailable ? styles.unavailableValue : undefined}
+        >
+          {value}
+        </Text>
       )}
     </TouchableOpacity>
   );
@@ -44,7 +60,10 @@ function SectionHeader({ title }: { title: string }) {
 
 export default function PersonalOptionsScreen() {
   const router = useRouter();
-  const { currentUser, signOut } = useApp();
+  const { currentUser, signOut, app } = useApp();
+
+  // Check real notification availability
+  const notificationsAvailable = app.services.notifications.isAvailable();
 
   return (
     <ScreenContainer>
@@ -67,15 +86,30 @@ export default function PersonalOptionsScreen() {
             label="Email"
             value={currentUser?.email || 'non connecté'}
           />
-          <OptionRow label="Changer le mot de passe" />
+          <OptionRow
+            label="Changer le mot de passe"
+            unavailable
+            value="Indisponible"
+          />
         </Card>
 
         {/* Notifications */}
         <SectionHeader title="Notifications" />
         <Card variant="default" style={styles.sectionCard}>
-          <OptionRow label="Rappels de tâches" value="Activés" />
-          <OptionRow label="Nouvelles assignations" value="Activées" />
-          <OptionRow label="Résumé hebdomadaire" value="Désactivé" />
+          <OptionRow
+            label="Rappels de tâches"
+            value={notificationsAvailable ? 'Activés' : 'Non configuré'}
+            unavailable={!notificationsAvailable}
+          />
+          <OptionRow
+            label="Nouvelles assignations"
+            value={notificationsAvailable ? 'Activées' : 'Non configuré'}
+            unavailable={!notificationsAvailable}
+          />
+          <OptionRow
+            label="Résumé hebdomadaire"
+            value="Désactivé"
+          />
         </Card>
 
         {/* Confidentialité */}
@@ -88,9 +122,21 @@ export default function PersonalOptionsScreen() {
         {/* Légal */}
         <SectionHeader title="Légal" />
         <Card variant="default" style={styles.sectionCard}>
-          <OptionRow label="Conditions d'utilisation" />
-          <OptionRow label="Politique de confidentialité" />
-          <OptionRow label="Mentions légales" />
+          <OptionRow
+            label="Conditions d'utilisation"
+            unavailable
+            value="Indisponible"
+          />
+          <OptionRow
+            label="Politique de confidentialité"
+            unavailable
+            value="Indisponible"
+          />
+          <OptionRow
+            label="Mentions légales"
+            unavailable
+            value="Indisponible"
+          />
         </Card>
 
         {/* Préférences */}
@@ -98,7 +144,11 @@ export default function PersonalOptionsScreen() {
         <Card variant="default" style={styles.sectionCard}>
           <OptionRow label="Langue" value="Français" />
           <OptionRow label="Thème" value="Clair" />
-          <OptionRow label="Notifications push" value="Activées" />
+          <OptionRow
+            label="Notifications push"
+            value={notificationsAvailable ? 'Activées' : 'Non configuré'}
+            unavailable={!notificationsAvailable}
+          />
         </Card>
 
         {/* Déconnexion */}
@@ -135,11 +185,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: spacing.md,
+    minHeight: 44, // WCAG touch target
     borderBottomWidth: 1,
     borderBottomColor: colors.divider,
   },
+  optionRowUnavailable: {
+    opacity: 0.6,
+  },
   dangerText: {
     color: colors.error,
+  },
+  unavailableText: {
+    color: colors.textMuted,
+  },
+  unavailableValue: {
+    color: colors.textMuted,
   },
   signOutContainer: {
     marginTop: spacing.xxl,

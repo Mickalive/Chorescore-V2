@@ -176,6 +176,8 @@ const styles = StyleSheet.create({
     borderTopColor: colors.divider,
   },
   menuItem: {
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
+    minHeight: 44, // WCAG AA touch target
+    justifyContent: 'center',
   },
 });

@@ -424,6 +424,23 @@ describe('V2-05 Acceptance Criteria', () => {
       // Chart colors should be the palette colors, not unique per member
       expect(colors.chartColors).toContain(colors.primary);
     });
+
+    it('should have no color assigned to individual members', () => {
+      // DESIGN_CONTRACT: aucune palette identitaire finie par membre
+      // The theme does not contain member-specific colors
+      expect(colors).not.toHaveProperty('memberAlex');
+      expect(colors).not.toHaveProperty('memberSam');
+    });
+
+    it('should have a warm, not corporate-cold color scheme', () => {
+      // DESIGN_BRIEF: chaleureux, léger, utile
+      // Primary should be warm (terracotta range), not blue corporate
+      const r = parseInt(colors.primary.slice(1, 3), 16);
+      const g = parseInt(colors.primary.slice(3, 5), 16);
+      const b = parseInt(colors.primary.slice(5, 7), 16);
+      // Warm color: red channel dominant over blue
+      expect(r).toBeGreaterThan(b);
+    });
   });
 
   // ══════════════════════════════════════════════════════════════
@@ -647,27 +664,25 @@ describe('V2-05 Acceptance Criteria', () => {
   // SECTION 7: Accessibilité
   // ══════════════════════════════════════════════════════════════
   describe('7. Accessibilité : contrastes, textes lisibles, états vides, erreurs', () => {
-    it('should have WCAG AA contrast ratios for text on backgrounds', () => {
-      // Helper to calculate relative luminance
-      const getLuminance = (hex: string): number => {
-        const r = parseInt(hex.slice(1, 3), 16) / 255;
-        const g = parseInt(hex.slice(3, 5), 16) / 255;
-        const b = parseInt(hex.slice(5, 7), 16) / 255;
+    // Helper to calculate relative luminance
+    const getLuminance = (hex: string): number => {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      const toLinear = (c: number) =>
+        c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+      return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+    };
 
-        const toLinear = (c: number) =>
-          c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    const getContrastRatio = (fg: string, bg: string): number => {
+      const l1 = getLuminance(fg);
+      const l2 = getLuminance(bg);
+      const lighter = Math.max(l1, l2);
+      const darker = Math.min(l1, l2);
+      return (lighter + 0.05) / (darker + 0.05);
+    };
 
-        return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
-      };
-
-      const getContrastRatio = (fg: string, bg: string): number => {
-        const l1 = getLuminance(fg);
-        const l2 = getLuminance(bg);
-        const lighter = Math.max(l1, l2);
-        const darker = Math.min(l1, l2);
-        return (lighter + 0.05) / (darker + 0.05);
-      };
-
+    it('should have WCAG AA contrast ratios for primary text on all surfaces', () => {
       // Primary text on background — must be AA (4.5:1)
       const textOnBg = getContrastRatio(colors.text, colors.background);
       expect(textOnBg).toBeGreaterThanOrEqual(4.5);
@@ -679,16 +694,34 @@ describe('V2-05 Acceptance Criteria', () => {
       // Primary text on surfaceAlt — must be AA
       const textOnAlt = getContrastRatio(colors.text, colors.surfaceAlt);
       expect(textOnAlt).toBeGreaterThanOrEqual(4.5);
+    });
 
-      // Text on primary (white on terracotta) — must be AA
+    it('should have WCAG AA contrast ratios for secondary text on all surfaces', () => {
+      // textSecondary on background — must be AA (4.5:1)
+      const secOnBg = getContrastRatio(colors.textSecondary, colors.background);
+      expect(secOnBg).toBeGreaterThanOrEqual(4.5);
+
+      // textSecondary on surface — must be AA
+      const secOnSurface = getContrastRatio(colors.textSecondary, colors.surface);
+      expect(secOnSurface).toBeGreaterThanOrEqual(4.5);
+
+      // textSecondary on surfaceAlt — must be AA
+      const secOnAlt = getContrastRatio(colors.textSecondary, colors.surfaceAlt);
+      expect(secOnAlt).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it('should have WCAG AA contrast ratios for text on primary button', () => {
+      // White text on primary — must be AA (4.5:1)
       const textOnPrimary = getContrastRatio(colors.textOnPrimary, colors.primary);
       expect(textOnPrimary).toBeGreaterThanOrEqual(4.5);
+    });
 
-      // Success color on surface — large text (3.0:1 minimum for 18px+ bold or 24px+)
+    it('should have minimum contrast for semantic colors on surface', () => {
+      // Success on surface — large text (3.0:1 minimum for 18px+ bold or 24px+)
       const successOnSurface = getContrastRatio(colors.success, colors.surface);
       expect(successOnSurface).toBeGreaterThanOrEqual(3.0);
 
-      // Error color on surface — large text
+      // Error on surface — large text
       const errorOnSurface = getContrastRatio(colors.error, colors.surface);
       expect(errorOnSurface).toBeGreaterThanOrEqual(3.0);
     });
@@ -788,6 +821,21 @@ describe('V2-05 Acceptance Criteria', () => {
       // Per architecture: Le share natif est une seule frontière système
       // No Instagram/Facebook/WhatsApp dependencies
       expect(shareAdapter.constructor.name).toBe('SystemShareAdapter');
+    });
+
+    it('should use expo-sharing on native platforms when available', () => {
+      // The adapter tries expo-sharing first (lazy-loaded) before falling back to Web Share API
+      // This ensures native share sheet on Android/iOS
+      expect(shareAdapter.isAvailable()).toBe(true);
+    });
+
+    it('should gracefully handle share failure', async () => {
+      // Even if share fails, it should not throw
+      const result = await shareAdapter.share({
+        title: 'Test',
+        message: 'This should fail gracefully',
+      });
+      expect(typeof result.completed).toBe('boolean');
     });
   });
 

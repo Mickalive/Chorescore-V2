@@ -32,6 +32,9 @@ export function TabBar({ tabs, activeTab, onTabPress, style }: TabBarProps) {
           style={[styles.tab, activeTab === tab.key && styles.activeTab]}
           onPress={() => onTabPress(tab.key)}
           activeOpacity={0.7}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === tab.key }}
+          accessibilityLabel={tab.label}
         >
           <Text
             variant="bodyBold"
@@ -58,6 +61,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: spacing.md,
+    minHeight: 44, // WCAG AA touch target
     borderRadius: borderRadius.md,
   },
   activeTab: {

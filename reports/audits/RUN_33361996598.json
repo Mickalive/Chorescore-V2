@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33361996598",
+  "role": "builder",
+  "decision": "repair",
+  "summary": "V2-05 repair cycle. Trusted verification passed (exit 0, 368 tests green, typecheck clean, Android build OK, 3-tab navigation preserved). However, 4 of the 5 mustFix findings from the prior audit (cycle 33357496099) remain unresolved. F1: the native share sheet still does not open on Android — expo-sharing's shareAsync is called with a plain text string as the 'url' parameter, but shareAsync requires a local file URL (scheme 'file'); on Android getLocalFileFoUrl throws InvalidArgumentException, the catch swallows it, the Web Share API fallback is unavailable on native, and share() returns {completed:false}. The jest mock of expo-sharing masks this real failure. F2: the visual ShareCard component is still dead code — only exported, never rendered; sharing produces text only, not visual cards. F3: the required visual evidence gallery (12 screens per DESIGN_BRIEF/QG-4) is still completely absent. F4: textMuted (#7A7A87) still fails WCAG AA (3.80-4.23:1) on all surfaces and is used for normal-size captions/placeholders; the contrast test was not extended to cover textMuted/warning as required. F5 (false push notification display) is fixed: personal.tsx now shows honest 'Non configuré'/'Indisponible' states driven by real adapter availability. Because multiple mustFix findings remain, the decision is repair.",
+  "checks": [
+    "trusted-verification-exit-0",
+    "npm-run-check-green-368-tests",
+    "typecheck-clean",
+    "android-build-successful",
+    "navigation-3-tabs-preserved",
+    "share-adapter-native-path-inspected",
+    "sharecard-rendering-inspected",
+    "visual-evidence-gallery-searched",
+    "wcag-contrast-computed-all-pairs",
+    "notification-honesty-verified"
+  ],
+  "findings": [
+    {
+      "path": "src/infrastructure/local/LocalSystemShareAdapter.ts",
+      "problem": "F1 (carryover, not fixed): the native share sheet still does not open on Android. shareAsync is invoked with a plain text string as the 'url' argument, but expo-sharing's shareAsync requires a local file URL whose scheme is 'file'. On Android, SharingModule.getLocalFileFoUrl throws InvalidArgumentException('Only local file URLs are supported...') for a non-file URI; the try/catch swallows it, the Web Share API fallback is unavailable on native, and share() returns {completed:false}. The share sheet never opens on the APK. The jest.setup.js mock of expo-sharing (shareAsync resolves {action:'shared'}) masks this real failure, and the added tests only assert isAvailable()===true and typeof result.completed==='boolean', which do not exercise the native path.",
+      "evidence": "node_modules/expo-sharing/build/Sharing.d.ts: 'shareAsync(url: string, options?)' with '@param url Local file URL to share.'; node_modules/expo-sharing/android/.../SharingModule.kt getLocalFileFoUrl throws InvalidArgumentException when uri.scheme != 'file'. Adapter passes options.title/message/url joined as plain text to shareAsync(text, {mimeType:'text/plain'}). jest.setup.js mocks expo-sharing shareAsync to resolve. V2-05-acceptance.test.ts 'should use expo-sharing on native platforms when available' only checks isAvailable(); 'should gracefully handle share failure' only checks typeof boolean.",
+      "mustFix": true,
+      "requiredFix": "Share real content through the native share sheet on Android/iOS. Either write the share text/card to a local file and pass its file:// URI to expo-sharing shareAsync, or use react-native Share.share for text sharing. Keep isAvailable() honest. Add a test that verifies the native API is invoked with a valid file URI (not plain text) and that the share sheet opens.",
+      "verification": "On the Android APK, sharing from Score and history opens the native share sheet with the intended content. A test asserts shareAsync is called with a file:// URI."
+    },
+    {
+      "path": "src/ui/components/ShareCard.tsx",
+      "problem": "F2 (carryover, not fixed): the visual ShareCard component is dead code. It is exported from src/ui/components/index.ts but never rendered in any screen. The share flow (ScoreScreen.handleShareScore, AddTaskScreen.handleShare) uses only generateShareText, producing plain text. Acceptance requires 'Share cards ChoreScore générées et partageables' (visual cards).",
+      "evidence": "grep of src/ and app/ shows ShareCard only referenced in index.ts (export) and ShareCard.tsx itself; ScoreScreen imports only generateShareText. No screen renders <ShareCard/>.",
+      "mustFix": true,
+      "requiredFix": "Integrate the visual ShareCard into the share flow: render it and share it as an image via SystemShareGateway (file option), or otherwise produce a shareable visual card. Verify the card is recognizable as ChoreScore and contains only the user-selected data.",
+      "verification": "Sharing from Score/history produces a visual ChoreScore card (image) via the native share sheet."
+    },
+    {
+      "path": "repository root (visual evidence gallery)",
+      "problem": "F3 (carryover, not fixed): the required visual evidence gallery is completely absent. DESIGN_BRIEF 'Galerie de référence obligatoire' and QUALITY_GATES QG-4 require at least 12 reproducible screens (connexion, racine foyers, Ajouter Premium, Ajouter Free + archive, Score Premium, Score Free, To-do Premium, mini-form complétion, To-do Free, upsell historique, Options, share card) plus an empty/error state. V2-05 requires 'preuves visuelles reproductibles des écrans cœur et audit accessibilité complet'. No gallery/evidence/screenshot artifacts exist in the candidate diff or repository.",
+      "evidence": "find for gallery/evidence/visual/screenshot/capture directories and *.png/*.jpg under the repo (excluding node_modules) returns only app icon/splash assets. git diff --cached --name-only contains no gallery/evidence files. No gallery directory exists.",
+      "mustFix": true,
+      "requiredFix": "Produce the reproducible visual evidence gallery (12+ screens from DESIGN_BRIEF) as audit artifacts, generated deterministically from the accepted tree.",
+      "verification": "Gallery artifacts exist and are reproducible from the accepted tree."
+    },
+    {
+      "path": "src/ui/design-system/theme.ts",
+      "problem": "F4 (partially fixed): textSecondary was darkened to pass WCAG AA, but textMuted (#7A7A87) still fails AA (4.5:1) on all surfaces (3.80:1 on surfaceAlt, 4.02:1 on background, 4.23:1 on surface) and is used extensively for normal-size text (13px captions, placeholders, delete buttons, notes, secondary labels) which does not qualify for the large-text AA exemption. warning (#C68A2E) also fails at 2.97:1 on surface. The contrast test was not extended to cover textMuted/warning as the finding required.",
+      "evidence": "Computed contrast: textMuted/background 4.02, textMuted/surface 4.23, textMuted/surfaceAlt 3.80 (all <4.5). warning/surface 2.97. textMuted used in DurationInput, TodoScreen, AddTaskScreen, ScoreScreen, premium, personal options. V2-05-acceptance.test.ts Section 7 checks text, textSecondary, textOnPrimary, success, error but not textMuted or warning.",
+      "mustFix": true,
+      "requiredFix": "Darken textMuted (and warning where used for text) to >=4.5:1 on all surfaces, and extend the contrast test to cover every used text/surface pair including textMuted and warning.",
+      "verification": "Automated contrast check passes WCAG AA for all used text/surface pairs."
+    }
+  ]
+}

@@ -304,7 +304,12 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
             <Text variant="sectionTitle" style={styles.sectionTitle}>
               Équilibres
             </Text>
-            <Pressable onPress={handleShareScore} style={styles.shareButton}>
+            <Pressable
+              onPress={handleShareScore}
+              style={styles.shareButton}
+              accessibilityRole="button"
+              accessibilityLabel="Partager les équilibres"
+            >
               <Text variant="body" color={colors.primary}>Partager</Text>
             </Pressable>
           </View>
@@ -483,8 +488,10 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   shareButton: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    minHeight: 44, // WCAG AA touch target
+    justifyContent: 'center',
   },
   sumNote: {
     marginBottom: spacing.sm,
