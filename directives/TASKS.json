@@ -2,33 +2,30 @@
   "schemaVersion": 1,
   "milestone": "v2-rc",
   "builder": {
-    "enabled": true,
-    "criterionId": "V2-06",
-    "objective": "V2-06 repair — Fix 3 must-fix findings from audit 33416807677: (1) getMemberPermissionLevel must deny access for non-members instead of granting MEMBER, (2) logConflict/getConflictLog must be household-scoped, (3) getPendingInvitations must resolve userId to email and use exact matching.",
-    "scope": "Repair scope — fix exactly 3 findings:\n\n**MF-1: Non-member permission grant**\nFile: src/application/use-cases/ChoreScoreApp.ts\n- getMemberPermissionLevel: when membership is null, throw an error (e.g. 'User is not a member of this household') instead of returning 'MEMBER'\n- Update test V2-06-phase2-acceptance.test.ts line 1728-1731 to assert the error is thrown (or appropriate no-access behavior)\n\n**MF-2: Conflict log tenant isolation**\nFile: src/infrastructure/local/LocalSyncAdapter.ts\n- logConflict: add householdId parameter (or derive correctly from queued change context), store under that key\n- getConflictLog: return this.conflictLog.get(householdId) ?? [] instead of flattening all\n- Add test: create conflicts for two different households, assert getConflictLog returns only the requested household's entries\n\n**MF-3: getPendingInvitations userId→email**\nFile: src/application/use-cases/ChoreScoreApp.ts\n- getPendingInvitations: resolve userId to email via this.repositories.users.getById(userId), then pass email to adapter\nFile: src/infrastructure/local/LocalInvitationAdapter.ts\n- getPendingInvitations: replace substring includes with exact match only (inv.invitedEmail === email)\n- Update test line 1766-1770 to exercise userId-based API correctly (pass userId, not email)\n\nDo NOT touch: Research Analytics Plane, V2-00..V2-05 code, navigation, design, pricing, analytics types, privacy pipeline/gate.",
+    "enabled": false,
+    "criterionId": null,
+    "objective": "V2-07 release handoff — no Builder work. The trusted release shell exclusively owns the final Android release candidate validation and attestation.",
+    "scope": "V2-06 is complete and independently accepted in cycle 33434778952 with 608 tests green, typecheck clean, Android debug APK build successful and zero findings. Do not reopen V2-06 or modify product code. V2-07 is executed only by the trusted release job: run privacy contract checks, build the release APK, install and launch it on Android API 35, traverse the canonical Premium → Free → Premium golden path, collect runtime/visual evidence, upload the final APK artifact, and attest V2-07 complete only if every trusted gate succeeds.",
     "acceptance": [
-      "getMemberPermissionLevel throws/denies for non-members",
-      "getConflictLog returns only requested household conflicts",
-      "logConflict stores under correct household key",
-      "Two-household isolation test added for conflict log",
-      "getPendingInvitations resolves userId to email before matching",
-      "Adapter uses exact email match, no substring includes",
-      "Test exercises userId-based getPendingInvitations correctly",
-      "606+ tests green (no regression)",
+      "Builder remains disabled during V2-07",
+      "V2-00..V2-06 remain complete with no regression",
       "npm run check green",
-      "3-tab navigation preserved",
-      "No social SDK added",
-      "Premium contextuel non agressif",
-      "V2-00..V2-06 phase1 invariants intact"
+      "privacy:check green",
+      "release APK builds successfully",
+      "release APK installs and launches on Android emulator API 35",
+      "Android golden path Premium to Free to Premium passes",
+      "E2E result.json and visual checkpoints produced",
+      "final APK artifact uploaded with SHA-256 evidence",
+      "V2-07 completed only by trusted release shell"
     ],
     "previousCriteriaPreserved": [
-      "V2-00: architecture greenfield, ports/adapters, 67+ tests",
+      "V2-00: architecture greenfield, ports/adapters, Android build",
       "V2-01: identity, households, subscription, Options, trial expiry, demo-premium consistency",
       "V2-02: CompletedEntry, PersistentTask, chrono, history, navigation, AsyncStorage-backed persistence",
-      "V2-03: Score/balances/free-window, period selectors, filters, +D/-D/N, compensations, charts, weighted, upsell repair",
-      "V2-04: To-do Premium, conversion to CompletedEntry, 4 mustFix all fixed, CTAs honest, 304 tests green",
-      "V2-05: share sheet natif, ShareCard, notifications honesty, WCAG AA, visual evidence gallery 13 PNG, 393 tests green",
-      "V2-06-phase1: ResearchAnalyticsGateway, TaskTaxonomyService, PrivacyTransformPipeline, PrivacyReleaseGate, analytics types, disableability, 465 tests green"
+      "V2-03: Score/balances/free-window, filters, compensations, charts, weighted Premium, contextual upsell",
+      "V2-04: To-do Premium and exactly-one CompletedEntry conversion",
+      "V2-05: native share sheet, ShareCard, design system, WCAG AA, visual gallery",
+      "V2-06: operational backend adapters and privacy-first Research Analytics Plane, 608 tests green, zero findings, audit accepted 33434778952"
     ]
   }
 }
