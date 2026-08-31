@@ -1,0 +1,88 @@
+{
+  "generatedAt": "2026-08-31T09:03:19.615Z",
+  "generator": "scripts/generate-visual-evidence.js",
+  "designSystemSource": "src/ui/design-system/theme.ts",
+  "screenWidth": 390,
+  "screenHeight": 844,
+  "deviceScaleFactor": 2,
+  "screens": [
+    {
+      "name": "01-connexion",
+      "title": "Connexion",
+      "file": "01-connexion.png",
+      "bytes": 59870
+    },
+    {
+      "name": "02-racine-foyers",
+      "title": "Racine Foyers",
+      "file": "02-racine-foyers.png",
+      "bytes": 59201
+    },
+    {
+      "name": "03-ajouter-premium",
+      "title": "Ajouter Premium",
+      "file": "03-ajouter-premium.png",
+      "bytes": 121317
+    },
+    {
+      "name": "04-ajouter-free-archive",
+      "title": "Ajouter Free + Archive",
+      "file": "04-ajouter-free-archive.png",
+      "bytes": 110642
+    },
+    {
+      "name": "05-score-premium",
+      "title": "Score Premium",
+      "file": "05-score-premium.png",
+      "bytes": 124477
+    },
+    {
+      "name": "06-score-free",
+      "title": "Score Free",
+      "file": "06-score-free.png",
+      "bytes": 101589
+    },
+    {
+      "name": "07-todo-premium",
+      "title": "To-do Premium",
+      "file": "07-todo-premium.png",
+      "bytes": 77447
+    },
+    {
+      "name": "08-mini-form",
+      "title": "Mini-form Complétion",
+      "file": "08-mini-form.png",
+      "bytes": 45004
+    },
+    {
+      "name": "09-todo-free",
+      "title": "To-do Free",
+      "file": "09-todo-free.png",
+      "bytes": 63286
+    },
+    {
+      "name": "10-upsell-historique",
+      "title": "Upsell Historique",
+      "file": "10-upsell-historique.png",
+      "bytes": 81043
+    },
+    {
+      "name": "11-options",
+      "title": "Options",
+      "file": "11-options.png",
+      "bytes": 106015
+    },
+    {
+      "name": "12-share-card",
+      "title": "Share Card",
+      "file": "12-share-card.png",
+      "bytes": 41659
+    },
+    {
+      "name": "13-empty-states",
+      "title": "Empty States",
+      "file": "13-empty-states.png",
+      "bytes": 64117
+    }
+  ]
+}
