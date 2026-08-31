@@ -3,18 +3,23 @@
   "milestone": "v2-rc",
   "builder": {
     "enabled": true,
-    "criterionId": "V2-05",
-    "objective": "V2-05 repair — Fix the remaining mustFix finding F3 (visual evidence gallery). F1, F2, F4, F5 are all fixed. The WIP repair baseline is preserved.",
-    "scope": "MustFix repair required:\n\nF3: Produce the reproducible visual evidence gallery (12+ screens from DESIGN_BRIEF) as actual audit artifacts (screen captures/images). The current V2-05-visual-evidence.test.ts only performs structural data assertions (e.g. expect(score.balances.length).toBe(2)) and does NOT produce any image artifacts. DESIGN_BRIEF 'Galerie de reference obligatoire' and QUALITY_GATES QG-4 require at least 12 reproducible screen captures kept as audit artifacts.\n\nApproach: Create a deterministic screen capture pipeline. Options include:\n1. Use Expo web export (npx expo export --platform web) to produce a web bundle, then use a headless browser (puppeteer/playwright) to capture each screen state as a PNG image.\n2. Create a React Native Storybook setup that renders each screen state in isolation and captures static screenshots.\n3. Create a dedicated render script that programmatically renders each screen component with fixed props/data and uses react-native-view-shot or a web-based renderer to produce PNG artifacts.\n\nThe gallery must include at minimum: connexion, racine foyers, Ajouter Premium, Ajouter Free + archive, Score Premium, Score Free, To-do Premium, mini-form complétion, To-do Free, upsell historique, Options, share card, plus empty/error states. Each image must be reproducible from the accepted tree (deterministic data, deterministic render).",
+    "criterionId": "V2-06",
+    "objective": "V2-06 phase 1 — Establish the Research Analytics Plane contracts, PrivacyTransformPipeline, PrivacyReleaseGate, and ResearchAnalyticsGateway. Prove analytics can be disabled without breaking any product function. Begin Operational Store / Research Analytics Store separation architecture.",
+    "scope": "V2-06 has two major halves per ROADMAP.md: (1) Backend operational (auth/sync/billing/permissions/invitations) and (2) Research Analytics Plane (privacy-first data pipeline). This cycle covers the foundational analytics privacy architecture:\n\nRequired:\n1. `ResearchAnalyticsGateway` port — contract for emitting minimized statistical facts from the operational domain to the analytics plane. Must be disableable with zero product-side breakage.\n2. `TaskTaxonomyService` — versioned taxonomy mapping free-text task labels to statistical categories. The product keeps free text; analytics never sees raw labels.\n3. `PrivacyTransformPipeline` — transforms operational facts into analytics-safe records: strips all account/household/member IDs, replaces free text with taxonomy references, generalizes timestamps and demographics, suppresses rare cells/cohortes.\n4. `PrivacyReleaseGate` — gates every external analytics output. Must check: no operational IDs, no free text, minimum cohort sizes, rare cell suppression, differencing/reconstruction risk, provenance, re-identification risk.\n5. Analytics disableability proof — demonstrate that disabling the ResearchAnalyticsGateway adapter produces zero broken tests, zero runtime errors, and identical product behavior.\n6. Research Analytics Store schema (TypeScript types) — must contain NO operational IDs, NO free text, NO join keys. Only statistical aggregates, taxonomy IDs, and generalized variables.\n7. Tests proving the analytics boundary: no operational IDs leak into analytics types, no free text enters the pipeline, PrivacyReleaseGate rejects non-compliant outputs.\n\nDo NOT yet implement: backend operational adapters (auth/sync/billing), network sync, push notifications, calendar integration, or differential privacy API. Those are V2-06 phase 2.\n\nPreserve all V2-00..V2-05 invariants. No regression. Navigation stays 3 tabs. Premium contextuel non agressif.",
     "acceptance": [
-      "F3: At least 12 PNG/JPG screen capture images exist in the repository as audit artifacts",
-      "Images are generated deterministically from the accepted tree (reproducible)",
-      "Each required screen from DESIGN_BRIEF is represented (connexion, racine foyers, Ajouter Premium, Ajouter Free + archive, Score Premium, Score Free, To-do Premium, mini-form, To-do Free, upsell, Options, share card)",
-      "386+ tests green (no regression)",
+      "ResearchAnalyticsGateway port defined with disableability contract",
+      "TaskTaxonomyService versioned with deterministic mapping",
+      "PrivacyTransformPipeline strips all operational IDs and free text",
+      "PrivacyReleaseGate checks cohort size, rare cells, IDs, free text, provenance",
+      "Research Analytics Store types contain zero operational IDs, zero free text, zero join keys",
+      "Analytics disableability: disabling gateway produces zero test failures and identical product behavior",
+      "Dedicated tests for analytics boundary (negative tests for ID/text leakage)",
+      "393+ tests green (no regression)",
       "npm run check green",
       "3-tab navigation preserved",
       "No social SDK added",
-      "Premium contextuel non agressif"
+      "Premium contextuel non agressif",
+      "V2-00..V2-05 invariants intact"
     ],
     "previousCriteriaPreserved": [
       "V2-00: architecture greenfield, ports/adapters, 67+ tests",
@@ -22,7 +27,7 @@
       "V2-02: CompletedEntry, PersistentTask, chrono, history, navigation, AsyncStorage-backed persistence",
       "V2-03: Score/balances/free-window, period selectors, filters, +D/-D/N, compensations, charts, weighted, upsell repair",
       "V2-04: To-do Premium, conversion to CompletedEntry, 4 mustFix all fixed, CTAs honest, 304 tests green",
-      "V2-05 partial: F5 notification honesty fixed, F1 native share sheet fixed, F2 ShareCard integrated, F4 WCAG AA contrast passed, 386 tests green"
+      "V2-05: share sheet natif, ShareCard, notifications honesty, WCAG AA, visual evidence gallery 13 PNG, 393 tests green"
     ]
   }
 }
