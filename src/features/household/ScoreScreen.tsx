@@ -23,6 +23,7 @@ import { EntryRow } from '../../ui/components/EntryRow';
 import { colors, spacing, borderRadius } from '../../ui/design-system/theme';
 import { useApp } from '../app/AppContext';
 import { Member, PersistentTask, ScoreResult, CompletedEntry, FilterType } from '../../domain/entities';
+import { useRouter } from 'expo-router';
 
 interface ScoreScreenProps {
   householdId: string;
@@ -39,6 +40,7 @@ const PERIOD_LABELS: Record<Period, string> = {
 
 export function ScoreScreen({ householdId }: ScoreScreenProps) {
   const { app } = useApp();
+  const router = useRouter();
   const [members, setMembers] = useState<Member[]>([]);
   const [persistentTasks, setPersistentTasks] = useState<PersistentTask[]>([]);
   const [score, setScore] = useState<ScoreResult | null>(null);
@@ -166,7 +168,7 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
     >
       {/* Archive message for Free users */}
       {hasOlderEntries && (
-        <ArchiveMessage onUpgrade={() => {}} />
+        <ArchiveMessage onUpgrade={() => router.push('/premium')} />
       )}
 
       {/* Period selector */}
@@ -246,9 +248,11 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
               ? "L'historique annuel nécessite ChoreScore Premium."
               : "L'historique complet nécessite ChoreScore Premium."}
           </Text>
-          <Text variant="bodyBold" color={colors.primary} style={styles.premiumCta}>
-            Découvrir Premium
-          </Text>
+          <Pressable onPress={() => router.push('/premium')} style={styles.premiumCta}>
+            <Text variant="bodyBold" color={colors.primary}>
+              Découvrir Premium
+            </Text>
+          </Pressable>
         </Card>
       )}
 

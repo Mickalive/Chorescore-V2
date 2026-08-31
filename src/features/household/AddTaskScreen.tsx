@@ -20,6 +20,7 @@ import { ArchiveMessage } from '../../ui/components/ArchiveMessage';
 import { colors, spacing, borderRadius } from '../../ui/design-system/theme';
 import { useApp } from '../app/AppContext';
 import { CompletedEntry, Member, PersistentTask } from '../../domain/entities';
+import { useRouter } from 'expo-router';
 
 interface AddTaskScreenProps {
   householdId: string;
@@ -27,6 +28,7 @@ interface AddTaskScreenProps {
 
 export function AddTaskScreen({ householdId }: AddTaskScreenProps) {
   const { app, currentUser } = useApp();
+  const router = useRouter();
 
   // Form state
   const [label, setLabel] = useState('');
@@ -222,7 +224,7 @@ export function AddTaskScreen({ householdId }: AddTaskScreenProps) {
     >
       {/* Archive message for Free users */}
       {hasOlderEntries && (
-        <ArchiveMessage onUpgrade={() => {}} />
+        <ArchiveMessage onUpgrade={() => router.push('/premium')} />
       )}
 
       {/* Form */}

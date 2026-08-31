@@ -503,6 +503,7 @@ export class ChoreScoreApp {
     assigneeMemberId?: string | null;
     beneficiaryMemberIds?: string[];
     dueAt?: string | null;
+    reminderAt?: string | null;
     notes?: string;
     persistentTaskId?: string | null;
   }): Promise<TodoItem> {
@@ -517,10 +518,25 @@ export class ChoreScoreApp {
       assigneeMemberId: data.assigneeMemberId ?? null,
       beneficiaryMemberIds: data.beneficiaryMemberIds ?? [],
       dueAt: data.dueAt ?? null,
+      reminderAt: data.reminderAt ?? null,
       notes: data.notes ?? '',
       persistentTaskId: data.persistentTaskId ?? null,
       status: 'todo',
     });
+
+    // Schedule notification for reminder if set and notifications are available
+    if (todo.reminderAt && this.services.notifications.isAvailable()) {
+      try {
+        await this.services.notifications.scheduleNotification({
+          title: `Rappel : ${todo.title}`,
+          body: todo.notes || 'Il est temps de commencer cette tâche !',
+          scheduledAt: todo.reminderAt,
+          data: { todoId: todo.id, householdId: todo.householdId },
+        });
+      } catch {
+        // Notification scheduling failed — non-critical, todo is still created
+      }
+    }
 
     return todo;
   }

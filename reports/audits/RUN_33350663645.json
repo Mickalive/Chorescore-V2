@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33350663645",
+  "role": "builder",
+  "decision": "repair",
+  "summary": "V2-04 repair cycle. The three mustFix findings from RUN 33347059436 are fixed: (1) completion mini-form now defaults 'Fait par' to the validating member (current user) and falls back to the assignee only when the validator is not a member; (2) TodoItem now has a reminderAt field, createTodo accepts it, the create form exposes a reminder input, and the NotificationGateway port is scheduled when available via an honest adapter; (3) all 'Découvrir Premium' buttons (root Premium, AddTask archive message, Score archive message, Score year/all-time CTA, TodoScreen upsell) are wired to a real /premium offers surface registered in the router. Trusted verification passed (exit 0, 298 tests, Android debug build successful). However, the new premium offers screen introduces a mustFix: its purchase CTAs ('Commencer l'essai', 'Choisir Standard', 'Choisir Pro') are visible, styled as active purchase actions, but only call router.back() and perform no real action and are not marked unavailable. This violates QG-1 ('aucun bouton visible sans comportement réel ou état explicitement indisponible') and the constitution's prohibition on fake payments ('Aucun paiement factice ne doit être présenté comme réel dans une RC locale'). Decision: repair.",
+  "checks": [
+    "Trusted verification exit code 0 (TRUSTED_33350663645.md): npm run check green, 12 suites / 298 tests pass, Android debug build BUILD SUCCESSFUL.",
+    "MF-1: TodoScreen.startCompletion defaults completePerformedBy to current user's member id (validator), modifiable via MemberSelector, falls back to assignee only when validator is not a member. Verified in code and V2-04-repair.test.ts.",
+    "MF-2: TodoItem.reminderAt added; createTodo accepts reminderAt and persists it; create form exposes reminder input; NotificationGateway.scheduleNotification invoked only when isAvailable() (LocalNotificationAdapter returns false, honest). Verified in code and tests.",
+    "MF-3: root Premium button, AddTask/Score ArchiveMessage, Score year/all-time CTA, and TodoScreen upsell all router.push('/premium'); app/premium/index.tsx exists and is registered in app/_layout.tsx.",
+    "Regression: V2-00..V2-03 suites remain green; core V2-04 conversion flow (create/complete/Score propagation, Free upsell, downgrade persistence) preserved.",
+    "Design coherence: premium screen uses the app design system (ScreenContainer, Text, Card, Button, theme colors/spacing/typography); pricing grid matches canonical values (Trial 30d, Free, Standard 2.99/7, Pro 5.99/8).",
+    "New mustFix: premium screen purchase CTAs are fake (router.back() only, no real action, not marked unavailable)."
+  ],
+  "findings": [
+    {
+      "path": "app/premium/index.tsx",
+      "problem": "The new Premium offers screen presents three purchase CTAs ('Commencer l'essai', 'Choisir Standard', 'Choisir Pro') styled as active primary/secondary buttons, but each only calls router.back() and performs no real action, and none is marked as unavailable/disabled. This is a fake payment presented as real, violating QG-1 ('aucun bouton visible sans comportement réel ou état explicitement indisponible') and the constitution ('Aucun paiement factice ne doit être présenté comme réel dans une RC locale').",
+      "evidence": "app/premium/index.tsx lines 56-61 ('Commencer l'essai' onPress={() => router.back()}), 105-110 ('Choisir Standard' onPress={() => router.back()}), 129-134 ('Choisir Pro' onPress={() => router.back()}). No disabled state, no 'indisponible' label, no wiring to startTrial or any entitlement/billing action.",
+      "mustFix": true,
+      "requiredFix": "Make the purchase CTAs honest: either disable them with an explicit 'indisponible' state (billing not configured in this environment) or wire them to a real action (e.g., startTrial via EntitlementGateway in demo/test mode). Do not present an active-looking purchase button that does nothing.",
+      "verification": "Open /premium in demo-free and demo-premium; each purchase CTA must either perform a real, observable action or be visibly disabled/unavailable. No active purchase button may be a no-op."
+    }
+  ]
+}

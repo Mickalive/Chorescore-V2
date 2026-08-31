@@ -82,6 +82,7 @@ export interface TodoItem {
   assigneeMemberId: string | null;
   beneficiaryMemberIds: string[];
   dueAt: string | null;
+  reminderAt: string | null;
   notes: string;
   persistentTaskId: string | null;
   status: 'todo' | 'in-progress' | 'completed';

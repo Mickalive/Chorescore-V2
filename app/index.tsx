@@ -258,7 +258,7 @@ export default function HomeScreen() {
         <Button
           title="Premium"
           variant="ghost"
-          onPress={() => {}}
+          onPress={() => router.push('/premium')}
           size="small"
         />
       </View>

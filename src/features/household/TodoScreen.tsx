@@ -29,6 +29,7 @@ import { colors, spacing, borderRadius } from '../../ui/design-system/theme';
 import { useApp } from '../app/AppContext';
 import { TodoItem, Member } from '../../domain/entities';
 import { EntitlementState } from '../../application/ports';
+import { useRouter } from 'expo-router';
 
 interface TodoScreenProps {
   householdId: string;
@@ -38,6 +39,7 @@ type ScreenMode = 'list' | 'create' | 'complete';
 
 export function TodoScreen({ householdId }: TodoScreenProps) {
   const { app, currentUser } = useApp();
+  const router = useRouter();
 
   // Data state
   const [todos, setTodos] = useState<TodoItem[]>([]);
@@ -53,6 +55,7 @@ export function TodoScreen({ householdId }: TodoScreenProps) {
   const [createAssignee, setCreateAssignee] = useState<string[]>([]);
   const [createBeneficiaries, setCreateBeneficiaries] = useState<string[]>([]);
   const [createDueAt, setCreateDueAt] = useState('');
+  const [createReminderAt, setCreateReminderAt] = useState('');
   const [createNotes, setCreateNotes] = useState('');
   const [createPersistentTaskId, setCreatePersistentTaskId] = useState<string | null>(null);
   const [persistentTasks, setPersistentTasks] = useState<
@@ -115,6 +118,7 @@ export function TodoScreen({ householdId }: TodoScreenProps) {
         assigneeMemberId: createAssignee[0] ?? null,
         beneficiaryMemberIds: createBeneficiaryMemberIds,
         dueAt: createDueAt || null,
+        reminderAt: createReminderAt || null,
         notes: createNotes || undefined,
         persistentTaskId: createPersistentTaskId,
       });
@@ -132,6 +136,7 @@ export function TodoScreen({ householdId }: TodoScreenProps) {
     setCreateAssignee([]);
     setCreateBeneficiaries([]);
     setCreateDueAt('');
+    setCreateReminderAt('');
     setCreateNotes('');
     setCreatePersistentTaskId(null);
   };
@@ -144,11 +149,15 @@ export function TodoScreen({ householdId }: TodoScreenProps) {
 
   const startCompletion = (todo: TodoItem) => {
     setCompletingTodo(todo);
-    // Default Fait par = current user's member, or first assignee
-    const defaultPerformer = todo.assigneeMemberId
-      ? [todo.assigneeMemberId]
-      : currentUser
-        ? [members.find((m) => m.userId === currentUser.userId)?.id].filter(Boolean) as string[]
+    // Default Fait par = current user's member id (the validator), modifiable.
+    // Falls back to assignee only when the validator is not a member of the household.
+    const currentUserMember = currentUser
+      ? members.find((m) => m.userId === currentUser.userId)
+      : undefined;
+    const defaultPerformer = currentUserMember
+      ? [currentUserMember.id]
+      : todo.assigneeMemberId
+        ? [todo.assigneeMemberId]
         : [];
     setCompletePerformedBy(defaultPerformer);
     setCompleteHours(0);
@@ -282,6 +291,18 @@ export function TodoScreen({ householdId }: TodoScreenProps) {
             value={createDueAt}
             onChangeText={setCreateDueAt}
             placeholder="AAAA-MM-JJ ou texte libre"
+            placeholderTextColor={colors.textMuted}
+          />
+        </View>
+
+        {/* Reminder */}
+        <View style={styles.inputGroup}>
+          <Text variant="caption">Rappel (optionnel)</Text>
+          <TextInput
+            style={styles.textInput}
+            value={createReminderAt}
+            onChangeText={setCreateReminderAt}
+            placeholder="AAAA-MM-JJTHH:MM (ex: 2026-09-15T09:00)"
             placeholderTextColor={colors.textMuted}
           />
         </View>
@@ -425,7 +446,7 @@ export function TodoScreen({ householdId }: TodoScreenProps) {
               title="Découvrir Premium"
               variant="secondary"
               size="small"
-              onPress={() => {}}
+              onPress={() => router.push('/premium')}
             />
           </Card>
         )}
