@@ -4,14 +4,13 @@
   "builder": {
     "enabled": true,
     "criterionId": "V2-05",
-    "objective": "V2-05 repair — Fix the 4 remaining mustFix findings (F1-F4). The WIP repair baseline is preserved. F5 is fixed. All other V2-00..V2-04 criteria are complete and preserved.",
-    "scope": "MustFix repairs required:\n\nF1: Fix native share sheet on Android. expo-sharing shareAsync requires a file:// URI, not plain text. Either (a) write share text to a temp file via expo-file-system and pass file:// URI, or (b) use React Native Share.share() for text sharing, or (c) use react-native-view-shot + expo-file-system for image sharing. Add test asserting native API receives valid file URI.\n\nF2: Integrate visual ShareCard into the share flow. Render <ShareCard/> in at least one screen (ScoreScreen or AddTaskScreen), capture as image, share via SystemShareGateway. The share flow must produce a visual ChoreScore card, not just plain text.\n\nF3: Produce the reproducible visual evidence gallery (12+ screens from DESIGN_BRIEF) as audit artifacts: connexion, racine foyers, Ajouter Premium, Ajouter Free + archive, Score Premium, Score Free, To-do Premium, mini-form, To-do Free, upsell, Options, share card.\n\nF4: Darken textMuted from #7A7A87 to >=4.5:1 on background (#FFF8F0), surface (#FFFFFF), and surfaceAlt (#FFF0E6). Also fix warning if used for text. Extend contrast test in Section 7 to cover every used text/surface pair including textMuted and warning.\n\nAcceptance: all 4 findings resolved, 368+ tests green, typecheck clean, Android build OK, 3 tabs preserved, no social SDK, no data destruction.",
+    "objective": "V2-05 repair — Fix the remaining mustFix finding F3 (visual evidence gallery). F1, F2, F4, F5 are all fixed. The WIP repair baseline is preserved.",
+    "scope": "MustFix repair required:\n\nF3: Produce the reproducible visual evidence gallery (12+ screens from DESIGN_BRIEF) as actual audit artifacts (screen captures/images). The current V2-05-visual-evidence.test.ts only performs structural data assertions (e.g. expect(score.balances.length).toBe(2)) and does NOT produce any image artifacts. DESIGN_BRIEF 'Galerie de reference obligatoire' and QUALITY_GATES QG-4 require at least 12 reproducible screen captures kept as audit artifacts.\n\nApproach: Create a deterministic screen capture pipeline. Options include:\n1. Use Expo web export (npx expo export --platform web) to produce a web bundle, then use a headless browser (puppeteer/playwright) to capture each screen state as a PNG image.\n2. Create a React Native Storybook setup that renders each screen state in isolation and captures static screenshots.\n3. Create a dedicated render script that programmatically renders each screen component with fixed props/data and uses react-native-view-shot or a web-based renderer to produce PNG artifacts.\n\nThe gallery must include at minimum: connexion, racine foyers, Ajouter Premium, Ajouter Free + archive, Score Premium, Score Free, To-do Premium, mini-form complétion, To-do Free, upsell historique, Options, share card, plus empty/error states. Each image must be reproducible from the accepted tree (deterministic data, deterministic render).",
     "acceptance": [
-      "F1: Native share sheet opens on Android with real content (file URI or Share.share API)",
-      "F2: ShareCard rendered and shared as visual image from at least one screen",
-      "F3: Visual evidence gallery with 12+ reproducible screens exists",
-      "F4: textMuted and warning pass WCAG AA 4.5:1 on all surfaces; contrast test extended",
-      "368+ tests green (no regression)",
+      "F3: At least 12 PNG/JPG screen capture images exist in the repository as audit artifacts",
+      "Images are generated deterministically from the accepted tree (reproducible)",
+      "Each required screen from DESIGN_BRIEF is represented (connexion, racine foyers, Ajouter Premium, Ajouter Free + archive, Score Premium, Score Free, To-do Premium, mini-form, To-do Free, upsell, Options, share card)",
+      "386+ tests green (no regression)",
       "npm run check green",
       "3-tab navigation preserved",
       "No social SDK added",
@@ -23,7 +22,7 @@
       "V2-02: CompletedEntry, PersistentTask, chrono, history, navigation, AsyncStorage-backed persistence",
       "V2-03: Score/balances/free-window, period selectors, filters, +D/-D/N, compensations, charts, weighted, upsell repair",
       "V2-04: To-do Premium, conversion to CompletedEntry, 4 mustFix all fixed, CTAs honest, 304 tests green",
-      "V2-05 partial: F5 notification honesty fixed, 368 tests green, design system, archive message, entitlement states coherent"
+      "V2-05 partial: F5 notification honesty fixed, F1 native share sheet fixed, F2 ShareCard integrated, F4 WCAG AA contrast passed, 386 tests green"
     ]
   }
 }
