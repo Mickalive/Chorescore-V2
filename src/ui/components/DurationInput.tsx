@@ -52,6 +52,7 @@ export function DurationInput({
           maxLength={2}
           placeholder="0"
           placeholderTextColor={colors.textMuted}
+          accessibilityLabel="Durée heures"
         />
         <Text variant="caption" style={styles.unit}>h</Text>
       </View>
@@ -65,6 +66,7 @@ export function DurationInput({
           maxLength={2}
           placeholder="00"
           placeholderTextColor={colors.textMuted}
+          accessibilityLabel="Durée minutes"
         />
         <Text variant="caption" style={styles.unit}>min</Text>
       </View>
