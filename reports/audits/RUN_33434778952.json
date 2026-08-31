@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33434778952",
+  "role": "builder",
+  "decision": "accept",
+  "summary": "Independent audit of V2-06 repair cycle 33434778952. Objective: fix the 3 must-fix findings from audit 33416807677. Trusted verification exit code is 0 (confirmed from reports/audits/TRUSTED_33434778952.md, final line 'Trusted verification exit code: 0'); all 608 tests pass across 16 suites, TypeScript typecheck clean, Android debug APK builds successfully. The candidate's change in this cycle is the phase2 acceptance test update (renaming the non-member permission test from 'should resolve default MEMBER for non-member' to 'should deny access for non-member (throws)'), which correctly reflects the deny-by-default behavior. All three must-fix findings are verified repaired in the source: (1) getMemberPermissionLevel (ChoreScoreApp.ts:669-671) throws 'User is not a member of this household' for a non-member instead of granting MEMBER-level permissions (including canCreateEntry), preserving strict tenant isolation / server-side authz; (2) LocalSyncAdapter.logConflict (line 137-141) takes an explicit householdId and stores under that key, and getConflictLog(householdId) (line 144-146) returns only that household's conflicts, with a two-household isolation test; (3) app-level getPendingInvitations (ChoreScoreApp.ts:771-776) resolves the user's email via the user repository before passing it to the adapter, and LocalInvitationAdapter.getPendingInvitations (line 83-87) uses exact email matching (===) instead of substring includes, with tests for userId->email resolution and no-substring-match. Independent re-run of the full suite (608 tests) and typecheck both pass. Research Analytics Plane (PrivacyTransformPipeline, PrivacyReleaseGate, taxonomy, query budget, differential privacy, consent/jurisdiction policy, buyer contracts, audit/export log) is preserved with strict Operational Store / Research Analytics Store separation and no operational IDs/free text/join keys in analytics types. No must-fix finding remains. Decision: accept.",
+  "checks": [
+    "trusted-verification-exit-code-is-zero",
+    "typecheck-passes",
+    "all-608-tests-pass-16-suites",
+    "android-debug-apk-builds",
+    "MF1-getMemberPermissionLevel-denies-non-members",
+    "MF1-test-asserts-non-member-denial",
+    "MF2-logConflict-takes-explicit-householdId",
+    "MF2-getConflictLog-returns-only-requested-household",
+    "MF2-two-household-isolation-test",
+    "MF3-getPendingInvitations-resolves-userId-to-email",
+    "MF3-adapter-uses-exact-email-matching-no-substring",
+    "MF3-tests-userId-resolution-and-no-substring-match",
+    "no-regression-v2-00-v2-05-invariants",
+    "research-analytics-plane-preserved",
+    "analytics-store-types-free-of-operational-ids-free-text-join-keys",
+    "analytics-disableable-without-breaking-product",
+    "no-fake-active-services",
+    "no-secrets-in-repo",
+    "no-v1-carryover",
+    "3-tab-navigation-preserved",
+    "canonical-pricing-preserved",
+    "demo-premium-test-mode-isolated"
+  ],
+  "findings": []
+}

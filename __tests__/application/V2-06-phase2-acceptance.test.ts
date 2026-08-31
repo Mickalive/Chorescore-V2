@@ -1759,7 +1759,7 @@ describe('V2-06 Phase 2 — Backend Operational Adapters & Analytics Features', 
       expect(memberCanInvite).toBe(false);
     });
 
-    it('should resolve default MEMBER for non-member', async () => {
+    it('should deny access for non-member (throws)', async () => {
       try {
         await app.getMemberPermissionLevel('u-stranger', 'h-test');
         expect(true).toBe(false); // Should not reach here
