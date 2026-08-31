@@ -68,6 +68,9 @@ export function MemberSelector({
             style={[styles.chip, isEveryoneSelected && styles.chipSelected]}
             onPress={toggleEveryone}
             activeOpacity={0.7}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: isEveryoneSelected }}
+            accessibilityLabel={`${label}: Tout le monde`}
           >
             <Text
               variant="body"
@@ -86,6 +89,9 @@ export function MemberSelector({
               style={[styles.chip, isSelected && styles.chipSelected]}
               onPress={() => toggleMember(member.id)}
               activeOpacity={0.7}
+              accessibilityRole={allowMultiple ? 'checkbox' : 'radio'}
+              accessibilityState={{ checked: isSelected, selected: isSelected }}
+              accessibilityLabel={`${label}: ${member.name}`}
             >
               <Text
                 variant="body"
