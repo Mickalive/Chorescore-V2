@@ -218,3 +218,194 @@ export interface DataProductProvenance {
  * Join keys:
  *   Any field that could be used to join back to the operational store
  */
+
+// ── Query Budget / Rate Limit ──────────────────────────────────
+
+/**
+ * Query budget configuration for the Research Analytics API.
+ * Prevents abuse and reconstruction attacks via flexible queries.
+ */
+export interface QueryBudgetConfig {
+  /** Maximum queries per minute per API key */
+  rateLimitPerMinute: number;
+  /** Maximum queries per day per API key */
+  rateLimitPerDay: number;
+  /** Maximum dimensions per query (prevents high-cardinality attacks) */
+  maxDimensionsPerQuery: number;
+  /** Maximum time range span in months per query */
+  maxTimeRangeMonths: number;
+  /** Minimum cohort size enforced per query result */
+  minCohortSize: number;
+  /** Whether to apply differential privacy to query results */
+  differentialPrivacyEnabled: boolean;
+}
+
+// ── Differential Privacy ───────────────────────────────────────
+
+/**
+ * Differential privacy configuration.
+ * Provides mathematical privacy guarantees for query results.
+ */
+export interface DifferentialPrivacyConfig {
+  /** Whether differential privacy is enabled */
+  enabled: boolean;
+  /** Privacy budget (epsilon) — lower = more privacy, less accuracy */
+  epsilon: number;
+  /** Delta parameter — probability of privacy breach */
+  delta: number;
+  /** Mechanism for noise addition */
+  mechanism: 'laplace' | 'gaussian';
+  /** Maximum number of queries before budget exhaustion */
+  maxQueries: number;
+  /** Current remaining privacy budget */
+  remainingBudget: number;
+}
+
+// ── Consent / Purpose / Jurisdiction ───────────────────────────
+
+/**
+ * Purpose of data collection — defines why data is processed.
+ */
+export type DataProcessingPurpose =
+  | 'product-improvement'
+  | 'research-statistics'
+  | 'anonymized-data-product'
+  | 'synthetic-data-generation'
+  | 'academic-collaboration';
+
+/**
+ * Jurisdiction determines applicable data protection law.
+ */
+export type Jurisdiction =
+  | 'EU-GDPR'
+  | 'US-CCPA'
+  | 'US-other'
+  | 'UK-GDPR'
+  | 'CH-DSG'
+  | 'other';
+
+/**
+ * Consent record — tracks user consent for data processing purposes.
+ */
+export interface ConsentRecord {
+  /** User ID (operational — never exported to analytics) */
+  userId: string;
+  /** Purpose of data processing */
+  purpose: DataProcessingPurpose;
+  /** Whether consent was given */
+  granted: boolean;
+  /** Timestamp of consent record */
+  timestamp: string;
+  /** Jurisdiction under which consent was obtained */
+  jurisdiction: Jurisdiction;
+  /** Version of the privacy notice presented */
+  noticeVersion: string;
+  /** Whether consent can be withdrawn */
+  withdrawable: boolean;
+}
+
+/**
+ * Consent policy — rules for consent handling per jurisdiction/purpose.
+ */
+export interface ConsentPolicy {
+  /** Policy identifier */
+  policyId: string;
+  /** Jurisdiction this policy applies to */
+  jurisdiction: Jurisdiction;
+  /** Purposes and their consent requirements */
+  purposeConsentRequired: Record<DataProcessingPurpose, boolean>;
+  /** Whether explicit opt-in is required */
+  explicitOptInRequired: boolean;
+  /** Whether consent can be withdrawn retroactively */
+  retroactiveWithdrawalSupported: boolean;
+  /** Data retention period in days (0 = indefinite) */
+  retentionDays: number;
+  /** Whether data must be deleted after consent withdrawal */
+  deletionOnWithdrawal: boolean;
+}
+
+// ── Buyer Contracts ────────────────────────────────────────────
+
+/**
+ * Buyer contract — defines terms under which data products are sold.
+ * Prohibits re-identification and unauthorized redistribution.
+ */
+export interface BuyerContract {
+  /** Contract identifier */
+  contractId: string;
+  /** Buyer organization name */
+  buyerName: string;
+  /** Buyer organization type */
+  buyerType: 'university' | 'research-institute' | 'government' | 'ngo' | 'other';
+  /** Data product(s) covered */
+  productIds: string[];
+  /** Permitted purposes */
+  permittedPurposes: DataProcessingPurpose[];
+  /** Jurisdiction of the buyer */
+  buyerJurisdiction: Jurisdiction;
+  /** Whether re-identification attempts are prohibited */
+  reIdentificationProhibited: boolean;
+  /** Whether redistribution is prohibited */
+  redistributionProhibited: boolean;
+  /** Whether commercial use beyond research is prohibited */
+  commercialUseProhibited: boolean;
+  /** Contract start date */
+  startDate: string;
+  /** Contract end date (null = indefinite) */
+  endDate: string | null;
+  /** Audit rights — buyer must allow audits */
+  auditRightsGranted: boolean;
+  /** Whether buyer must report re-identification attempts */
+  reIdentificationReportingRequired: boolean;
+}
+
+// ── Audit / Export Log ─────────────────────────────────────────
+
+/**
+ * Audit log entry for data product releases.
+ * Every external release is logged for compliance and governance.
+ */
+export interface AuditExportLogEntry {
+  /** Log entry identifier */
+  logId: string;
+  /** Data product released */
+  productId: string;
+  /** Product version released */
+  productVersion: string;
+  /** Buyer who received the data */
+  buyerContractId: string;
+  /** Timestamp of release */
+  releasedAt: string;
+  /** Privacy release gate result at time of release */
+  gateResult: {
+    approved: boolean;
+    violationCount: number;
+    riskScore: number;
+  };
+  /** Provenance of the data product */
+  provenance: DataProductProvenance;
+  /** Whether differential privacy was applied */
+  differentialPrivacyApplied: boolean;
+  /** Household count in the release */
+  householdCount: number;
+  /** Time range of data in the release */
+  timeRange: { fromMonth: string; toMonth: string };
+  /** Auditor who approved the release (human or system) */
+  approvedBy: string;
+  /** Notes (internal, never exported) */
+  internalNotes: string;
+}
+
+/**
+ * Audit log for tracking all data product releases.
+ */
+export interface AuditExportLog {
+  /** Add a log entry */
+  logEntry(entry: Omit<AuditExportLogEntry, 'logId'>): AuditExportLogEntry;
+  /** Get all log entries */
+  getEntries(): AuditExportLogEntry[];
+  /** Get entries for a specific product */
+  getProductEntries(productId: string): AuditExportLogEntry[];
+  /** Get entries for a specific buyer */
+  getBuyerEntries(buyerContractId: string): AuditExportLogEntry[];
+}

@@ -54,3 +54,16 @@ export {
   GateConfig,
   createDefaultGate,
 } from './gate';
+
+export {
+  // Analytics Phase 2 types
+  QueryBudgetConfig,
+  DifferentialPrivacyConfig,
+  DataProcessingPurpose,
+  Jurisdiction,
+  ConsentRecord,
+  ConsentPolicy,
+  BuyerContract,
+  AuditExportLogEntry,
+  AuditExportLog,
+} from './types';

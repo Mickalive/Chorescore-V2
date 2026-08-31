@@ -5,12 +5,16 @@
  * In production, this would be replaced by a real OAuth/email provider.
  * This adapter is HONEST: it does not simulate OAuth or external auth.
  * Providers (Google, Facebook) are ports — adapter decides if available.
+ *
+ * Session management: tokens are stored in-memory (production would
+ * use SecureStorageGateway for encrypted persistence).
  */
 
-import { AuthGateway, AuthUser } from '../../application/ports';
+import { AuthGateway, AuthUser, AuthSessionToken } from '../../application/ports';
 
 export class LocalAuthAdapter implements AuthGateway {
   private currentUser: AuthUser | null = null;
+  private currentSession: AuthSessionToken | null = null;
   private listeners: Array<(user: AuthUser | null) => void> = [];
 
   isAvailable(): boolean {
@@ -36,6 +40,16 @@ export class LocalAuthAdapter implements AuthGateway {
       provider: 'email',
     };
     this.currentUser = user;
+
+    // Create a session token
+    const session: AuthSessionToken = {
+      userId,
+      accessToken: `local-token-${userId}-${Date.now()}`,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      provider: 'email',
+    };
+    this.currentSession = session;
+
     this.notifyListeners();
     return user;
   }
@@ -52,6 +66,7 @@ export class LocalAuthAdapter implements AuthGateway {
 
   async signOut(): Promise<void> {
     this.currentUser = null;
+    this.currentSession = null;
     this.notifyListeners();
   }
 
@@ -62,6 +77,24 @@ export class LocalAuthAdapter implements AuthGateway {
     return () => {
       this.listeners = this.listeners.filter(l => l !== callback);
     };
+  }
+
+  async persistSession(token: AuthSessionToken): Promise<void> {
+    this.currentSession = token;
+  }
+
+  async restoreSession(): Promise<AuthSessionToken | null> {
+    if (!this.currentSession) return null;
+    // Check if session is expired
+    if (new Date(this.currentSession.expiresAt).getTime() < Date.now()) {
+      this.currentSession = null;
+      return null;
+    }
+    return this.currentSession;
+  }
+
+  async clearSession(): Promise<void> {
+    this.currentSession = null;
   }
 
   /** Set user for demo/testing purposes */

@@ -27,6 +27,20 @@ export interface AuthGateway {
   signOut(): Promise<void>;
   /** Listen to auth state changes */
   onAuthStateChanged(callback: (user: AuthUser | null) => void): () => void;
+  /** Persist session token securely (delegated to SecureStorageGateway externally) */
+  persistSession(token: AuthSessionToken): Promise<void>;
+  /** Restore session from secure storage */
+  restoreSession(): Promise<AuthSessionToken | null>;
+  /** Clear persisted session */
+  clearSession(): Promise<void>;
+}
+
+export interface AuthSessionToken {
+  userId: string;
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt: string; // ISO date string
+  provider: 'email' | 'google' | 'facebook' | 'local';
 }
 
 export interface AuthUser {
@@ -224,6 +238,97 @@ export interface AnalyticsFact {
   data: Record<string, unknown>;
   timestamp: string;
   // Never include: userId, householdId, memberId, email, free text, IP, device ID
+}
+
+/**
+ * InvitationGateway — create, accept, decline household invitations.
+ * Invitations are the primary mechanism for joining households.
+ * A free account can join multiple invited households without paying.
+ */
+export interface InvitationGateway {
+  /** Create an invitation for a user to join a household */
+  createInvitation(data: InvitationCreateData): Promise<Invitation>;
+  /** Accept an invitation */
+  acceptInvitation(invitationId: string, userId: string): Promise<InvitationResult>;
+  /** Decline an invitation */
+  declineInvitation(invitationId: string, userId: string): Promise<InvitationResult>;
+  /** Get pending invitations for a user */
+  getPendingInvitations(userId: string): Promise<Invitation[]>;
+  /** Get invitations sent for a household (owner/payer view) */
+  getHouseholdInvitations(householdId: string): Promise<Invitation[]>;
+  /** Revoke/cancel an invitation */
+  revokeInvitation(invitationId: string, householdId: string): Promise<void>;
+}
+
+export interface InvitationCreateData {
+  householdId: string;
+  invitedByUserId: string;
+  invitedEmail: string;
+  role?: 'MEMBER' | 'ADMIN';
+}
+
+export interface Invitation {
+  id: string;
+  householdId: string;
+  invitedByUserId: string;
+  invitedEmail: string;
+  role: 'MEMBER' | 'ADMIN';
+  status: 'pending' | 'accepted' | 'declined' | 'revoked';
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface InvitationResult {
+  success: boolean;
+  error?: string;
+  membershipId?: string;
+}
+
+/**
+ * MemberPermissionLevel — role-based permission system.
+ * OWNER > PAYER > ADMIN > MEMBER.
+ * Permissions are resolved per-household, never globally.
+ */
+export type MemberPermissionLevel = 'OWNER' | 'PAYER' | 'ADMIN' | 'MEMBER';
+
+export interface MemberPermissions {
+  /** Can create entries (all members) */
+  canCreateEntry: boolean;
+  /** Can edit any entry (OWNER, PAYER, ADMIN) */
+  canEditAnyEntry: boolean;
+  /** Can delete any entry (OWNER, PAYER) */
+  canDeleteAnyEntry: boolean;
+  /** Can create persistent tasks (OWNER, PAYER, ADMIN) */
+  canManagePersistentTasks: boolean;
+  /** Can manage todos (OWNER, PAYER, ADMIN when Premium) */
+  canManageTodos: boolean;
+  /** Can view full history (OWNER, PAYER when Premium) */
+  canViewFullHistory: boolean;
+  /** Can manage members (OWNER, PAYER) */
+  canManageMembers: boolean;
+  /** Can manage billing (OWNER, PAYER) */
+  canManageBilling: boolean;
+  /** Can manage household options (OWNER, PAYER) */
+  canManageHouseholdOptions: boolean;
+  /** Can invite members (OWNER, PAYER, ADMIN) */
+  canInviteMembers: boolean;
+  /** Can remove members (OWNER, PAYER) */
+  canRemoveMembers: boolean;
+}
+
+/**
+ * TenantIsolationConfig — documents the isolation model.
+ * All data access is scoped by householdId (tenant).
+ */
+export interface TenantIsolationConfig {
+  /** Household ID — the tenant boundary */
+  householdId: string;
+  /** Whether encryption is enabled for this tenant */
+  encryptionEnabled: boolean;
+  /** Encryption algorithm used */
+  encryptionAlgorithm: string;
+  /** Whether data is isolated in storage */
+  storageIsolated: boolean;
 }
 
 /**
