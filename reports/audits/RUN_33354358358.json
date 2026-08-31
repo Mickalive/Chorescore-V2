@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33354358358",
+  "role": "builder",
+  "decision": "accept",
+  "summary": "V2-04 repair accepted. The single mustFix finding from RUN 33350663645 (premium screen purchase CTAs 'Commencer l'essai', 'Choisir Standard', 'Choisir Pro' were fake router.back() no-ops not marked unavailable) is genuinely fixed in app/premium/index.tsx: all three CTAs now set disabled (TouchableOpacity disabled, onPress never fires) and each carries an explicit 'Bientôt disponible' label, satisfying QG-1 and the constitution's 'Aucun paiement factice ne doit être présenté comme réel'. Trusted verification exit code 0 (Android debug build BUILD SUCCESSFUL, 12 suites / 304 tests pass). Previous mustFix items (MF-1 Fait par defaults to validator, MF-2 reminder capability with honest NotificationGateway, MF-3 Premium buttons wired to /premium) remain intact and their tests pass. No governance/constitution/roadmap/task file modified. Only non-blocking concern: the new MF-4 tests are weak (mostly expect(true).toBe(true) / entitlement-state assertions rather than exercising the disabled button state); the UI fix itself is correct and verified directly.",
+  "checks": [
+    "Trusted verification exit code is 0 (reports/audits/TRUSTED_33354358358.md: BUILD SUCCESSFUL, 304 tests pass)",
+    "npm run typecheck passes (tsc --noEmit clean)",
+    "npm run test passes: 12 suites / 304 tests green",
+    "app/premium/index.tsx: all three purchase CTAs (Commencer l'essai, Choisir Standard, Choisir Pro) have disabled prop and explicit 'Bientôt disponible' label",
+    "Button component honors disabled: sets disabled on TouchableOpacity (no onPress fires) and applies opacity 0.5 disabled style",
+    "Only router.back() remaining in premium screen is the legitimate 'Retour' header control, not a purchase CTA",
+    "LocalBillingAdapter is honest: purchase/restore return explicitly unavailable; no fake payment presented as real",
+    "Regression: MF-1 (Fait par defaults to validator), MF-2 (reminderAt + honest NotificationGateway scheduling), MF-3 (Premium buttons wired to /premium) intact and passing",
+    "Canonical pricing grid preserved (Trial 30 days, Free, Standard 2.99 EUR/7 members, Pro 5.99 EUR/8 members)",
+    "No governance/constitution/roadmap/task file modified; diff limited to app/premium/index.tsx and V2-04-repair.test.ts"
+  ],
+  "findings": [
+    {
+      "path": "__tests__/application/V2-04-repair.test.ts",
+      "problem": "The new MF-4 tests are weak: most assert expect(true).toBe(true) or entitlement state (plan === 'free', scoreArchiveAccess === false) rather than actually exercising the disabled state of the premium purchase CTAs. They document the acceptance requirement but do not verify the disabled prop or 'Bientôt disponible' label at runtime.",
+      "evidence": "MF-4 describe block: 'should verify premium screen CTAs are not wired to router.back() as no-ops' ends with expect(true).toBe(true); several other cases only assert entitlement state. The actual UI fix in app/premium/index.tsx is correct and verified directly (disabled prop + 'Bientôt disponible' label on all three CTAs).",
+      "mustFix": false,
+      "requiredFix": "Optional: strengthen MF-4 tests to render the premium screen and assert the three purchase buttons are disabled and show the 'Bientôt disponible' label, rather than relying on expect(true).toBe(true) and entitlement-state assertions.",
+      "verification": "UI code verified directly: all three CTAs set disabled and render 'Bientôt disponible'. Typecheck and full test suite pass. Not blocking."
+    }
+  ]
+}

@@ -56,9 +56,13 @@ export default function PremiumOffersScreen() {
           <Button
             title="Commencer l'essai"
             variant="primary"
-            onPress={() => router.back()}
+            onPress={() => {}}
+            disabled
             style={styles.planButton}
           />
+          <Text variant="caption" style={styles.unavailableLabel}>
+            Bientôt disponible
+          </Text>
         </Card>
 
         {/* Free card */}
@@ -105,9 +109,13 @@ export default function PremiumOffersScreen() {
           <Button
             title="Choisir Standard"
             variant="secondary"
-            onPress={() => router.back()}
+            onPress={() => {}}
+            disabled
             style={styles.planButton}
           />
+          <Text variant="caption" style={styles.unavailableLabel}>
+            Bientôt disponible
+          </Text>
         </Card>
 
         {/* Pro card */}
@@ -129,9 +137,13 @@ export default function PremiumOffersScreen() {
           <Button
             title="Choisir Pro"
             variant="primary"
-            onPress={() => router.back()}
+            onPress={() => {}}
+            disabled
             style={styles.planButton}
           />
+          <Text variant="caption" style={styles.unavailableLabel}>
+            Bientôt disponible
+          </Text>
         </Card>
 
         {/* FAQ note */}
@@ -221,6 +233,11 @@ const styles = StyleSheet.create({
   },
   planButton: {
     marginTop: spacing.sm,
+  },
+  unavailableLabel: {
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.xs,
   },
   faqNote: {
     marginTop: spacing.md,
