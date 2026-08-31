@@ -176,9 +176,11 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
-            bash "$GITHUB_WORKSPACE/.github/scripts/smoke-android-apk.sh" "${{ steps.build.outputs.apk }}" com.mickalive.chorescore "$RUNNER_TEMP/v2-smoke"
+            package=$(jq -er '.expo.android.package | select(type=="string" and length>0)' app.json)
+            echo "Using Android package from app.json: $package"
+            bash "$GITHUB_WORKSPACE/.github/scripts/smoke-android-apk.sh" "${{ steps.build.outputs.apk }}" "$package" "$RUNNER_TEMP/v2-smoke"
             mkdir -p "$RUNNER_TEMP/v2-e2e"
-            CHORESCORE_APK_PATH="${{ steps.build.outputs.apk }}" CHORESCORE_E2E_PACKAGE="com.mickalive.chorescore" CHORESCORE_E2E_OUTPUT="$RUNNER_TEMP/v2-e2e" npm run e2e:android
+            CHORESCORE_APK_PATH="${{ steps.build.outputs.apk }}" CHORESCORE_E2E_PACKAGE="$package" CHORESCORE_E2E_OUTPUT="$RUNNER_TEMP/v2-e2e" npm run e2e:android
             test -s "$RUNNER_TEMP/v2-e2e/result.json"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
