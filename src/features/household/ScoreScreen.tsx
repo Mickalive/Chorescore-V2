@@ -65,18 +65,17 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
       setPersistentTasks(tasks);
       setHasOlderEntries(olderExists);
 
-      // Check if current period requires Premium
+      // Always load score data — the app layer limits Free to current civil month
+      const [scoreResult, historyData] = await Promise.all([
+        app.calculateScore(householdId, period, filter, filterTaskId),
+        app.getScoreHistory(householdId, period, filter, filterTaskId),
+      ]);
+      setScore(scoreResult);
+      setHistory(historyData);
+
+      // Check if current period requires Premium (for upsell display)
       const needsPremiumPeriod = !entitlement.scoreArchiveAccess && (period === 'year' || period === 'all-time');
       setNeedsPremium(needsPremiumPeriod);
-
-      if (!needsPremiumPeriod) {
-        const [scoreResult, historyData] = await Promise.all([
-          app.calculateScore(householdId, period, filter, filterTaskId),
-          app.getScoreHistory(householdId, period, filter, filterTaskId),
-        ]);
-        setScore(scoreResult);
-        setHistory(historyData);
-      }
     } catch (error) {
       console.error('Failed to load score:', error);
     }
@@ -104,6 +103,13 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
     // Reset filter when changing period
     setFilter('all');
     setFilterTaskId(undefined);
+
+    // In Free mode, year/all-time trigger contextual upsell
+    if (!isPremium && (newPeriod === 'year' || newPeriod === 'all-time')) {
+      setNeedsPremium(true);
+    } else {
+      setNeedsPremium(false);
+    }
   };
 
   const handleFilterChange = (newFilter: FilterType, taskId?: string) => {
@@ -171,7 +177,7 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
             return (
               <Pressable
                 key={p}
-                onPress={() => !isDisabled && handlePeriodChange(p)}
+                onPress={() => handlePeriodChange(p)}
                 style={[
                   styles.periodButton,
                   period === p && styles.periodButtonActive,
@@ -247,7 +253,7 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
       )}
 
       {/* Balances */}
-      {!needsPremium && score && score.balances.length > 0 && (
+      {score && score.balances.length > 0 && (
         <Card style={styles.section}>
           <Text variant="sectionTitle" style={styles.sectionTitle}>
             Équilibres
@@ -282,7 +288,7 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
       )}
 
       {/* Performed time */}
-      {!needsPremium && score && performedData.length > 0 && (
+      {score && performedData.length > 0 && (
         <Card style={styles.section}>
           <Text variant="sectionTitle" style={styles.sectionTitle}>
             Temps effectué
@@ -344,7 +350,7 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
       )}
 
       {/* Contextual filtered history */}
-      {!needsPremium && history.length > 0 && (
+      {history.length > 0 && (
         <Card style={styles.section}>
           <Text variant="sectionTitle" style={styles.sectionTitle}>
             Historique
@@ -364,7 +370,7 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
       )}
 
       {/* Empty state */}
-      {!needsPremium && score && score.balances.length === 0 && (
+      {score && score.balances.length === 0 && (
         <View style={styles.emptyState}>
           <Text variant="sectionTitle" style={styles.emptyTitle}>
             Pas encore de données

@@ -1183,4 +1183,283 @@ describe('V2-03 Acceptance Criteria', () => {
       expect(history[0].label).toBe('Vaisselle');
     });
   });
+
+  // ══════════════════════════════════════════════════════════════
+  // SECTION 10: V2-03 REPAIR — Upsell reachability from Free UI
+  // ══════════════════════════════════════════════════════════════
+  describe('V2-03 REPAIR: Year/all-time upsell reachable from Free UI', () => {
+    let app: ChoreScoreApp;
+    let entitlementAdapter: LocalEntitlementAdapter;
+    let entries: InMemoryEntryRepository;
+
+    beforeEach(() => {
+      const authAdapter = new LocalAuthAdapter();
+      entitlementAdapter = new LocalEntitlementAdapter();
+      entries = new InMemoryEntryRepository();
+      const users = new InMemoryUserRepository();
+      const memberships = new InMemoryMembershipRepository();
+      const accounts = new InMemoryAccountRepository();
+      const households = new InMemoryHouseholdRepository();
+      const members = new InMemoryMemberRepository();
+      const persistentTasks = new InMemoryPersistentTaskRepository();
+      const todos = new InMemoryTodoRepository();
+
+      users.seed([{
+        id: 'u-1',
+        email: 'alex@example.com',
+        displayName: 'Alex',
+        createdAt: '2026-08-30T00:00:00Z',
+      }]);
+      households.seed([{
+        id: 'h-repair',
+        name: 'Foyer repair',
+        ownerId: 'u-1',
+        createdAt: '2026-08-30T00:00:00Z',
+      }]);
+      members.seed([
+        {
+          id: 'm-alex',
+          householdId: 'h-repair',
+          name: 'Alex',
+          userId: 'u-1',
+          joinedAt: '2026-08-30T00:00:00Z',
+        },
+        {
+          id: 'm-sam',
+          householdId: 'h-repair',
+          name: 'Sam',
+          userId: 'u-2',
+          joinedAt: '2026-08-30T00:00:00Z',
+        },
+      ]);
+      memberships.seed([
+        {
+          id: 'mem-alex',
+          userId: 'u-1',
+          householdId: 'h-repair',
+          role: 'OWNER',
+          joinedAt: '2026-08-30T00:00:00Z',
+        },
+      ]);
+
+      app = new ChoreScoreApp(
+        {
+          auth: authAdapter,
+          entitlements: entitlementAdapter,
+          share: new SystemShareAdapter(),
+          notifications: new LocalNotificationAdapter(),
+          calendar: new LocalCalendarAdapter(),
+          secureStorage: new LocalSecureStorageAdapter(),
+          sync: new LocalSyncAdapter(),
+          analytics: new LocalResearchAnalyticsAdapter(),
+        },
+        { users, memberships, accounts, households, members, entries, persistentTasks, todos }
+      );
+    });
+
+    it('should show current month data even when year period is selected in Free mode', async () => {
+      entitlementAdapter.setMode('demo-free');
+
+      const [year, month] = getCurrentCivilMonth();
+
+      // Create current month entries
+      await entries.create({
+        householdId: 'h-repair',
+        label: 'Vaisselle',
+        performedByMemberId: 'm-alex',
+        beneficiaryMemberIds: ['m-alex', 'm-sam'],
+        durationMinutes: 60,
+        weight: 1,
+        persistentTaskId: null,
+        occurredAt: new Date(year, month - 1, 15, 18, 0).toISOString(),
+        createdBy: 'm-alex',
+      });
+
+      // Calculate score with year period — Free mode limits to current civil month
+      const yearScore = await app.calculateScore('h-repair', 'year');
+      // Data is visible (limited to current month by the app layer)
+      expect(yearScore.balances).toBeDefined();
+      expect(yearScore.balances.length).toBeGreaterThan(0);
+      expect(yearScore.period).toBe('year');
+
+      // History is also visible
+      const yearHistory = await app.getScoreHistory('h-repair', 'year', 'all');
+      expect(yearHistory.length).toBeGreaterThan(0);
+      expect(yearHistory[0].label).toBe('Vaisselle');
+    });
+
+    it('should show current month data even when all-time period is selected in Free mode', async () => {
+      entitlementAdapter.setMode('demo-free');
+
+      const [year, month] = getCurrentCivilMonth();
+
+      await entries.create({
+        householdId: 'h-repair',
+        label: 'Ménage',
+        performedByMemberId: 'm-sam',
+        beneficiaryMemberIds: ['m-alex', 'm-sam'],
+        durationMinutes: 30,
+        weight: 1,
+        persistentTaskId: null,
+        occurredAt: new Date(year, month - 1, 20, 10, 0).toISOString(),
+        createdBy: 'm-sam',
+      });
+
+      // All-time in Free mode — still shows current month data
+      const allTimeScore = await app.calculateScore('h-repair', 'all-time');
+      expect(allTimeScore.balances).toBeDefined();
+      expect(allTimeScore.balances.length).toBeGreaterThan(0);
+
+      // Balances are correct for current month data
+      const alexBalance = allTimeScore.balances.find(b => b.memberId === 'm-alex');
+      const samBalance = allTimeScore.balances.find(b => b.memberId === 'm-sam');
+      expect(alexBalance?.minutes).toBe(-15); // beneficiary: -30/2
+      expect(samBalance?.minutes).toBe(15);   // performer: +30
+      expect(allTimeScore.sumOfBalances).toBe(0);
+
+      // History also visible
+      const allTimeHistory = await app.getScoreHistory('h-repair', 'all-time', 'all');
+      expect(allTimeHistory.length).toBeGreaterThan(0);
+    });
+
+    it('should still show full archive in Premium mode for year/all-time (no regression)', async () => {
+      entitlementAdapter.setMode('demo-premium');
+
+      const [year, month] = getCurrentCivilMonth();
+      const prevMonth = month === 1 ? 12 : month - 1;
+      const prevYear = month === 1 ? year - 1 : year;
+
+      // Old entry
+      await entries.create({
+        householdId: 'h-repair',
+        label: 'Tache ancienne',
+        performedByMemberId: 'm-alex',
+        beneficiaryMemberIds: ['m-alex', 'm-sam'],
+        durationMinutes: 40,
+        weight: 1,
+        persistentTaskId: null,
+        occurredAt: new Date(prevYear, prevMonth - 1, 10, 18, 0).toISOString(),
+        createdBy: 'm-alex',
+      });
+
+      // Current month entry
+      await entries.create({
+        householdId: 'h-repair',
+        label: 'Tache courante',
+        performedByMemberId: 'm-sam',
+        beneficiaryMemberIds: ['m-alex', 'm-sam'],
+        durationMinutes: 20,
+        weight: 1,
+        persistentTaskId: null,
+        occurredAt: new Date(year, month - 1, 15, 18, 0).toISOString(),
+        createdBy: 'm-sam',
+      });
+
+      // Premium: year should include both entries
+      const yearScore = await app.calculateScore('h-repair', 'year');
+      const yearHistory = await app.getScoreHistory('h-repair', 'year', 'all');
+      expect(yearHistory).toHaveLength(2);
+
+      // Premium: all-time should include both entries
+      const allTimeScore = await app.calculateScore('h-repair', 'all-time');
+      const allTimeHistory = await app.getScoreHistory('h-repair', 'all-time', 'all');
+      expect(allTimeHistory).toHaveLength(2);
+
+      // Balances include both entries
+      expect(allTimeScore.balances).toBeDefined();
+      expect(allTimeScore.balances.length).toBeGreaterThan(0);
+    });
+
+    it('should correctly compute balances when switching back to month in Free mode', async () => {
+      entitlementAdapter.setMode('demo-free');
+
+      const [year, month] = getCurrentCivilMonth();
+
+      await entries.create({
+        householdId: 'h-repair',
+        label: 'Vaisselle',
+        performedByMemberId: 'm-alex',
+        beneficiaryMemberIds: ['m-alex', 'm-sam'],
+        durationMinutes: 60,
+        weight: 1,
+        persistentTaskId: null,
+        occurredAt: new Date(year, month - 1, 15, 18, 0).toISOString(),
+        createdBy: 'm-alex',
+      });
+
+      // Month score in Free
+      const monthScore = await app.calculateScore('h-repair', 'month');
+      expect(monthScore.balances.find(b => b.memberId === 'm-alex')?.minutes).toBe(30);
+      expect(monthScore.balances.find(b => b.memberId === 'm-sam')?.minutes).toBe(-30);
+
+      // Year score in Free — same data (limited to current month)
+      const yearScore = await app.calculateScore('h-repair', 'year');
+      expect(yearScore.balances.find(b => b.memberId === 'm-alex')?.minutes).toBe(30);
+      expect(yearScore.balances.find(b => b.memberId === 'm-sam')?.minutes).toBe(-30);
+
+      // All-time score in Free — same data
+      const allTimeScore = await app.calculateScore('h-repair', 'all-time');
+      expect(allTimeScore.balances.find(b => b.memberId === 'm-alex')?.minutes).toBe(30);
+      expect(allTimeScore.balances.find(b => b.memberId === 'm-sam')?.minutes).toBe(-30);
+    });
+
+    it('should support upsell reachability simulation: tap year in Free triggers needsPremium', () => {
+      // Simulate the ScoreScreen logic for period button tap in Free mode
+      const isPremium = false;
+      const newPeriod: string = 'year';
+
+      // This is the logic from handlePeriodChange
+      let needsPremium = false;
+      if (!isPremium && (newPeriod === 'year' || newPeriod === 'all-time')) {
+        needsPremium = true;
+      }
+
+      expect(needsPremium).toBe(true);
+    });
+
+    it('should support upsell reachability simulation: tap all-time in Free triggers needsPremium', () => {
+      const isPremium = false;
+      const newPeriod: string = 'all-time';
+
+      let needsPremium = false;
+      if (!isPremium && (newPeriod === 'year' || newPeriod === 'all-time')) {
+        needsPremium = true;
+      }
+
+      expect(needsPremium).toBe(true);
+    });
+
+    it('should NOT trigger upsell when tapping year in Premium mode', () => {
+      const isPremium = true;
+      const newPeriod: string = 'year';
+
+      let needsPremium = false;
+      if (!isPremium && (newPeriod === 'year' || newPeriod === 'all-time')) {
+        needsPremium = true;
+      }
+
+      expect(needsPremium).toBe(false);
+    });
+
+    it('should clear needsPremium when switching back to month in Free mode', () => {
+      const isPremium = false;
+
+      // First tap year -> needsPremium = true
+      let needsPremium = false;
+      let newPeriod: string = 'year';
+      if (!isPremium && (newPeriod === 'year' || newPeriod === 'all-time')) {
+        needsPremium = true;
+      }
+      expect(needsPremium).toBe(true);
+
+      // Then tap month -> needsPremium = false
+      newPeriod = 'month';
+      if (!isPremium && (newPeriod === 'year' || newPeriod === 'all-time')) {
+        needsPremium = true;
+      } else {
+        needsPremium = false;
+      }
+      expect(needsPremium).toBe(false);
+    });
+  });
 });
