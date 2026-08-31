@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33416807677",
+  "decision": "continue",
+  "reason": "V2-06 phase 2 audit returned repair with 3 must-fix findings: (1) getMemberPermissionLevel grants MEMBER-level permissions to non-members violating tenant isolation, (2) getConflictLog ignores householdId parameter violating per-household sync isolation, (3) getPendingInvitations passes userId to adapter matching against invitedEmail (semantic mismatch + substring includes privacy risk). The WIP repair baseline is preserved. Next cycle targets exactly these 3 fixes. V2-06 remains in_progress. V2-07 not yet assigned.",
+  "progressEvidence": [
+    "trusted-verification-exit-0",
+    "606-tests-green-16-suites",
+    "typecheck-clean",
+    "android-build-ok",
+    "V2-06-phase2-audit-repair-33416807677",
+    "research-analytics-plane-preserved",
+    "strict-operational-research-analytics-separation-maintained",
+    "privacy-transform-pipeline-strips-ids-and-text",
+    "privacy-release-gate-validates-all-outputs",
+    "taxonomy-versioned-deterministic",
+    "analytics-disableable-without-breaking-product",
+    "domain-layer-zero-analytics-dependency",
+    "billing-entitlement-restoration-functional",
+    "consent-policy-retention-enforced",
+    "no-fake-active-services",
+    "no-secrets-in-repo",
+    "3-tab-navigation-preserved",
+    "canonical-pricing-preserved",
+    "mustFix-1-non-member-permission-grant",
+    "mustFix-2-conflict-log-tenant-isolation",
+    "mustFix-3-getPendingInvitations-userId-email-mismatch"
+  ],
+  "openFindings": [
+    {
+      "id": "MF-1",
+      "path": "src/application/use-cases/ChoreScoreApp.ts",
+      "problem": "getMemberPermissionLevel returns 'MEMBER' for non-members",
+      "requiredFix": "Throw or return no-access level for non-members",
+      "mustFix": true
+    },
+    {
+      "id": "MF-2",
+      "path": "src/infrastructure/local/LocalSyncAdapter.ts",
+      "problem": "getConflictLog ignores householdId, logConflict derives bogus key",
+      "requiredFix": "Add householdId to logConflict, filter getConflictLog by householdId",
+      "mustFix": true
+    },
+    {
+      "id": "MF-3",
+      "path": "src/application/use-cases/ChoreScoreApp.ts + src/infrastructure/local/LocalInvitationAdapter.ts",
+      "problem": "getPendingInvitations passes userId to adapter matching invitedEmail with substring includes",
+      "requiredFix": "Resolve userId to email in app layer, exact match in adapter",
+      "mustFix": true
+    }
+  ]
+}
