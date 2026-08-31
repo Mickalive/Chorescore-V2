@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33341384063",
+  "decision": "continue",
+  "reason": "V2-03 audit decision: repair. One mustFix finding remains open: in Free mode the year/all-time period buttons are disabled (Pressable onPress guarded by !isDisabled), making the contextual Premium upsell unreachable through the UI. Per DESIGN_BRIEF.md, tapping Année/Depuis le début in Free should trigger the contextual upsell while keeping the current civil-month data visible. The 227-test suite is green, typecheck clean, Android build OK. The trusted shell has committed the V2-03 candidate baseline. V2-03 stays active; the required repair is to make year/all-time buttons tappable in Free to trigger needsPremium upsell (without breaking the screen), plus add an acceptance test proving upsell reachability. Non-blocking findings (ArchiveMessage onUpgrade no-op, 'Somme des soldes' always 0) are noted but not required for V2-03 acceptance.",
+  "progressEvidence": [
+    "V2-00 complete: architecture greenfield, ports/adapters, 67+ tests, analytics minimized, Android build successful",
+    "V2-01 complete: identity/households/subscription/options, trial expiry, Options screens, AccountRepository resolution, demo-premium consistency, 133 tests green",
+    "V2-02 complete: CompletedEntry with Fait par/Fait pour, manual/chrono duration, PersistentTask as Score filter, history under AddTask, navigation Ajouter|Score|To-do, Free=current month, AsyncStorage-backed persistence, 195 tests green",
+    "V2-03 in_progress: Score/balances/free-window candidate committed by trusted shell (cycle 33341384063). 227 tests green (195 pristine + 32 V2-03). Period selectors, filters, +D/-D/N algorithm, zero-sum, compensations, named charts, weighted Premium section, contextual history all verified. MustFix: year/all-time buttons disabled in Free — upsell unreachable. Repair assigned.",
+    "Criteria complete: V2-00, V2-01, V2-02",
+    "Criteria in progress: V2-03",
+    "Criteria pending: V2-04, V2-05, V2-06, V2-07"
+  ]
+}
