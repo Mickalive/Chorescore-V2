@@ -9,166 +9,87 @@ const apkPath = process.env.CHORESCORE_APK_PATH;
 const packageName = process.env.CHORESCORE_E2E_PACKAGE || 'com.mickalive.chorescore';
 const outputDir = process.env.CHORESCORE_E2E_OUTPUT || path.resolve('audit/android-e2e');
 const resultPath = path.join(outputDir, 'result.json');
-
-fs.mkdirSync(outputDir, { recursive: true });
-
 const checkpoints = [];
 const startedAt = new Date().toISOString();
+fs.mkdirSync(outputDir, { recursive: true });
 
-function adb(args, options = {}) {
+function adb(args, binary = false) {
   return execFileSync('adb', args, {
-    encoding: options.binary ? null : 'utf8',
-    stdio: options.binary ? ['ignore', 'pipe', 'pipe'] : ['ignore', 'pipe', 'pipe'],
-    ...options,
+    encoding: binary ? null : 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
 }
-
-function shell(...args) {
-  return adb(['shell', ...args]);
+function shell(...args) { return adb(['shell', ...args]); }
+function sleep(ms) { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); }
+function decode(value) {
+  return value.replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 }
-
-function sleep(ms) {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-}
-
-function decodeXml(value) {
-  return value
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&');
-}
-
 function dumpUi() {
-  try {
-    shell('uiautomator', 'dump', '/sdcard/chorescore-window.xml');
-  } catch (_) {
-    // uiautomator can return a non-zero code while still writing the dump on some images.
-  }
+  try { shell('uiautomator', 'dump', '/sdcard/chorescore-window.xml'); } catch (_) {}
   const xml = adb(['exec-out', 'cat', '/sdcard/chorescore-window.xml']);
   const nodes = [];
-  const nodeRegex = /<node\b([^>]*)\/?>(?:<\/node>)?/g;
-  let match;
-  while ((match = nodeRegex.exec(xml))) {
+  for (const nodeMatch of xml.matchAll(/<node\b([^>]*)\/?>(?:<\/node>)?/g)) {
     const attrs = {};
-    const attrRegex = /([\w-]+)="([^"]*)"/g;
-    let attr;
-    while ((attr = attrRegex.exec(match[1]))) attrs[attr[1]] = decodeXml(attr[2]);
+    for (const attr of nodeMatch[1].matchAll(/([\w-]+)="([^"]*)"/g)) attrs[attr[1]] = decode(attr[2]);
     nodes.push(attrs);
   }
   return { xml, nodes };
 }
-
-function nodeLabel(node) {
-  return [node['content-desc'] || '', node.text || ''].filter(Boolean).join(' | ');
+function nodeMatches(node, label, exact) {
+  return [node['content-desc'] || '', node.text || ''].some((v) => exact ? v === label : v.includes(label));
 }
-
-function matchesLabel(node, label, exact = false) {
-  const values = [node['content-desc'] || '', node.text || ''];
-  return values.some((value) => exact ? value === label : value.includes(label));
-}
-
-function findNodes(label, exact = false) {
-  return dumpUi().nodes.filter((node) => matchesLabel(node, label, exact));
-}
-
-function parseBounds(bounds) {
-  const match = /^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/.exec(bounds || '');
-  if (!match) throw new Error(`Invalid bounds: ${bounds}`);
-  const [, x1, y1, x2, y2] = match.map(Number);
+function findNodes(label, exact = false) { return dumpUi().nodes.filter((n) => nodeMatches(n, label, exact)); }
+function bounds(node) {
+  const m = /^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/.exec(node.bounds || '');
+  if (!m) throw new Error(`Invalid bounds for ${node.text || node['content-desc'] || 'node'}`);
+  const [, x1, y1, x2, y2] = m.map(Number);
   return { x1, y1, x2, y2, x: Math.round((x1 + x2) / 2), y: Math.round((y1 + y2) / 2) };
 }
-
-function swipeUp() {
-  shell('input', 'swipe', '540', '1850', '540', '650', '350');
-  sleep(350);
-}
-
-function swipeDown() {
-  shell('input', 'swipe', '540', '650', '540', '1850', '350');
-  sleep(350);
-}
-
+function swipeUp() { shell('input', 'swipe', '540', '1850', '540', '650', '350'); sleep(400); }
+function swipeToTop() { for (let i = 0; i < 5; i += 1) { shell('input', 'swipe', '540', '600', '540', '1900', '250'); sleep(150); } }
 function findVisible(label, { exact = false, scroll = true, last = false } = {}) {
-  for (let attempt = 0; attempt < (scroll ? 6 : 1); attempt += 1) {
-    const nodes = findNodes(label, exact);
-    if (nodes.length > 0) return last ? nodes[nodes.length - 1] : nodes[0];
+  const attempts = scroll ? 7 : 1;
+  for (let i = 0; i < attempts; i += 1) {
+    const matches = findNodes(label, exact);
+    if (matches.length) return last ? matches[matches.length - 1] : matches[0];
     if (scroll) swipeUp();
   }
   throw new Error(`UI node not found: ${label}`);
 }
-
-function tapLabel(label, options = {}) {
-  const node = findVisible(label, options);
-  const { x, y } = parseBounds(node.bounds);
-  shell('input', 'tap', String(x), String(y));
-  sleep(options.waitMs || 500);
-  return node;
+function tapNode(node, waitMs = 550) {
+  const b = bounds(node);
+  shell('input', 'tap', String(b.x), String(b.y));
+  sleep(waitMs);
 }
-
-function tapLeftOfText(label, pixels = 48) {
-  const node = findVisible(label, { exact: true });
-  const { x1, y } = parseBounds(node.bounds);
-  shell('input', 'tap', String(Math.max(10, x1 - pixels)), String(y));
-  sleep(500);
+function tapLabel(label, options = {}) { const node = findVisible(label, options); tapNode(node, options.waitMs); return node; }
+function tapLeftOf(label, px = 48) {
+  const b = bounds(findVisible(label, { exact: true }));
+  shell('input', 'tap', String(Math.max(10, b.x1 - px)), String(b.y)); sleep(550);
 }
-
-function tapBelowText(label, pixels = 65) {
-  const node = findVisible(label, { exact: true });
-  const { x, y2 } = parseBounds(node.bounds);
-  shell('input', 'tap', String(x), String(y2 + pixels));
-  sleep(250);
+function tapBelow(label, px = 65) {
+  const b = bounds(findVisible(label, { exact: true }));
+  shell('input', 'tap', String(b.x), String(b.y2 + px)); sleep(250);
 }
-
-function inputText(value) {
-  const encoded = value.replace(/ /g, '%s');
-  shell('input', 'text', encoded);
-  sleep(250);
-}
-
-function typeIntoLabel(label, value) {
-  const node = findVisible(label, { exact: true });
-  const { x, y } = parseBounds(node.bounds);
-  shell('input', 'tap', String(x), String(y));
-  sleep(150);
-  inputText(value);
-}
-
-function pressBack() {
-  shell('input', 'keyevent', 'KEYCODE_BACK');
-  sleep(450);
-}
-
-function waitFor(label, timeoutMs = 8000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (findNodes(label, false).length > 0) return;
+function inputText(value) { shell('input', 'text', value.replace(/ /g, '%s')); sleep(250); }
+function typeInto(label, value) { tapNode(findVisible(label, { exact: true }), 150); inputText(value); }
+function back() { shell('input', 'keyevent', 'KEYCODE_BACK'); sleep(500); }
+function waitFor(label, timeoutMs = 10000) {
+  const until = Date.now() + timeoutMs;
+  while (Date.now() < until) {
+    if (findNodes(label).length) return;
     sleep(300);
   }
-  const { xml } = dumpUi();
-  throw new Error(`Timed out waiting for "${label}". UI: ${xml.slice(0, 2500)}`);
+  throw new Error(`Timed out waiting for ${label}`);
 }
-
 function assertAbsent(label) {
-  const matches = findNodes(label, false);
-  if (matches.length > 0) {
-    throw new Error(`Expected "${label}" to be absent but found ${matches.length} node(s)`);
-  }
+  if (findNodes(label).length) throw new Error(`Expected ${label} to be absent`);
 }
-
 function screenshot(name) {
   const file = path.join(outputDir, `${String(checkpoints.length + 1).padStart(2, '0')}-${name}.png`);
-  const png = adb(['exec-out', 'screencap', '-p'], { binary: true });
-  fs.writeFileSync(file, png);
+  fs.writeFileSync(file, adb(['exec-out', 'screencap', '-p'], true));
   checkpoints.push({ name, screenshot: path.basename(file), at: new Date().toISOString() });
 }
-
-function currentActivity() {
-  return shell('dumpsys', 'activity', 'activities');
-}
-
-function writeResult(status, error) {
+function writeResult(status, error = null) {
   fs.writeFileSync(resultPath, JSON.stringify({
     schemaVersion: 1,
     status,
@@ -180,28 +101,25 @@ function writeResult(status, error) {
     error: error ? String(error.stack || error) : null,
   }, null, 2));
 }
-
-function launchApp() {
+function launch() {
   shell('am', 'force-stop', packageName);
-  try {
-    shell('monkey', '-p', packageName, '-c', 'android.intent.category.LAUNCHER', '1');
-  } catch (_) {
-    // monkey may emit warnings despite launching the app.
-  }
-  sleep(1200);
+  try { shell('monkey', '-p', packageName, '-c', 'android.intent.category.LAUNCHER', '1'); } catch (_) {}
+  sleep(1400);
+}
+function openPersonalOptions() {
+  // Root contains both per-household "Options" and the global footer button. The latter is rendered last.
+  swipeToTop();
+  tapLabel('Options', { exact: true, scroll: true, last: true });
+  waitFor('Options');
+  findVisible('Mode de démonstration', { exact: true, scroll: true });
 }
 
 try {
-  if (!apkPath || !fs.existsSync(apkPath)) throw new Error(`CHORESCORE_APK_PATH is missing or unreadable: ${apkPath}`);
-  if (!/device/.test(adb(['get-state']))) throw new Error('No Android emulator/device available through adb');
+  if (!apkPath || !fs.existsSync(apkPath)) throw new Error(`Unreadable CHORESCORE_APK_PATH: ${apkPath}`);
+  if (!/device/.test(adb(['get-state']))) throw new Error('No adb device/emulator');
+  if (!shell('pm', 'list', 'packages', packageName).includes(packageName)) adb(['install', '-r', apkPath]);
 
-  const packages = shell('pm', 'list', 'packages', packageName);
-  if (!packages.includes(packageName)) {
-    adb(['install', '-r', apkPath]);
-  }
-
-  // 1) Launch → canonical demo Premium fixture.
-  launchApp();
+  launch();
   waitFor('Démonstration');
   screenshot('login');
   tapLabel('Démonstration', { exact: true });
@@ -209,96 +127,53 @@ try {
   screenshot('demo-premium-root');
   assertAbsent('ChoreScore Premium');
 
-  // 2) Household and exact three tabs.
   tapLabel('Appartement démo', { exact: true });
-  waitFor('Ajouter une tâche');
-  waitFor('Score');
-  waitFor('To-do');
-  waitFor('Vaisselle du soir');
+  waitFor('Ajouter une tâche'); waitFor('Score'); waitFor('To-do'); waitFor('Vaisselle du soir');
   screenshot('household-add-premium');
 
-  // 3) Add a 20-minute one-off entry performed by Alex for Sam.
-  tapBelowText('Quoi ?', 62);
-  inputText('TestE2E');
+  tapBelow('Quoi ?', 62); inputText('TestE2E');
   tapLabel('Fait par: Alex', { exact: true });
   tapLabel('Fait pour: Sam', { exact: true });
-  typeIntoLabel('Durée minutes', '20');
-  pressBack(); // close number keyboard
-  tapLabel('Valider', { exact: true });
-  waitFor('TestE2E');
+  typeInto('Durée minutes', '20'); back();
+  tapLabel('Valider', { exact: true }); waitFor('TestE2E');
   screenshot('entry-created');
 
-  // 4) Score updates and native system share opens.
-  tapLabel('Score', { exact: true });
-  waitFor('Équilibres');
-  waitFor('Alex');
-  waitFor('Sam');
+  tapLabel('Score', { exact: true }); waitFor('Équilibres'); waitFor('Alex'); waitFor('Sam');
   screenshot('score-updated');
-  tapLabel('Partager les équilibres', { exact: true, scroll: true, waitMs: 1200 });
-  const shareActivity = currentActivity();
-  if (!/(ResolverActivity|ChooserActivity|IntentResolver|android\.intent\.action\.CHOOSER)/i.test(shareActivity)) {
-    throw new Error('Native system share sheet did not become active');
-  }
-  screenshot('native-share-sheet');
-  pressBack();
+  tapLabel('Partager les équilibres', { exact: true, scroll: true, waitMs: 1300 });
+  const activity = shell('dumpsys', 'activity', 'activities');
+  if (!/(ResolverActivity|ChooserActivity|IntentResolver)/i.test(activity)) throw new Error('Native system share sheet did not open');
+  screenshot('native-share-sheet'); back();
 
-  // 5) Complete canonical Todo as Sam, 10 min, for Alex + Sam.
-  tapLabel('To-do', { exact: true });
-  waitFor('Sortir les cartons');
-  screenshot('todo-premium');
-  tapLeftOfText('Sortir les cartons', 48);
-  waitFor('Tâche faite !');
+  tapLabel('To-do', { exact: true }); waitFor('Sortir les cartons'); screenshot('todo-premium');
+  tapLeftOf('Sortir les cartons'); waitFor('Tâche faite !');
   tapLabel('Fait par: Sam', { exact: true });
-  typeIntoLabel('Durée minutes', '10');
-  pressBack();
-  tapLabel('Valider', { exact: true });
-  waitFor('Terminées');
-  screenshot('todo-completed');
+  typeInto('Durée minutes', '10'); back();
+  tapLabel('Valider', { exact: true }); waitFor('Terminées'); screenshot('todo-completed');
 
-  tapLabel('Ajouter une tâche', { exact: true });
-  waitFor('Sortir les cartons');
-  const completedEntryOccurrences = findNodes('Sortir les cartons', true).length;
-  if (completedEntryOccurrences !== 1) {
-    throw new Error(`Todo completion must create exactly one history entry; found ${completedEntryOccurrences}`);
-  }
+  tapLabel('Ajouter une tâche', { exact: true }); waitFor('Sortir les cartons');
+  if (findNodes('Sortir les cartons', true).length !== 1) throw new Error('Todo completion did not create exactly one history entry');
   screenshot('todo-entry-in-history');
 
-  // 6) Switch to deterministic Free mode through explicitly test-labelled Options.
-  pressBack();
-  waitFor('Appartement démo');
-  tapLabel('Options', { exact: true });
-  waitFor('Mode de démonstration');
-  tapLabel('Gratuit de démo', { exact: true, scroll: true });
-  screenshot('demo-free-options');
-  tapLabel('Retour', { exact: true });
-  waitFor('Appartement démo');
+  back(); waitFor('Appartement démo');
+  openPersonalOptions();
+  tapLabel('Gratuit de démo', { exact: true, scroll: true }); screenshot('demo-free-options');
+  tapLabel('Retour', { exact: true, scroll: true }); waitFor('Appartement démo');
   tapLabel('Appartement démo', { exact: true });
 
-  tapLabel('To-do', { exact: true });
-  waitFor('Planification Premium');
-  waitFor('Découvrir Premium');
+  tapLabel('To-do', { exact: true }); waitFor('Planification Premium'); waitFor('Découvrir Premium');
   screenshot('todo-free-contextual-upsell');
-
-  tapLabel('Ajouter une tâche', { exact: true });
-  waitFor('Nouveau mois 🌿');
-  assertAbsent('Archive démo');
+  tapLabel('Ajouter une tâche', { exact: true }); waitFor('Nouveau mois 🌿'); assertAbsent('Archive démo');
   screenshot('free-archive-hidden');
 
-  // 7) Restore demo Premium and verify archived data returns.
-  pressBack();
-  waitFor('Appartement démo');
-  tapLabel('Options', { exact: true });
-  waitFor('Mode de démonstration');
-  tapLabel('Premium de démo', { exact: true, scroll: true });
-  screenshot('demo-premium-restored-options');
-  tapLabel('Retour', { exact: true });
-  waitFor('Appartement démo');
-  tapLabel('Appartement démo', { exact: true });
-  waitFor('Archive démo');
-  screenshot('premium-archive-restored');
+  back(); waitFor('Appartement démo');
+  openPersonalOptions();
+  tapLabel('Premium de démo', { exact: true, scroll: true }); screenshot('demo-premium-restored-options');
+  tapLabel('Retour', { exact: true, scroll: true }); waitFor('Appartement démo');
+  tapLabel('Appartement démo', { exact: true }); waitFor('Archive démo'); screenshot('premium-archive-restored');
 
-  writeResult('pass', null);
-  console.log(`Android golden path PASS — evidence: ${outputDir}`);
+  writeResult('pass');
+  console.log(`Android golden path PASS — ${outputDir}`);
 } catch (error) {
   try { screenshot('failure'); } catch (_) {}
   writeResult('fail', error);
