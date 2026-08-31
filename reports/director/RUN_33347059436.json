@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33347059436",
+  "decision": "continue",
+  "reason": "V2-04 audit returned repair with 3 mustFix findings: (1) completion mini-form defaults 'Fait par' to the todo's assignee instead of the validating member — constitution requires 'Fait par par défaut = membre qui valide, mais modifiable'; (2) reminder capability entirely absent — no reminderAt field on TodoItem, no reminder input in create form, NotificationGateway/CalendarGateway never invoked by todo flow, yet criterion outcome requires 'deadline/reminder et calendrier via port'; (3) Free-mode 'Découvrir Premium' button is a dead no-op (onPress={() => {}}), violating QG-1. Non-blocking: completeTodo is not atomic (todo marked completed before entry creation) and UI bypasses app layer for deletion. The Builder must fix the 3 mustFix items, ideally also the atomicity issue. Previous criteria V2-00..V2-03 remain complete with all evidence preserved. 277 tests green, typecheck clean, Android build successful. Builder stays on V2-04 repair.",
+  "progressEvidence": [
+    "277-tests-green",
+    "typecheck-clean",
+    "android-build-successful",
+    "v2-00-v2-03-evidence-preserved",
+    "todo-item-entity-with-fields-complete",
+    "premium-create-dated-undated-working",
+    "completion-mini-form-creates-single-completed-entry",
+    "idempotency-guard-prevents-double-creation",
+    "score-history-propagation-immediate",
+    "reference-scenario-math-verified",
+    "free-mode-tab-visible-upsell-surface-present",
+    "downgrade-persists-todos-asyncstorage-backed",
+    "scope-discipline-6-files-only",
+    "mustFix-1-fait-par-default-to-assignee-not-validator",
+    "mustFix-2-reminder-capability-absent",
+    "mustFix-3-decouvrir-premium-button-no-op"
+  ],
+  "nextTask": {
+    "criterionId": "V2-04",
+    "mode": "repair",
+    "fixes": [
+      {
+        "id": "MF-1",
+        "severity": "mustFix",
+        "file": "src/features/household/TodoScreen.tsx",
+        "problem": "Completion mini-form defaults 'Fait par' to todo.assigneeMemberId instead of the validating member",
+        "fix": "Default completePerformedBy to current user's member id (the validator), modifiable; fall back to assignee only when the validator is not a member",
+        "verification": "Test asserting default equals current user's member id; manual demo-premium check completing a todo assigned to another member"
+      },
+      {
+        "id": "MF-2",
+        "severity": "mustFix",
+        "file": "src/domain/entities/index.ts, src/features/household/TodoScreen.tsx, src/application/use-cases/ChoreScoreApp.ts",
+        "problem": "No reminder capability on TodoItem — no field, no input, no gateway usage",
+        "fix": "Add reminderAt?: string | null to TodoItem; accept in createTodo; expose in create form; schedule via NotificationGateway port when available (honest adapter); wire CalendarGateway for dated todos",
+        "verification": "Test creating TodoItem with reminderAt and asserting persistence/round-trip; UI check for reminder input"
+      },
+      {
+        "id": "MF-3",
+        "severity": "mustFix",
+        "file": "src/features/household/TodoScreen.tsx, app/index.tsx, src/features/score/ScoreScreen.tsx",
+        "problem": "'Découvrir Premium' button is a no-op (onPress={() => {}}), violating QG-1",
+        "fix": "Wire button to real Premium/offers surface (household Options subscription section or dedicated offers screen with canonical grid) or replace with explicitly non-interactive info element; align root 'Premium' and Score 'Découvrir Premium' CTAs",
+        "verification": "In demo-free, tap 'Découvrir Premium' and observe real navigation/action; visual consistency check"
+      }
+    ],
+    "nonBlockingFixes": [
+      {
+        "id": "NB-1",
+        "severity": "non-blocking",
+        "file": "src/application/use-cases/ChoreScoreApp.ts",
+        "problem": "completeTodo not atomic — todo marked completed before entry creation",
+        "fix": "Create CompletedEntry first, then mark todo completed; on entry failure leave todo open for retry"
+      },
+      {
+        "id": "NB-2",
+        "severity": "non-blocking",
+        "file": "src/features/household/TodoScreen.tsx",
+        "problem": "handleDelete bypasses app layer; field names differ from task acceptance list",
+        "fix": "Add deleteTodo use-case in ChoreScoreApp; optionally align field names or document naming decision"
+      }
+    ]
+  }
+}
