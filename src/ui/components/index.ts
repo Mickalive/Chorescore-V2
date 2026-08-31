@@ -13,3 +13,5 @@ export { MemberSelector } from './MemberSelector';
 export { DurationInput } from './DurationInput';
 export { ChronoTimer } from './ChronoTimer';
 export { EntryRow } from './EntryRow';
+export { ShareCard, generateShareText } from './ShareCard';
+export type { ShareCardData } from './ShareCard';

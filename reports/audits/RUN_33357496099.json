@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33357496099",
+  "role": "builder",
+  "decision": "repair",
+  "summary": "Le candidat V2-05 est une tranche cohérente : navigation à 3 onglets préservée (Ajouter une tâche | Score | To-do), adaptateurs locaux honnêtes pour calendrier/billing/sync, message d'archive Free chaleureux et non bloquant, upsell Score contextuel, et 361 tests verts (13 suites) sans régression. La vérification de confiance est passée (exit 0, build Android OK). Cependant le livrable central du critère n'est pas fonctionnel sur la plateforme cible : le partage repose uniquement sur l'API Web Share (navigator.share), inexistante dans l'APK Android natif, donc le share sheet ne s'ouvre jamais en production ; la ShareCard visuelle n'est rendue dans aucun écran (code mort, partage en texte seul) ; la galerie de captures reproductibles exigée par requiredEvidence/QG-4/DESIGN_BRIEF est absente ; les tokens textSecondary/textMuted échouent le contraste WCAG AA sur toutes les surfaces ; et l'écran Options affiche des notifications push « Activées » alors que l'adaptateur est indisponible (faux push). Décision : repair.",
+  "checks": [
+    "trusted verification: exit 0 — 361 tests / 13 suites, typecheck, expo export, prebuild, gradle assembleDebug (reports/audits/TRUSTED_33357496099.md)",
+    "independent npm run check: 13 suites, 361 tests, 0 failures",
+    "candidate diff vs pristine accepted tree: exactly 5 files (__tests__/application/V2-05-acceptance.test.ts, src/features/household/ScoreScreen.tsx, src/ui/components/ShareCard.tsx, src/ui/components/index.ts, src/ui/design-system/theme.ts), +1382/−14",
+    "navigation: exactly 3 tabs (Ajouter une tâche | Score | To-do), aucun 4e onglet",
+    "contextes de partage: soldes Score + entrée d'historique, tous deux routés via SystemShareGateway",
+    "audit plateforme du share adapter: uniquement navigator.share (Web Share API), aucune API native (react-native Share, expo-sharing, react-native-share absents)",
+    "audit usage ShareCard: composant jamais rendu dans un écran; seul generateShareText est utilisé",
+    "honnêteté notifications: LocalNotificationAdapter.isAvailable()=false et schedule() lève; app/options/personal.tsx affiche pourtant « Notifications push: Activées », « Rappels de tâches: Activés », « Nouvelles assignations: Activées »",
+    "calcul de contraste: textSecondary #81B29A et textMuted #A8A8B3 échouent AA (4.5:1) sur toutes les surfaces (2.03–2.40:1); warning #C68A2E/surface 2.97; primary #C0512F/background 4.47",
+    "scan visual evidence: aucune capture/screenshot/gallery dans le dépôt ni dans la sortie de vérification de confiance",
+    "archive Free: ArchiveMessage présent dans AddTaskScreen et ScoreScreen; hasOlderEntries correct (Free = entrées hors mois civil courant)",
+    "états d'entitlement: badges Gratuit/Essai/Standard/Pro cohérents; Score Année/Depuis le début verrouillés avec upsell contextuel; To-do Free avec carte upsell"
+  ],
+  "findings": [
+    {
+      "path": "src/infrastructure/local/LocalSystemShareAdapter.ts",
+      "problem": "Le share sheet natif ne fonctionne pas sur la plateforme cible. L'adaptateur SystemShareGateway repose uniquement sur l'API Web Share (navigator.share), qui n'existe pas dans React Native/Hermes sur Android. Sur l'APK Android réel, isAvailable() renvoie toujours false et share() renvoie toujours {completed:false} : l'utilisateur reçoit l'alerte « Partage indisponible ». Le livrable central de V2-05 (« share sheet natif fonctionne depuis au moins 2 contextes ») n'est donc pas atteint sur le produit réel, seulement sur un navigateur web.",
+      "evidence": "LocalSystemShareAdapter.ts: isAvailable() = typeof navigator !== 'undefined' && !!navigator.share; share() appelle navigator.share(...) et retourne {completed:false} sinon. Aucune dépendance react-native Share / expo-sharing / react-native-share dans package.json. ScoreScreen (handleShareScore) et AddTaskScreen (handleShare, entrée d'historique) routent tous deux via app.shareContent → cet adaptateur. Le test V2-05 n'affirme que `expect(typeof result).toBe('boolean')` (tautologique) et ne vérifie jamais l'ouverture réelle du share sheet.",
+      "mustFix": true,
+      "requiredFix": "Implémenter l'adaptateur avec le share sheet natif (ex. Share.share de react-native ou expo-sharing) afin que le share sheet système s'ouvre réellement sur Android/iOS, en conservant un isAvailable() honnête. Ajouter un test qui vérifie la délégation à l'API native.",
+      "verification": "Sur l'APK Android, « Partager » dans Score et dans une entrée d'historique ouvre le share sheet système natif; le test vérifie la délégation à l'API native."
+    },
+    {
+      "path": "src/ui/components/ShareCard.tsx",
+      "problem": "La ShareCard visuelle est du code mort : le composant n'est rendu dans aucun écran et seul generateShareText est utilisé. Le partage produit donc du texte seul, alors que l'acceptance V2-05 exige des « Share cards ChoreScore générées et partageables » (visuelles, reconnaissables, lisibles sur mobile selon DESIGN_BRIEF).",
+      "evidence": "grep: ShareCard importé uniquement dans src/ui/components/index.ts et dans le test; ScoreScreen/AddTaskScreen n'utilisent que generateShareText. Aucun mécanisme de capture d'image (view-shot) ni option files dans le gateway de partage.",
+      "mustFix": true,
+      "requiredFix": "Rendre la ShareCard partie intégrante du flux de partage : la rendre dans l'écran et la partager comme image/fichier via SystemShareGateway (option files), ou supprimer le composant mort et documenter le choix.",
+      "verification": "Le partage depuis Score/historique produit une carte visuelle partageable (image) via le share sheet natif."
+    },
+    {
+      "path": "reports/audits/TRUSTED_33357496099.md",
+      "problem": "La preuve visuelle exigée pour V2-05 est absente. requiredEvidence de V2-05 inclut « visual-evidence », QG-4 exige une galerie de captures reproductibles à partir de V2-05, et DESIGN_BRIEF liste 12 écrans à capturer. Aucune capture n'existe dans le dépôt ni dans la sortie de la vérification de confiance (tests/export/prebuild/gradle uniquement).",
+      "evidence": "find sur le dépôt et /home/runner/work/_temp: aucun PNG/JPG/WebP hors ressources Android (icônes/splash). La sortie trusted ne contient aucune capture. Aucun répertoire de galerie.",
+      "mustFix": true,
+      "requiredFix": "Produire la galerie reproductible exigée : connexion, racine foyers, Ajouter Premium, Ajouter Free + message d'archive, Score Premium, Score Free, To-do Premium, mini-formulaire, To-do Free, upsell historique, Options, share card, états vides/erreurs — comme artefacts d'audit reproductibles depuis l'arbre accepté.",
+      "verification": "Les artefacts de galerie existent et sont reproductibles depuis l'arbre accepté (script ou procédure documentée)."
+    },
+    {
+      "path": "src/ui/design-system/theme.ts",
+      "problem": "Échec du contraste WCAG AA pour les textes secondaires/atténués, utilisés massivement (légendes, dates, infos secondaires, placeholders, badges de plan, boutons désactivés). textSecondary #81B29A et textMuted #A8A8B3 sont sous 4.5:1 sur toutes les surfaces; warning #C68A2E/surface = 2.97 (sous 3.0 même en grand); primary #C0512F/background = 4.47 (sous 4.5). Le test d'accessibilité V2-05 ne vérifie que les paires colors.text (sombre), manquant les paires réellement défaillantes.",
+      "evidence": "Ratios calculés: textSecondary/background 2.27, /surface 2.40, /surfaceAlt 2.15, /surfaceHighlight 2.03; textMuted/background 2.24, /surface 2.36, /surfaceAlt 2.11, /surfaceHighlight 1.99; warning/surface 2.97; primary/background 4.47. V2-05-acceptance.test.ts section accessibilité ne teste que colors.text.",
+      "mustFix": true,
+      "requiredFix": "Assombrir textSecondary et textMuted (et ajuster warning/primary) pour atteindre ≥4.5:1 sur background/surface/surfaceAlt/surfaceHighlight, et étendre le test de contraste à toutes les paires texte/fond réellement utilisées.",
+      "verification": "Un contrôle automatisé de contraste sur toutes les paires utilisées passe WCAG AA (≥4.5:1 texte normal)."
+    },
+    {
+      "path": "app/options/personal.tsx",
+      "problem": "Faux push présenté comme actif : l'écran Options affiche « Notifications push: Activées », « Rappels de tâches: Activés » et « Nouvelles assignations: Activées » alors que LocalNotificationAdapter.isAvailable() renvoie false et schedule() lève. Violation de l'acceptance V2-05 (« pas de faux push ») et de QG-1 (aucune intégration factice présentée comme active).",
+      "evidence": "personal.tsx lignes 76-78 et 101: OptionRow avec valeurs codées en dur « Activées »/« Activés ». LocalNotificationAdapter.isAvailable() = false (honnête), mais l'UI ne reflète jamais cette indisponibilité.",
+      "mustFix": true,
+      "requiredFix": "Afficher des états honnêtes (« Non configuré » / « Indisponible ») ou brancher ces lignes sur la disponibilité réelle de l'adaptateur.",
+      "verification": "L'écran Options affiche des états de notification cohérents avec la disponibilité réelle de l'adaptateur."
+    },
+    {
+      "path": "__tests__/application/V2-05-acceptance.test.ts",
+      "problem": "Plusieurs assertions du test d'acceptance sont tautologiques et ne vérifient pas les comportements réels : expect(true).toBe(true) (lignes 700 et 828), partage vérifié par `typeof result === 'boolean'` (toujours vrai), états vides/erreurs vérifiés sur des tableaux de chaînes codés en dur, design vérifié sur des constantes de thème plutôt que sur des écrans rendus, message d'archive vérifié sur un littéral plutôt que sur le composant ArchiveMessage.",
+      "evidence": "V2-05-acceptance.test.ts: lignes 700, 828 (expect(true).toBe(true)); section 1 partage (typeof boolean); sections 5 et 7 (chaînes codées en dur); section 4 (constantes de thème).",
+      "mustFix": false,
+      "requiredFix": "Remplacer les assertions tautologiques par des vérifications de comportement réel (délégation à l'API native, composants rendus, textes réels des écrans).",
+      "verification": "Chaque assertion échoue lorsque le comportement correspondant est cassé."
+    },
+    {
+      "path": "src/features/household/ScoreScreen.tsx",
+      "problem": "Cibles tactiles trop petites et rôles d'accessibilité manquants : le bouton « Partager » a un padding de 4/8 (≈16px de haut, loin des 44px recommandés), les onglets TabBar ≈40px, et aucun accessibilityRole/accessibilityLabel sur les boutons de partage, éléments de menu et onglets.",
+      "evidence": "ScoreScreen.tsx: Pressable Partager avec paddingVertical: spacing.xs (4), paddingHorizontal: spacing.sm (8). grep accessibilityRole/accessibilityLabel: aucune occurrence dans src/ ni app/.",
+      "mustFix": false,
+      "requiredFix": "Porter les cibles tactiles à ≥44px et ajouter les rôles/labels d'accessibilité sur les éléments interactifs.",
+      "verification": "Audit d'accessibilité des éléments interactifs (tailles ≥44px, rôles présents)."
+    },
+    {
+      "path": "app/options/personal.tsx",
+      "problem": "Lignes d'options mortes (QG-1) : « Changer le mot de passe », « Gérer l'abonnement », « Historique de facturation », « Supprimer le foyer », « Inviter un membre » et liens légaux sont des rangées cliquables sans onPress ni état explicitement indisponible. Préexistant depuis V2-01, mais toujours présent dans le périmètre design/UX de V2-05.",
+      "evidence": "personal.tsx et household/[id].tsx: OptionRow sans onPress, sans état désactivé/indisponible visible.",
+      "mustFix": false,
+      "requiredFix": "Câbler ces actions ou les marquer explicitement indisponibles (état visuel + texte).",
+      "verification": "Aucun contrôle visible sans comportement réel ou état explicitement indisponible."
+    },
+    {
+      "path": "src/features/household/TodoScreen.tsx",
+      "problem": "Upsell To-do Free affiché sans intention utilisateur : en Free, une carte persistante « Planification Premium » avec CTA « Découvrir Premium » s'affiche dès l'ouverture de l'onglet et le bouton de création est masqué, alors que DESIGN_BRIEF demande que l'upsell apparaisse lorsqu'on tente réellement de créer/planifier une tâche Premium. Divergence modérée avec « Premium contextuel, non agressif » (accepté en V2-04, signalé ici).",
+      "evidence": "TodoScreen.tsx: carte upsell rendue quand !isPremium; bouton « + Nouvelle tâche » conditionné à isPremium.",
+      "mustFix": false,
+      "requiredFix": "Laisser l'onglet utilisable en Free et déclencher l'upsell à la tentative de création/planification.",
+      "verification": "L'onglet To-do Free n'affiche pas de paywall proactif; l'upsell apparaît à la tentative."
+    }
+  ]
+}

@@ -14,12 +14,14 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
 import { Text } from '../../ui/components/Text';
 import { Card } from '../../ui/components/Card';
+import { Button } from '../../ui/components/Button';
 import { BarChart } from '../../ui/components/BarChart';
 import { ArchiveMessage } from '../../ui/components/ArchiveMessage';
 import { EntryRow } from '../../ui/components/EntryRow';
+import { generateShareText } from '../../ui/components/ShareCard';
 import { colors, spacing, borderRadius } from '../../ui/design-system/theme';
 import { useApp } from '../app/AppContext';
 import { Member, PersistentTask, ScoreResult, CompletedEntry, FilterType } from '../../domain/entities';
@@ -117,6 +119,45 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
   const handleFilterChange = (newFilter: FilterType, taskId?: string) => {
     setFilter(newFilter);
     setFilterTaskId(taskId);
+  };
+
+  // ── Share Score ──────────────────────────────────────────────
+  const handleShareScore = async () => {
+    if (!score || score.balances.length === 0) return;
+
+    const shareText = generateShareText({
+      type: 'balance',
+      period: PERIOD_LABELS[period],
+      balances: score.balances.map(b => ({
+        name: getMemberName(b.memberId),
+        minutes: b.minutes,
+      })),
+      compensations: score.compensations.map(c => ({
+        from: getMemberName(c.fromMemberId),
+        to: getMemberName(c.toMemberId),
+        minutes: c.minutes,
+      })),
+      performedMinutes: score.performedMinutes
+        ? Object.fromEntries(
+            Object.entries(score.performedMinutes).map(([id, mins]) => [
+              getMemberName(id),
+              mins,
+            ])
+          )
+        : undefined,
+    });
+
+    const shared = await app.shareContent({
+      title: `ChoreScore — ${PERIOD_LABELS[period]}`,
+      message: shareText,
+    });
+
+    if (!shared) {
+      Alert.alert(
+        'Partage indisponible',
+        'Le partage n\'est pas disponible sur cette plateforme.'
+      );
+    }
   };
 
   // Build filter options from persistent tasks
@@ -259,9 +300,14 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
       {/* Balances */}
       {score && score.balances.length > 0 && (
         <Card style={styles.section}>
-          <Text variant="sectionTitle" style={styles.sectionTitle}>
-            Équilibres
-          </Text>
+          <View style={styles.sectionHeader}>
+            <Text variant="sectionTitle" style={styles.sectionTitle}>
+              Équilibres
+            </Text>
+            <Pressable onPress={handleShareScore} style={styles.shareButton}>
+              <Text variant="body" color={colors.primary}>Partager</Text>
+            </Pressable>
+          </View>
 
           {/* Sum of balances */}
           <Text variant="caption" style={styles.sumNote}>
@@ -427,8 +473,18 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: spacing.lg,
   },
-  sectionTitle: {
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: spacing.md,
+  },
+  sectionTitle: {
+    marginBottom: 0,
+  },
+  shareButton: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
   },
   sumNote: {
     marginBottom: spacing.sm,

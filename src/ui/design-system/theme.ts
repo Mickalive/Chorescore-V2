@@ -11,9 +11,9 @@
 
 export const colors = {
   // Primary warm palette
-  primary: '#E07A5F',       // Warm terracotta
+  primary: '#C0512F',       // Warm terracotta (WCAG AA on white)
   primaryLight: '#F2CC8F',  // Light amber
-  primaryDark: '#C1440E',   // Deep terracotta
+  primaryDark: '#9A3A1B',   // Deep terracotta
 
   // Backgrounds (never pure white)
   background: '#FFF8F0',    // Warm cream
@@ -28,9 +28,9 @@ export const colors = {
   textOnPrimary: '#FFFFFF', // Text on primary color
 
   // Semantic states
-  success: '#81B29A',       // Sage green
-  error: '#E07A5F',         // Terracotta (same as primary for consistency)
-  warning: '#F2CC8F',       // Amber
+  success: '#5D8C6F',       // Sage green (WCAG AA on white)
+  error: '#C0512F',         // Terracotta (same as primary for consistency)
+  warning: '#C68A2E',       // Amber (darker for contrast)
   info: '#3D85C6',          // Soft blue
 
   // Dividers and borders
@@ -39,12 +39,12 @@ export const colors = {
 
   // Chart colors (not identity-based, just for variety)
   chartColors: [
-    '#E07A5F', // Terracotta
-    '#81B29A', // Sage
+    '#C0512F', // Terracotta
+    '#5D8C6F', // Sage
     '#F2CC8F', // Amber
     '#3D405B', // Blue-gray
-    '#C1440E', // Deep terracotta
-    '#81B29A', // Sage
+    '#9A3A1B', // Deep terracotta
+    '#5D8C6F', // Sage
   ],
 };
 
