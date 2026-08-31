@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle } from 'react-native';
 import { colors, typography, borderRadius, spacing } from '../design-system/theme';
 
 interface ButtonProps {
@@ -17,6 +17,7 @@ interface ButtonProps {
   disabled?: boolean;
   loading?: boolean;
   style?: ViewStyle;
+  accessibilityLabel?: string;
 }
 
 export function Button({
@@ -27,6 +28,7 @@ export function Button({
   disabled = false,
   loading = false,
   style,
+  accessibilityLabel,
 }: ButtonProps) {
   const buttonStyles = [
     styles.base,
@@ -51,7 +53,7 @@ export function Button({
       activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityState={{ disabled, busy: loading }}
-      accessibilityLabel={title}
+      accessibilityLabel={accessibilityLabel ?? title}
     >
       {loading ? (
         <ActivityIndicator color={variant === 'primary' ? colors.textOnPrimary : colors.primary} size="small" />
