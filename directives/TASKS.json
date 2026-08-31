@@ -4,26 +4,26 @@
   "builder": {
     "enabled": true,
     "criterionId": "V2-05",
-    "objective": "V2-05 — Partage, notifications, design et accessibilité. Le produit existant (V2-00..V2-04) fonctionne avec 304 tests verts, architecture greenfield, entitlements prouvés sans destruction, Premium contextuel non agressif. Ce critère doit rendre le produit réellement agréable et partageable dès le premier APK.",
-    "scope": "Livrables V2-05 : share sheet natif pour les contextes utiles (entrée, historique, Score, équilibres, To-do) ; share cards ChoreScore générées côté client ; notifications via NotificationGateway port ; aucun SDK social spécifique ; design conforme à DESIGN_CONTRACT.md et DESIGN_BRIEF.md — pas de fond blanc dominant, fonds teintés doux, surfaces colorées légères, typographie nette Premium contextuel ; message d'archive Free chaleureux et non bloquant dans l'historique quand archive Premium existe ; états Free/Trial/Standard/Pro cohérents dans toutes les vues ; accessibilité : grandes tailles de texte, contrastes WCAG AA, états vides informatifs, erreurs lisibles ; galerie de captures reproductibles définie dans la fiche design. La navigation reste Ajouter|Score|To-do. Pas de quatrième onglet.",
+    "objective": "V2-05 repair — Fix the 4 remaining mustFix findings (F1-F4). The WIP repair baseline is preserved. F5 is fixed. All other V2-00..V2-04 criteria are complete and preserved.",
+    "scope": "MustFix repairs required:\n\nF1: Fix native share sheet on Android. expo-sharing shareAsync requires a file:// URI, not plain text. Either (a) write share text to a temp file via expo-file-system and pass file:// URI, or (b) use React Native Share.share() for text sharing, or (c) use react-native-view-shot + expo-file-system for image sharing. Add test asserting native API receives valid file URI.\n\nF2: Integrate visual ShareCard into the share flow. Render <ShareCard/> in at least one screen (ScoreScreen or AddTaskScreen), capture as image, share via SystemShareGateway. The share flow must produce a visual ChoreScore card, not just plain text.\n\nF3: Produce the reproducible visual evidence gallery (12+ screens from DESIGN_BRIEF) as audit artifacts: connexion, racine foyers, Ajouter Premium, Ajouter Free + archive, Score Premium, Score Free, To-do Premium, mini-form, To-do Free, upsell, Options, share card.\n\nF4: Darken textMuted from #7A7A87 to >=4.5:1 on background (#FFF8F0), surface (#FFFFFF), and surfaceAlt (#FFF0E6). Also fix warning if used for text. Extend contrast test in Section 7 to cover every used text/surface pair including textMuted and warning.\n\nAcceptance: all 4 findings resolved, 368+ tests green, typecheck clean, Android build OK, 3 tabs preserved, no social SDK, no data destruction.",
     "acceptance": [
-      "Share sheet natif fonctionne depuis au moins 2 contextes (historique + Score ou équilibres)",
-      "Share cards ChoreScore générées et partageables",
-      "Notifications via NotificationGateway honest adapter — pas de faux push",
-      "Design conforme à DESIGN_CONTRACT.md et DESIGN_BRIEF.md : fonds teintés, pas de blanc dominant, typographie nette, surfaces colorées",
-      "Message d'archive Free présent et non bloquant dans l'historique",
-      "États Free/Trial/Standard/Pro cohérents dans Ajouter, Score et To-do",
-      "Accessibilité : contrastes AA, textes lisibles, états vides, erreurs",
-      "Les 304 tests existants passent sans régression",
+      "F1: Native share sheet opens on Android with real content (file URI or Share.share API)",
+      "F2: ShareCard rendered and shared as visual image from at least one screen",
+      "F3: Visual evidence gallery with 12+ reproducible screens exists",
+      "F4: textMuted and warning pass WCAG AA 4.5:1 on all surfaces; contrast test extended",
+      "368+ tests green (no regression)",
       "npm run check green",
-      "Pas de quatrième onglet ajouté à la navigation"
+      "3-tab navigation preserved",
+      "No social SDK added",
+      "Premium contextuel non agressif"
     ],
     "previousCriteriaPreserved": [
       "V2-00: architecture greenfield, ports/adapters, 67+ tests",
       "V2-01: identity, households, subscription, Options, trial expiry, demo-premium consistency",
       "V2-02: CompletedEntry, PersistentTask, chrono, history, navigation, AsyncStorage-backed persistence",
       "V2-03: Score/balances/free-window, period selectors, filters, +D/-D/N, compensations, charts, weighted, upsell repair",
-      "V2-04: To-do Premium, conversion to CompletedEntry, 4 mustFix all fixed, CTAs honest, 304 tests green"
+      "V2-04: To-do Premium, conversion to CompletedEntry, 4 mustFix all fixed, CTAs honest, 304 tests green",
+      "V2-05 partial: F5 notification honesty fixed, 368 tests green, design system, archive message, entitlement states coherent"
     ]
   }
 }
