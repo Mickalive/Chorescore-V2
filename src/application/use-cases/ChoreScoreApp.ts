@@ -23,6 +23,7 @@ import { calculateScore, filterEntries } from '../../domain/calculations/score';
 import {
   isInCivilMonth,
   getCurrentCivilMonth,
+  filterEntriesByPeriod,
 } from '../../domain/calculations/civilMonth';
 import {
   AuthGateway,
@@ -426,22 +427,60 @@ export class ChoreScoreApp {
 
   // ── Score Use Cases ──────────────────────────────────────────
 
+  /**
+   * Calculate score for a household, applying period filtering AND
+   * respecting Free tier civil month restriction.
+   *
+   * Free tier: all periods are limited to current civil month.
+   * Premium: year/all-time use full archive, week/month use actual period.
+   */
   async calculateScore(
     householdId: string,
     period: 'week' | 'month' | 'year' | 'all-time',
     filter: FilterType = 'all',
     filterTaskId?: string
   ): Promise<ScoreResult> {
-    const entries = await this.repositories.entries.getByHousehold(householdId);
+    const allEntries = await this.repositories.entries.getByHousehold(householdId);
     const entitlement = await this.services.entitlements.getEntitlement(householdId);
 
+    // Apply period filtering (respects Free tier civil month restriction)
+    const periodEntries = filterEntriesByPeriod(
+      allEntries,
+      period,
+      entitlement.scoreArchiveAccess
+    );
+
     return calculateScore(
-      entries,
+      periodEntries,
       period,
       filter,
       filterTaskId,
       entitlement.weightingEnabled
     );
+  }
+
+  /**
+   * Get entries for the Score screen's contextual history section.
+   * Returns entries filtered by both period AND task filter.
+   */
+  async getScoreHistory(
+    householdId: string,
+    period: 'week' | 'month' | 'year' | 'all-time',
+    filter: FilterType = 'all',
+    filterTaskId?: string
+  ): Promise<CompletedEntry[]> {
+    const allEntries = await this.repositories.entries.getByHousehold(householdId);
+    const entitlement = await this.services.entitlements.getEntitlement(householdId);
+
+    // Apply period filtering first (respects Free tier civil month restriction)
+    const periodEntries = filterEntriesByPeriod(
+      allEntries,
+      period,
+      entitlement.scoreArchiveAccess
+    );
+
+    // Then apply task filter
+    return filterEntries(periodEntries, filter, filterTaskId);
   }
 
   async getPersistentTasks(householdId: string): Promise<PersistentTask[]> {

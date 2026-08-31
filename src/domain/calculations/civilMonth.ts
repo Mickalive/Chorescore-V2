@@ -74,3 +74,61 @@ export function isBeforeCivilMonth(
   if (y1 > y2) return false;
   return m1 < m2;
 }
+
+/**
+ * Get the start of the current ISO week (Monday).
+ */
+export function getCurrentWeekStart(): Date {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday = 1
+  const monday = new Date(now);
+  monday.setDate(diff);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
+/**
+ * Get the start of the current civil year (Jan 1).
+ */
+export function getCurrentYearStart(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), 0, 1);
+}
+
+/**
+ * Filter entries by period.
+ * For Free tier, year and all-time are restricted to current civil month only.
+ */
+export function filterEntriesByPeriod<T extends { occurredAt: string }>(
+  entries: T[],
+  period: 'week' | 'month' | 'year' | 'all-time',
+  scoreArchiveAccess: boolean
+): T[] {
+  const now = new Date();
+
+  // Free tier: all periods are limited to current civil month
+  if (!scoreArchiveAccess) {
+    const [year, month] = getCurrentCivilMonth();
+    return entries.filter(e => isInCivilMonth(e.occurredAt, year, month));
+  }
+
+  // Premium: filter by actual period
+  switch (period) {
+    case 'week': {
+      const weekStart = getCurrentWeekStart();
+      return entries.filter(e => new Date(e.occurredAt) >= weekStart);
+    }
+    case 'month': {
+      const [year, month] = getCurrentCivilMonth();
+      return entries.filter(e => isInCivilMonth(e.occurredAt, year, month));
+    }
+    case 'year': {
+      const yearStart = getCurrentYearStart();
+      return entries.filter(e => new Date(e.occurredAt) >= yearStart);
+    }
+    case 'all-time':
+    default:
+      return entries;
+  }
+}

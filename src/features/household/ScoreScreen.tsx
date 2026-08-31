@@ -3,44 +3,84 @@
  *
  * Shows balances, statistics, and filtered history.
  * The "Tricount of time" equivalent.
+ *
+ * Sections:
+ * 1. Period selector (Semaine/Mois/Année/Depuis le début)
+ * 2. Filter selector (Toutes/PersistentTask/Autres)
+ * 3. Balances with compensation proposals
+ * 4. Performed time bar chart
+ * 5. Weighted secondary section (Premium only)
+ * 6. Contextual filtered history
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { Text } from '../../ui/components/Text';
 import { Card } from '../../ui/components/Card';
 import { BarChart } from '../../ui/components/BarChart';
 import { ArchiveMessage } from '../../ui/components/ArchiveMessage';
+import { EntryRow } from '../../ui/components/EntryRow';
 import { colors, spacing, borderRadius } from '../../ui/design-system/theme';
 import { useApp } from '../app/AppContext';
-import { Member, ScoreResult, Balance, Compensation } from '../../domain/entities';
+import { Member, PersistentTask, ScoreResult, CompletedEntry, FilterType } from '../../domain/entities';
 
 interface ScoreScreenProps {
   householdId: string;
 }
 
+type Period = 'week' | 'month' | 'year' | 'all-time';
+
+const PERIOD_LABELS: Record<Period, string> = {
+  week: 'Semaine',
+  month: 'Mois',
+  year: 'Année',
+  'all-time': 'Depuis le début',
+};
+
 export function ScoreScreen({ householdId }: ScoreScreenProps) {
   const { app } = useApp();
   const [members, setMembers] = useState<Member[]>([]);
+  const [persistentTasks, setPersistentTasks] = useState<PersistentTask[]>([]);
   const [score, setScore] = useState<ScoreResult | null>(null);
-  const [period, setPeriod] = useState<'week' | 'month' | 'year' | 'all-time'>('month');
+  const [history, setHistory] = useState<CompletedEntry[]>([]);
+  const [period, setPeriod] = useState<Period>('month');
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [filterTaskId, setFilterTaskId] = useState<string | undefined>(undefined);
   const [hasOlderEntries, setHasOlderEntries] = useState(false);
+  const [isPremium, setIsPremium] = useState(true);
+  const [needsPremium, setNeedsPremium] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
-      const [membersData, scoreResult, olderExists] = await Promise.all([
+      const [membersData, tasks, entitlement, olderExists] = await Promise.all([
         app.getMembersForHousehold(householdId),
-        app.calculateScore(householdId, period),
+        app.getPersistentTasks(householdId),
+        app.getEntitlement(householdId),
         app.hasOlderEntries(householdId),
       ]);
 
+      const premium = entitlement.weightingEnabled || entitlement.scoreArchiveAccess;
+      setIsPremium(premium);
       setMembers(membersData);
-      setScore(scoreResult);
+      setPersistentTasks(tasks);
       setHasOlderEntries(olderExists);
+
+      // Check if current period requires Premium
+      const needsPremiumPeriod = !entitlement.scoreArchiveAccess && (period === 'year' || period === 'all-time');
+      setNeedsPremium(needsPremiumPeriod);
+
+      if (!needsPremiumPeriod) {
+        const [scoreResult, historyData] = await Promise.all([
+          app.calculateScore(householdId, period, filter, filterTaskId),
+          app.getScoreHistory(householdId, period, filter, filterTaskId),
+        ]);
+        setScore(scoreResult);
+        setHistory(historyData);
+      }
     } catch (error) {
       console.error('Failed to load score:', error);
     }
-  }, [app, householdId, period]);
+  }, [app, householdId, period, filter, filterTaskId]);
 
   useEffect(() => {
     loadData();
@@ -59,6 +99,29 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
     return `${sign}${m} min`;
   };
 
+  const handlePeriodChange = (newPeriod: Period) => {
+    setPeriod(newPeriod);
+    // Reset filter when changing period
+    setFilter('all');
+    setFilterTaskId(undefined);
+  };
+
+  const handleFilterChange = (newFilter: FilterType, taskId?: string) => {
+    setFilter(newFilter);
+    setFilterTaskId(taskId);
+  };
+
+  // Build filter options from persistent tasks
+  const filterOptions: Array<{ label: string; filter: FilterType; taskId?: string }> = [
+    { label: 'Toutes', filter: 'all' },
+    ...persistentTasks.map(task => ({
+      label: task.name,
+      filter: 'persistent-task' as FilterType,
+      taskId: task.id,
+    })),
+    { label: 'Autres', filter: 'others' as FilterType },
+  ];
+
   const performedData = score
     ? Object.entries(score.performedMinutes).map(([memberId, minutes]) => ({
         label: getMemberName(memberId),
@@ -68,6 +131,21 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
 
   const balanceData = score
     ? score.balances.map(b => ({
+        label: getMemberName(b.memberId),
+        value: b.minutes,
+        color: b.minutes >= 0 ? colors.success : colors.error,
+      }))
+    : [];
+
+  const weightedPerformedData = score?.performedWeightedMinutes
+    ? Object.entries(score.performedWeightedMinutes).map(([memberId, minutes]) => ({
+        label: getMemberName(memberId),
+        value: minutes,
+      }))
+    : [];
+
+  const weightedBalanceData = score?.weightedBalances
+    ? score.weightedBalances.map(b => ({
         label: getMemberName(b.memberId),
         value: b.minutes,
         color: b.minutes >= 0 ? colors.success : colors.error,
@@ -88,30 +166,99 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
       {/* Period selector */}
       <View style={styles.periodSection}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {(['week', 'month', 'year', 'all-time'] as const).map(p => (
-            <View key={p} style={styles.periodButton}>
-              <Text
-                variant="bodyBold"
-                color={period === p ? colors.primary : colors.textSecondary}
-                onPress={() => setPeriod(p)}
+          {(['week', 'month', 'year', 'all-time'] as const).map(p => {
+            const isDisabled = !isPremium && (p === 'year' || p === 'all-time');
+            return (
+              <Pressable
+                key={p}
+                onPress={() => !isDisabled && handlePeriodChange(p)}
+                style={[
+                  styles.periodButton,
+                  period === p && styles.periodButtonActive,
+                  isDisabled && styles.periodButtonDisabled,
+                ]}
               >
-                {p === 'week' && 'Semaine'}
-                {p === 'month' && 'Mois'}
-                {p === 'year' && 'Année'}
-                {p === 'all-time' && 'Depuis le début'}
-              </Text>
-            </View>
-          ))}
+                <Text
+                  variant="bodyBold"
+                  color={
+                    period === p
+                      ? colors.textOnPrimary
+                      : isDisabled
+                      ? colors.textMuted
+                      : colors.textSecondary
+                  }
+                >
+                  {PERIOD_LABELS[p]}
+                  {isDisabled && ' 🔒'}
+                </Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
       </View>
 
+      {/* Filter selector */}
+      <View style={styles.filterSection}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {filterOptions.map(opt => {
+            const isActive =
+              filter === opt.filter &&
+              (opt.filter !== 'persistent-task' || filterTaskId === opt.taskId);
+            return (
+              <Pressable
+                key={opt.label}
+                onPress={() => handleFilterChange(opt.filter, opt.taskId)}
+                style={[
+                  styles.filterButton,
+                  isActive && styles.filterButtonActive,
+                ]}
+              >
+                <Text
+                  variant="body"
+                  color={
+                    isActive
+                      ? colors.textOnPrimary
+                      : colors.textSecondary
+                  }
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Premium required for year/all-time */}
+      {needsPremium && (
+        <Card style={styles.section}>
+          <Text variant="sectionTitle" style={styles.sectionTitle}>
+            Fonctionnalité Premium
+          </Text>
+          <Text variant="body" style={styles.premiumText}>
+            {period === 'year'
+              ? "L'historique annuel nécessite ChoreScore Premium."
+              : "L'historique complet nécessite ChoreScore Premium."}
+          </Text>
+          <Text variant="bodyBold" color={colors.primary} style={styles.premiumCta}>
+            Découvrir Premium
+          </Text>
+        </Card>
+      )}
+
       {/* Balances */}
-      {score && score.balances.length > 0 && (
+      {!needsPremium && score && score.balances.length > 0 && (
         <Card style={styles.section}>
           <Text variant="sectionTitle" style={styles.sectionTitle}>
             Équilibres
           </Text>
 
+          {/* Sum of balances */}
+          <Text variant="caption" style={styles.sumNote}>
+            Somme des soldes : {formatDuration(score.sumOfBalances)}
+          </Text>
+
+          {/* Compensation proposals */}
           {score.compensations.length > 0 && (
             <View style={styles.compensations}>
               <Text variant="caption" style={styles.compensationsTitle}>
@@ -135,7 +282,7 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
       )}
 
       {/* Performed time */}
-      {score && performedData.length > 0 && (
+      {!needsPremium && score && performedData.length > 0 && (
         <Card style={styles.section}>
           <Text variant="sectionTitle" style={styles.sectionTitle}>
             Temps effectué
@@ -147,8 +294,77 @@ export function ScoreScreen({ householdId }: ScoreScreenProps) {
         </Card>
       )}
 
+      {/* Weighted section — Premium only */}
+      {!needsPremium && isPremium && score?.weightedBalances && weightedBalanceData.length > 0 && (
+        <>
+          <View style={styles.weightedDivider}>
+            <View style={styles.dividerLine} />
+            <Text variant="caption" style={styles.weightedLabel}>
+              Pondéré
+            </Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <Card style={styles.section}>
+            <Text variant="sectionTitle" style={styles.sectionTitle}>
+              Équilibres pondérés
+            </Text>
+
+            {score.weightedCompensations && score.weightedCompensations.length > 0 && (
+              <View style={styles.compensations}>
+                <Text variant="caption" style={styles.compensationsTitle}>
+                  Qui doit rattraper (pondéré) :
+                </Text>
+                {score.weightedCompensations.map((comp, index) => (
+                  <Text key={index} variant="body" style={styles.compensation}>
+                    {getMemberName(comp.fromMemberId)} → {getMemberName(comp.toMemberId)} : {formatDuration(comp.minutes)}
+                  </Text>
+                ))}
+              </View>
+            )}
+
+            <BarChart
+              data={weightedBalanceData}
+              formatValue={formatDuration}
+            />
+          </Card>
+
+          {weightedPerformedData.length > 0 && (
+            <Card style={styles.section}>
+              <Text variant="sectionTitle" style={styles.sectionTitle}>
+                Temps effectué pondéré
+              </Text>
+              <BarChart
+                data={weightedPerformedData}
+                formatValue={formatDuration}
+              />
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* Contextual filtered history */}
+      {!needsPremium && history.length > 0 && (
+        <Card style={styles.section}>
+          <Text variant="sectionTitle" style={styles.sectionTitle}>
+            Historique
+          </Text>
+          <Text variant="caption" style={styles.historyNote}>
+            {PERIOD_LABELS[period]}
+            {filter !== 'all' && ` · ${filterOptions.find(o => o.filter === filter && (o.filter !== 'persistent-task' || o.taskId === filterTaskId))?.label || 'Filtré'}`}
+          </Text>
+          {history.map(entry => (
+            <EntryRow
+              key={entry.id}
+              entry={entry}
+              members={members}
+            />
+          ))}
+        </Card>
+      )}
+
       {/* Empty state */}
-      {score && score.balances.length === 0 && (
+      {!needsPremium && score && score.balances.length === 0 && (
         <View style={styles.emptyState}>
           <Text variant="sectionTitle" style={styles.emptyTitle}>
             Pas encore de données
@@ -171,18 +387,41 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   periodSection: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   periodButton: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    marginRight: spacing.md,
+    marginRight: spacing.sm,
+    borderRadius: borderRadius.sm,
+  },
+  periodButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  periodButtonDisabled: {
+    opacity: 0.5,
+  },
+  filterSection: {
+    marginBottom: spacing.lg,
+  },
+  filterButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginRight: spacing.sm,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.surfaceAlt,
+  },
+  filterButtonActive: {
+    backgroundColor: colors.primary,
   },
   section: {
     marginBottom: spacing.lg,
   },
   sectionTitle: {
     marginBottom: spacing.md,
+  },
+  sumNote: {
+    marginBottom: spacing.sm,
   },
   compensations: {
     marginBottom: spacing.md,
@@ -193,6 +432,30 @@ const styles = StyleSheet.create({
   compensation: {
     marginBottom: spacing.xs,
     paddingLeft: spacing.sm,
+  },
+  weightedDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.md,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  weightedLabel: {
+    marginHorizontal: spacing.md,
+    color: colors.textSecondary,
+  },
+  premiumText: {
+    marginBottom: spacing.md,
+    color: colors.textSecondary,
+  },
+  premiumCta: {
+    marginBottom: spacing.sm,
+  },
+  historyNote: {
+    marginBottom: spacing.sm,
   },
   emptyState: {
     padding: spacing.xxl,

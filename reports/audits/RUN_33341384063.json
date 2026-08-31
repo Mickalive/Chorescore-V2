@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33341384063",
+  "role": "builder",
+  "decision": "repair",
+  "summary": "V2-03 (Score, équilibres et fenêtre gratuite) audited. The candidate adds period filtering (Semaine/Mois/Année/Depuis le début) and task filtering (Toutes/PersistentTask/Autres) to the Score screen, a Free-tier civil-month restriction in the domain (filterEntriesByPeriod), a weighted Premium-only secondary section, contextual filtered history, and a large acceptance test suite (32 new tests, 227 total) covering the reference scenarios (two-member-core, three-member-beneficiaries, free-month-rollover) with correct balance math (+D to performedBy, -D/N to beneficiaries, zero-sum, peer-to-peer compensations, real vs weighted). Trusted verification exit code is 0 (Android debug build successful). npm run check is green (typecheck clean, 227 tests pass). No regression on V2-00/V2-01/V2-02 invariants. HOWEVER there is one mustFix finding: in Free mode the year/all-time period buttons are disabled (Pressable onPress guarded by isDisabled, lock icon shown), so tapping them does nothing and the contextual Premium upsell for Année/Depuis le début is unreachable through the UI. This diverges from DESIGN_BRIEF.md ('Une action sur archive/Année/Depuis le début ouvre alors seulement l'upsell contextuel') and from the V2-03 criterion ('Année/Depuis le début/archive sont Premium avec upsell contextuel'). The needsPremium upsell card exists but is effectively dead code in the normal Free flow (only reachable via a downgrade-while-on-Premium-period edge case). Decision: repair.",
+  "checks": [
+    "trusted-verification-exit-code-0 (reports/audits/TRUSTED_33341384063.md: BUILD SUCCESSFUL, APK debug assembled)",
+    "npm run typecheck -> tsc --noEmit clean",
+    "npm test -> 10 suites, 227 tests passed (195 pristine + 32 new V2-03 tests)",
+    "npm run check -> green",
+    "Reference scenario two-member-core values verified (balances 15/-15, compensation m-sam->m-alex 15, performed 60/30, weighted 7.5/-7.5) match docs/REFERENCE_SCENARIOS.json",
+    "Reference scenario three-member-beneficiaries verified (balances 60/0/-60, compensation m-c->m-a 60) match JSON",
+    "Reference scenario free-month-rollover verified (old entries persisted but hidden in Free, restored on upgrade)",
+    "Balance algorithm verified: +D to performedBy, -D/N to each beneficiary, sum of balances = 0, self-beneficiary cancellation",
+    "filterEntriesByPeriod restricts all periods to current civil month when scoreArchiveAccess=false (Free), correct per constitution",
+    "getScoreHistory returns entries filtered by period AND task filter, consistent with calculateScore",
+    "Weighted secondary section only rendered when Premium (weightingEnabled/scoreArchiveAccess)",
+    "No governance/constitution/roadmap/task files modified by candidate",
+    "No V1 carry-over, no fake integrations, no domain/provider coupling introduced"
+  ],
+  "findings": [
+    {
+      "path": "src/features/household/ScoreScreen.tsx",
+      "problem": "In Free mode the year/all-time period buttons are disabled (Pressable onPress guarded by `!isDisabled`, lock icon shown), so tapping them does nothing and the contextual Premium upsell for Année/Depuis le début is unreachable through the UI. The `needsPremium` upsell card exists but is effectively dead code in the normal Free flow (only reachable via a downgrade-while-on-Premium-period edge case). This diverges from DESIGN_BRIEF.md ('Une action sur archive/Année/Depuis le début ouvre alors seulement l'upsell contextuel') and from the V2-03 criterion ('Année/Depuis le début/archive sont Premium avec upsell contextuel, jamais paywall automatique au lancement').",
+      "evidence": "ScoreScreen.tsx lines 170-196: `const isDisabled = !isPremium && (p === 'year' || p === 'all-time');` and `onPress={() => !isDisabled && handlePeriodChange(p)}`. In Free, isPremium=false so year/all-time are disabled; the user cannot select them, so `needsPremium` (line 69) never becomes true through normal interaction. DESIGN_BRIEF.md Score Free section and RELEASE_DEFINITION.json V2-03 outcome both require a contextual upsell triggered by requesting the Premium period.",
+      "mustFix": true,
+      "requiredFix": "Make the year/all-time buttons tappable in Free mode so that tapping them triggers the contextual Premium upsell (set needsPremium / show the upsell card) instead of being disabled. Per DESIGN_BRIEF.md, do not 'casser' the whole screen: keep the current civil-month score data visible while presenting the contextual upsell for the requested Premium period.",
+      "verification": "In demo-free mode, tap Année and Depuis le début on the Score screen and confirm the contextual Premium upsell appears (and the current month's balances/history remain visible), while in demo-premium mode the full archive is shown. Add/adjust an acceptance test asserting the upsell is reachable from the Free UI."
+    },
+    {
+      "path": "src/features/household/ScoreScreen.tsx",
+      "problem": "The ArchiveMessage onUpgrade callback is a no-op (`onUpgrade={() => {}}`), so the 'Retrouver mon historique' CTA in the Free archive message does nothing when tapped. Minor, non-blocking for V2-03 (the full upsell flow is a V2-05 concern), but the CTA should eventually route to the Premium upsell.",
+      "evidence": "ScoreScreen.tsx line 163: `<ArchiveMessage onUpgrade={() => {}} />`; ArchiveMessage.tsx renders the CTA only when onUpgrade is provided.",
+      "mustFix": false,
+      "requiredFix": "None for V2-03; wire onUpgrade to the Premium upsell flow when it is implemented (V2-05).",
+      "verification": "Manual: in Free with older entries, the archive message shows; the CTA is present but inert."
+    },
+    {
+      "path": "src/features/household/ScoreScreen.tsx",
+      "problem": "The 'Somme des soldes' caption always renders '0 min' because the sum of balances is always zero by construction. Minor UX oddity, not incorrect, but of limited informational value.",
+      "evidence": "ScoreScreen.tsx lines 256-259 render `Somme des soldes : {formatDuration(score.sumOfBalances)}`; sumOfBalances is always 0 for valid data.",
+      "mustFix": false,
+      "requiredFix": "None required; consider removing or repurposing the caption.",
+      "verification": "Manual inspection of the balances card."
+    }
+  ]
+}
