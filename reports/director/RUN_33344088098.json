@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33344088098",
+  "decision": "continue",
+  "reason": "V2-03 audit decision: accept. The previous mustFix finding (year/all-time buttons disabled in Free, upsell unreachable) is fully resolved. Year/all-time buttons are now tappable in Free, tapping triggers the contextual Premium upsell (needsPremium=true), current civil-month data remains visible, and Premium mode shows full archive with no regression. The repair was minimal and in scope (ScoreScreen.tsx + V2-03-acceptance.test.ts only). 235 tests green (195 pristine + 40 V2-03), typecheck clean, Android build OK. V2-03 is marked complete. V2-04 (To-do Premium and conversion to CompletedEntry) is now the active criterion.",
+  "progressEvidence": [
+    "V2-00 complete: architecture greenfield, ports/adapters, 67+ tests, analytics minimized, Android build successful",
+    "V2-01 complete: identity/households/subscription/options, trial expiry, Options screens, AccountRepository resolution, demo-premium consistency, 133 tests green",
+    "V2-02 complete: CompletedEntry with Fait par/Fait pour, manual/chrono duration, PersistentTask as Score filter, history, navigation Ajouter|Score|To-do, AsyncStorage-backed persistence, 195 tests green",
+    "V2-03 complete: Score/balances/free-window with period selectors, filters, +D/-D/N algorithm, zero-sum, compensations, named charts, weighted Premium section, contextual history, Free month restriction. MustFix repair accepted: year/all-time tappable in Free triggering upsell, current-month data visible, Premium no-regression. 235 tests green, audit accepted 33344088098",
+    "Criteria complete: V2-00, V2-01, V2-02, V2-03",
+    "Criteria in progress: V2-04",
+    "Criteria pending: V2-05, V2-06, V2-07"
+  ]
+}

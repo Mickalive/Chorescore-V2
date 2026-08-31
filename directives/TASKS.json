@@ -3,22 +3,26 @@
   "milestone": "v2-rc",
   "builder": {
     "enabled": true,
-    "criterionId": "V2-03",
-    "objective": "V2-03 REPAIR — Fix the mustFix finding: in Free mode the year/all-time period buttons are disabled, making the contextual Premium upsell unreachable. Make them tappable so tapping triggers the upsell while keeping current civil-month data visible.",
-    "scope": "Minimal repair in ScoreScreen.tsx: (1) make year/all-time Pressable buttons tappable in Free mode by removing the !isDisabled guard on onPress, (2) on tap set needsPremium=true to show the contextual Premium upsell card, (3) keep current-month balances/history visible behind/below the upsell, (4) add/adjust an acceptance test in V2-03-acceptance.test.ts proving the upsell is reachable from the Free UI by tapping year/all-time period buttons. No scope expansion.",
+    "criterionId": "V2-04",
+    "objective": "V2-04 — To-do Premium et conversion en réalisation. Livrer le planning futur Premium avec TodoItem datée ou non, assignation, bénéficiaires, notes, deadline/reminder et calendrier via port. Le check demande fait-par + durée + fait-pour, termine la To-do et crée exact une CompletedEntry visible immédiatement dans historique et Score. Gratuit : onglet présent, création/planification déclenche seulement un upsell contextuel ; downgrade sans destruction des TodoItem.",
+    "scope": "Domain entities TodoItem and related use-cases in ChoreScoreApp; TodoScreen UI with creation, assignment, deadline, reminder, notes, completion mini-form; conversion to CompletedEntry with atomic creation and immediate Score/history update; Free tier upsell contextuel on create/planify; persistence (InMemory or AsyncStorage-backed); entitlement gating; tests covering creation, completion, conversion, Free upsell, downgrade persistence. No scope expansion.",
     "acceptance": [
-      "In Free mode, tapping 'Année' button triggers the contextual Premium upsell (needsPremium becomes true)",
-      "In Free mode, tapping 'Depuis le début' button triggers the contextual Premium upsell",
-      "Current civil-month balances and history remain visible while the upsell is shown",
-      "In Premium mode, year/all-time still show full archive as before (no regression)",
-      "Acceptance test added proving upsell reachability from Free UI",
-      "All 227 existing tests pass with no regressions",
+      "TodoItem entity exists with fields: label, assignedMemberId, beneficiaryMemberIds, deadline, notes, persistentTaskId, completedAt",
+      "Trial/Standard/Pro: create TodoItem with date or no date, assign to member, set beneficiaries, add notes, set deadline/reminder",
+      "TodoItem completion mini-form: Fait par (default=validator, modifiable), durée réelle, Fait pour (reused or modified)",
+      "Completion creates exactly one CompletedEntry and marks TodoItem done",
+      "Score and history update immediately after completion",
+      "Free mode: Todo tab visible, create/planify triggers contextual upsell, no TodoItem created",
+      "Downgrade from Premium does not destroy existing TodoItems",
+      "PersistentTask link optional on TodoItem",
+      "All existing 235 tests pass with no regressions",
       "npm run check green"
     ],
     "previousCriteriaPreserved": [
       "V2-00: architecture greenfield, ports/adapters, 67+ tests",
       "V2-01: identity, households, subscription, Options, trial expiry, demo-premium consistency",
-      "V2-02: CompletedEntry, PersistentTask, chrono, history, navigation, AsyncStorage-backed persistence"
+      "V2-02: CompletedEntry, PersistentTask, chrono, history, navigation, AsyncStorage-backed persistence",
+      "V2-03: Score/balances/free-window, period selectors, filters, +D/-D/N, compensations, charts, weighted, upsell repair"
     ]
   }
 }
