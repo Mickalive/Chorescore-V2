@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33537900254",
+  "role": "builder",
+  "decision": "repair",
+  "summary": "Trusted verification failed (exit 1); candidate retained as WIP for repair. Repaired the V2-07 trusted release failure from Actions run 33524374211. The trusted verification exited 1 because the `expo install --check` gate returned nonzero: the Expo SDK 57 packages declared in package.json/package-lock.json were outdated relative to the installed expo version (expo 57.0.18 expected ~57.0.19, plus expo-constants, expo-font, expo-linking, expo-router, expo-sharing and @expo/metro-runtime all one patch behind). Aligned all Expo SDK 57 packages to the versions expected by `expo install --check` and regenerated the lockfile. Re-ran the full trusted gate locally: npm run check (608 tests) PASS, expo install --check PASS (Dependencies are up to date), expo export --platform android PASS, expo prebuild --platform android PASS, and ./gradlew :app:assembleDebug BUILD SUCCESSFUL. Also verified the release contract (package.json, package-lock.json, app.json, privacy-check.js, e2e-android.js, smoke-android-apk.sh all present and syntactically valid; android package com.chorescore.v2) and npm run privacy:check PASS. No product code, tests, config or protected control-plane files were changed; only dependency version alignment within the Expo SDK 57 family. No mustFix findings remain.",
+  "checks": [
+    "npm run check green (typecheck + 608 tests)",
+    "npx expo install --check green (Dependencies are up to date)",
+    "npx expo export --platform android green",
+    "npx expo prebuild --platform android --no-install green",
+    "./gradlew :app:assembleDebug BUILD SUCCESSFUL",
+    "npm run privacy:check green (222 tests + static privacy contract)",
+    "Release contract validated: package.json, package-lock.json, app.json, scripts/privacy-check.js, scripts/e2e-android.js, .github/scripts/smoke-android-apk.sh present and syntactically valid",
+    "app.json android package com.chorescore.v2 present",
+    "No protected control-plane paths modified (only package.json and package-lock.json)",
+    "V2-00..V2-06 invariants preserved (no product code or test changes)",
+    "trusted verification: FAIL exit 1; see reports/audits/TRUSTED_33537900254.md"
+  ],
+  "findings": [
+    {
+      "path": ".",
+      "problem": "Trusted product verification failed",
+      "evidence": "Authoritative verification log: reports/audits/TRUSTED_33537900254.md (exit 1)",
+      "mustFix": true,
+      "requiredFix": "Resolve the concrete failing trusted check without discarding already-correct candidate work, then rerun the full gate.",
+      "verification": "Full trusted gate must return exit code 0, including tests, Expo dependency check/export/prebuild and Android Gradle assembleDebug."
+    }
+  ]
+}
