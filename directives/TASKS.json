@@ -2,21 +2,19 @@
   "schemaVersion": 1,
   "milestone": "v2-rc",
   "builder": {
-    "enabled": false,
-    "criterionId": null,
-    "objective": "V2-07 release handoff — no Builder work. The trusted release shell exclusively owns the final Android release candidate validation and attestation.",
-    "scope": "V2-06 is complete and independently accepted in cycle 33434778952 with 608 tests green, typecheck clean, Android debug APK build successful and zero findings. Do not reopen V2-06 or modify product code. V2-07 is executed only by the trusted release job: run privacy contract checks, build the release APK, install and launch it on Android API 35, traverse the canonical Premium → Free → Premium golden path, collect runtime/visual evidence, upload the final APK artifact, and attest V2-07 complete only if every trusted gate succeeds.",
+    "enabled": true,
+    "criterionId": "V2-07",
+    "objective": "REPAIR V2-07 trusted release failure from Actions run 33524374211. Inspect the exact failed release logs with gh run view 33524374211 --repo Mickalive/Chorescore-V2 --log-failed before editing. Fix the concrete release/runtime/E2E blocker; do not redesign the product or reopen V2-00..V2-06.",
+    "scope": "Target only the trusted-release failure and directly necessary app/config/test/scripts repairs. Preserve every accepted product criterion. Protected .github control-plane files remain trusted-shell owned.",
     "acceptance": [
-      "Builder remains disabled during V2-07",
-      "V2-00..V2-06 remain complete with no regression",
       "npm run check green",
       "privacy:check green",
-      "release APK builds successfully",
-      "release APK installs and launches on Android emulator API 35",
-      "Android golden path Premium to Free to Premium passes",
-      "E2E result.json and visual checkpoints produced",
-      "final APK artifact uploaded with SHA-256 evidence",
-      "V2-07 completed only by trusted release shell"
+      "Expo Android export green",
+      "Android release APK builds",
+      "validated app.json package installs and launches",
+      "Premium -> Free -> Premium Android golden path passes",
+      "E2E result.json status pass and checkpoints exist",
+      "V2-00..V2-06 preserved"
     ],
     "previousCriteriaPreserved": [
       "V2-00: architecture greenfield, ports/adapters, Android build",
