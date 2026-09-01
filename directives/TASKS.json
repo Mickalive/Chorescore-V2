@@ -2,14 +2,13 @@
   "schemaVersion": 1,
   "milestone": "v2-rc",
   "builder": {
-    "enabled": false,
-    "criterionId": null,
-    "objective": "Accepted V2-07 repair is now owned by the trusted release shell; no Builder edits until another trusted release failure.",
-    "scope": "Builder idle. V2-07 in trusted release shell hands. No product changes permitted.",
+    "enabled": true,
+    "criterionId": "V2-07",
+    "objective": "REPAIR V2-07 trusted release failure from Actions run 33552750352. Inspect the exact failed release logs with gh run view 33552750352 --repo Mickalive/Chorescore-V2 --log-failed before editing. Fix the concrete release/runtime/E2E blocker; do not redesign the product or reopen V2-00..V2-06.",
+    "scope": "Target only the trusted-release failure and directly necessary app/config/test/scripts repairs. Preserve every accepted product criterion. Protected .github control-plane files remain trusted-shell owned.",
     "acceptance": [
       "npm run check green",
       "privacy:check green",
-      "expo install --check green",
       "Expo Android export green",
       "Android release APK builds",
       "validated app.json package installs and launches",
