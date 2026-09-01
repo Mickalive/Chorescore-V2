@@ -6,7 +6,17 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const apkPath = process.env.CHORESCORE_APK_PATH;
-const packageName = process.env.CHORESCORE_E2E_PACKAGE || 'com.mickalive.chorescore';
+function configuredAndroidPackage() {
+  if (process.env.CHORESCORE_E2E_PACKAGE) return process.env.CHORESCORE_E2E_PACKAGE;
+  const appConfigPath = path.resolve('app.json');
+  const config = JSON.parse(fs.readFileSync(appConfigPath, 'utf8'));
+  const value = config?.expo?.android?.package;
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error(`Missing expo.android.package in ${appConfigPath}`);
+  }
+  return value.trim();
+}
+const packageName = configuredAndroidPackage();
 const outputDir = process.env.CHORESCORE_E2E_OUTPUT || path.resolve('audit/android-e2e');
 const resultPath = path.join(outputDir, 'result.json');
 const checkpoints = [];
@@ -107,7 +117,6 @@ function launch() {
   sleep(1400);
 }
 function openPersonalOptions() {
-  // Root contains both per-household "Options" and the global footer button. The latter is rendered last.
   swipeToTop();
   tapLabel('Options', { exact: true, scroll: true, last: true });
   waitFor('Options');
