@@ -36,7 +36,7 @@ fi
 product_sha=$(git rev-parse HEAD); before="$RUNNER_TEMP/release-before.json"; cp docs/RELEASE_STATUS.json "$before"
 criterion=$(jq -r .criterionId "$meta")
 manifest=$(jq -n --arg decision "$decision" --arg criterion "$criterion" --argjson hasDelta "$has" '{auditDecision:$decision,criterionId:$criterion,hasDelta:$hasDelta}')
-OPENCODE_RETRY_LABEL=director bash .github/scripts/run-ox.sh opencode run --model "${OX_MODEL:?}" --agent cycle-director "Direct ChoreScore V2 cycle $cycle. Trusted manifest: $manifest. Read current audit reports. If audit accepted and active criterion is actually satisfied, complete it with current evidence and assign the next incomplete criterion. If repair, keep criterion active, preserve the WIP repair baseline already committed by the trusted shell, and assign only the required fixes. If reject, keep criterion active and replace/rebuild as required. Write reports/director/RUN_${cycle}.json and .md. JSON: schemaVersion=1, cycle='$cycle', decision continue/stop, nonempty reason, progressEvidence array. CRITICAL: if you complete V2-06 and hand V2-07 to the trusted release shell, set pendingArtifact='V2-07', clear activeCriteria, disable Builder, and JSON decision MUST be 'stop' (never 'continue'). The trusted release shell then owns V2-07."
+OPENCODE_RETRY_LABEL=director bash .github/scripts/run-ox.sh opencode run --model "${OX_MODEL:?}" --agent cycle-director "Direct ChoreScore V2 cycle $cycle. Trusted manifest: $manifest. Read current audit reports. If audit accepted and active criterion is actually satisfied, complete it with current evidence and assign the next incomplete criterion. If repair, keep criterion active, preserve the WIP repair baseline already committed by the trusted shell, and assign only the required fixes. If reject, keep criterion active and replace/rebuild as required. Write reports/director/RUN_${cycle}.json and .md. JSON: schemaVersion=1, cycle='$cycle', decision continue/stop, nonempty reason, progressEvidence array. CRITICAL: if you complete V2-06 and hand V2-07 to the trusted release shell, set pendingArtifact='V2-07', clear activeCriteria, disable Builder, and JSON decision MUST be 'stop' (never 'continue'). For a V2-07 repair cycle, NEVER mark V2-07 complete yourself: an accepted repair must hand V2-07 back to the trusted release shell, which alone can attest completion after APK/emulator/E2E gates."
 git add -A
 mapfile -d '' changed < <(git diff --cached --name-only -z HEAD); for p in "${changed[@]}"; do case "$p" in docs/RELEASE_STATUS.json|docs/NEXT_CYCLE.md|directives/TASKS.json|reports/director/*|reports/audits/*) ;; *) echo "::error::Director changed forbidden $p"; exit 20;; esac; done
 r="reports/director/RUN_${cycle}.json"; jq -e --arg cycle "$cycle" '.schemaVersion==1 and (.cycle|tostring)==$cycle and (.decision=="continue" or .decision=="stop") and (.reason|type=="string" and length>0) and (.progressEvidence|type=="array")' "$r" >/dev/null
@@ -45,9 +45,7 @@ jq -e -n --slurpfile b "$before" --slurpfile a docs/RELEASE_STATUS.json '[$b[0].
 pending=$(jq -r '.pendingArtifact=="V2-07"' docs/RELEASE_STATUS.json)
 
 # Final V2-06 -> V2-07 handoff is trusted-shell policy, not model discretion. Once an independent
-# audit accepts V2-06, normalize every control-plane field required by the release job. This avoids
-# repeating an already-green product cycle because the Director used "pending" instead of
-# "in_progress", forgot to clear findings, or mislabeled its own decision metadata.
+# audit accepts V2-06, normalize every control-plane field required by the release job.
 if [[ "$decision" == accept && "$criterion" == "V2-06" ]]; then
   tmp=$(mktemp)
   jq --arg cycle "$cycle" '
@@ -69,17 +67,39 @@ if [[ "$decision" == accept && "$criterion" == "V2-06" ]]; then
   pending=true
 fi
 
+# A V2-07 repair is only a repair of the release candidate. Even when independently accepted,
+# the Director is not allowed to call the product final. Hand the corrected baseline back to the
+# trusted release shell, which must rebuild/install/run the APK and pass the Android golden path.
+if [[ "$decision" == accept && "$criterion" == "V2-07" ]]; then
+  tmp=$(mktemp)
+  jq --arg cycle "$cycle" '
+    (.criteria[] | select(.id=="V2-07") | .status) = "in_progress" |
+    .pendingArtifact = "V2-07" |
+    .activeCriteria = [] |
+    .openFindings = [] |
+    .lastCycle = $cycle |
+    .progressSummary = "V2-07 repair independently accepted; corrected baseline handed back to trusted Android release shell for final APK/emulator/E2E attestation."
+  ' docs/RELEASE_STATUS.json > "$tmp"; mv "$tmp" docs/RELEASE_STATUS.json
+
+  tmp=$(mktemp)
+  jq '.builder.enabled=false | .builder.criterionId=null | .builder.objective="Accepted V2-07 repair is now owned by the trusted release shell; no Builder edits until another trusted release failure."' directives/TASKS.json > "$tmp"; mv "$tmp" directives/TASKS.json
+
+  tmp=$(mktemp)
+  jq '.decision="stop" | .reason = (.reason + " Trusted shell normalized the accepted V2-07 repair back to final release validation.")' "$r" > "$tmp"; mv "$tmp" "$r"
+  pending=true
+fi
+
 if [[ "$pending" == true ]]; then
-  # Also normalize legacy/model-created handoffs where V2-07 exists but one metadata field drifted.
+  # Normalize model-created handoffs where V2-07 exists but one metadata field drifted.
   tmp=$(mktemp)
   jq '(.criteria[] | select(.id=="V2-07") | .status)="in_progress" | .activeCriteria=[]' docs/RELEASE_STATUS.json > "$tmp"; mv "$tmp" docs/RELEASE_STATUS.json
   tmp=$(mktemp)
-  jq '.builder.enabled=false' directives/TASKS.json > "$tmp"; mv "$tmp" directives/TASKS.json
+  jq '.builder.enabled=false | .builder.criterionId=null' directives/TASKS.json > "$tmp"; mv "$tmp" directives/TASKS.json
   tmp=$(mktemp)
   jq '.decision="stop"' "$r" > "$tmp"; mv "$tmp" "$r"
 
   jq -e 'all(.criteria[]; if .id=="V2-07" then .status=="in_progress" else .status=="complete" end) and (.activeCriteria|length)==0' docs/RELEASE_STATUS.json >/dev/null
-  jq -e '.builder.enabled==false' directives/TASKS.json >/dev/null
+  jq -e '.builder.enabled==false and .builder.criterionId==null' directives/TASKS.json >/dev/null
   jq -e '.decision=="stop"' "$r" >/dev/null
 else
   jq -e '(.activeCriteria|length)>=1' docs/RELEASE_STATUS.json >/dev/null
