@@ -175,7 +175,7 @@ jobs:
           echo "package=$package" >> "$GITHUB_OUTPUT"
       - name: Install locked dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Run typecheck and 608-test acceptance suite
+      - name: Run typecheck and acceptance suite
         run: npm run check
       - name: Run privacy release gate
         run: npm run privacy:check
@@ -261,7 +261,7 @@ jobs:
         run: |
           set -euo pipefail
           run="$GITHUB_RUN_ID"
-          jq -e '.pendingArtifact=="V2-07" and (.criteria[]|select(.id=="V2-07")|.status)=="in_progress"' docs/RELEASE_STATUS.json >/dev/null
+          jq -e '.pendingArtifact=="V2-07" and ([.criteria[]|select(.id=="V2-07")|.status] == ["in_progress"])' docs/RELEASE_STATUS.json >/dev/null
           tmp=$(mktemp)
           jq --arg run "$run" '
             .pendingArtifact=null |
@@ -272,10 +272,10 @@ jobs:
             .progressSummary=("V2-07 trusted release failed in Actions run "+$run+"; automatically reopened for targeted Builder/Auditor repair before another trusted release attempt.")
           ' docs/RELEASE_STATUS.json > "$tmp"; mv "$tmp" docs/RELEASE_STATUS.json
           tmp=$(mktemp)
-          jq --arg run "$run" '
+          jq --arg run "$run" --arg repo "$GITHUB_REPOSITORY" '
             .builder.enabled=true |
             .builder.criterionId="V2-07" |
-            .builder.objective=("REPAIR V2-07 trusted release failure from Actions run "+$run+". Inspect the exact failed release logs with gh run view "+$run+" --repo $GITHUB_REPOSITORY --log-failed before editing. Fix the concrete release/runtime/E2E blocker; do not redesign the product or reopen V2-00..V2-06.") |
+            .builder.objective=("REPAIR V2-07 trusted release failure from Actions run "+$run+". Inspect the exact failed release logs with gh run view "+$run+" --repo "+$repo+" --log-failed before editing. Fix the concrete release/runtime/E2E blocker; do not redesign the product or reopen V2-00..V2-06.") |
             .builder.scope="Target only the trusted-release failure and directly necessary app/config/test/scripts repairs. Preserve every accepted product criterion. Protected .github control-plane files remain trusted-shell owned." |
             .builder.acceptance=["npm run check green","privacy:check green","Expo Android export green","Android release APK builds","validated app.json package installs and launches","Premium -> Free -> Premium Android golden path passes","E2E result.json status pass and checkpoints exist","V2-00..V2-06 preserved"]
           ' directives/TASKS.json > "$tmp"; mv "$tmp" directives/TASKS.json
@@ -287,7 +287,7 @@ jobs:
 
   continue-factory:
     needs: [prepare, builder, audit, director, release, release-repair-state]
-    if: ${{ always() && !cancelled() && needs.prepare.result == 'success' && needs.prepare.outputs.final != 'true' && !(github.event_name == 'schedule' && needs.prepare.outputs.pending_artifact == 'true') }}
+    if: ${{ always() && !cancelled() && needs.prepare.result == 'success' && needs.prepare.outputs.final != 'true' && !(github.event_name == 'schedule' && needs.prepare.outputs.pending_artifact == 'true') && (needs.release.result != 'failure' || needs.release-repair-state.result == 'success') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
