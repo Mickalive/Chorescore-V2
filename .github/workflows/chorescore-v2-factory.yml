@@ -144,31 +144,57 @@ jobs:
 
   release:
     needs: [prepare, director]
-    if: ${{ always() && needs.prepare.result == 'success' && (needs.prepare.outputs.pending_artifact == 'true' || (needs.director.result == 'success' && needs.director.outputs.pending_artifact == 'true')) }}
+    if: ${{ always() && needs.prepare.result == 'success' && (github.event_name != 'schedule' || (needs.director.result == 'success' && needs.director.outputs.pending_artifact == 'true')) && (needs.prepare.outputs.pending_artifact == 'true' || (needs.director.result == 'success' && needs.director.outputs.pending_artifact == 'true')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
         with: {ref: lab/chorescore-v2, fetch-depth: 0, persist-credentials: false}
-      - run: jq -e '.pendingArtifact=="V2-07" and all(.criteria[]; if .id=="V2-07" then .status=="in_progress" else .status=="complete" end)' docs/RELEASE_STATUS.json >/dev/null
+      - name: Validate V2-07 handoff
+        run: jq -e '.pendingArtifact=="V2-07" and all(.criteria[]; if .id=="V2-07" then .status=="in_progress" else .status=="complete" end)' docs/RELEASE_STATUS.json >/dev/null
       - uses: actions/setup-node@ae0d4ed08881f17d1511386f5be3e62356acd4a6
         with: {node-version: 22.13.0}
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with: {distribution: temurin, java-version: '17'}
-      - run: |
-          npm ci --ignore-scripts --no-audit --no-fund
-          npm run check
-          npm run | grep -q 'privacy:check' || { echo '::error::Missing required npm script privacy:check'; exit 1; }
-          npm run privacy:check
-          npm run | grep -q 'e2e:android' || { echo '::error::Missing required npm script e2e:android'; exit 1; }
-          npx --no-install expo export --platform android --output-dir "$RUNNER_TEMP/v2-final-export"
-      - id: build
+      - id: contract
+        name: Validate release contract
         run: |
+          set -euo pipefail
+          test -s package.json
+          test -s package-lock.json
+          test -s app.json
+          test -s scripts/privacy-check.js
+          test -s scripts/e2e-android.js
+          test -s .github/scripts/smoke-android-apk.sh
+          jq -e '.scripts["privacy:check"] and .scripts["e2e:android"]' package.json >/dev/null
+          node --check scripts/privacy-check.js
+          node --check scripts/e2e-android.js
+          bash -n .github/scripts/smoke-android-apk.sh
+          package=$(jq -er '.expo.android.package | select(type=="string" and length>0)' app.json)
+          echo "Android package contract: $package"
+          echo "package=$package" >> "$GITHUB_OUTPUT"
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run typecheck and 608-test acceptance suite
+        run: npm run check
+      - name: Run privacy release gate
+        run: npm run privacy:check
+      - name: Export Android JS bundle
+        run: npx --no-install expo export --platform android --output-dir "$RUNNER_TEMP/v2-final-export"
+      - id: build
+        name: Prebuild and assemble release APK
+        run: |
+          set -euo pipefail
           npx --no-install expo prebuild --platform android --no-install
+          package="${{ steps.contract.outputs.package }}"
+          grep -F "$package" android/app/build.gradle >/dev/null || { echo "::error::Generated Android project does not contain expected application id $package"; exit 1; }
           (cd android && ./gradlew :app:assembleRelease --no-daemon --stacktrace)
-          apk="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk"; test -s "$apk"
-          echo "apk=$apk" >> "$GITHUB_OUTPUT"; echo "sha=$(sha256sum "$apk" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
-      - uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+          apk="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$apk"
+          echo "apk=$apk" >> "$GITHUB_OUTPUT"
+          echo "sha=$(sha256sum "$apk" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+      - name: Install, launch and run Android golden path
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
           api-level: 35
           target: default
@@ -176,13 +202,34 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
-            package=$(jq -er '.expo.android.package | select(type=="string" and length>0)' app.json)
-            echo "Using Android package from app.json: $package"
+            package="${{ steps.contract.outputs.package }}"
+            echo "Using validated Android package: $package"
             bash "$GITHUB_WORKSPACE/.github/scripts/smoke-android-apk.sh" "${{ steps.build.outputs.apk }}" "$package" "$RUNNER_TEMP/v2-smoke"
             mkdir -p "$RUNNER_TEMP/v2-e2e"
             CHORESCORE_APK_PATH="${{ steps.build.outputs.apk }}" CHORESCORE_E2E_PACKAGE="$package" CHORESCORE_E2E_OUTPUT="$RUNNER_TEMP/v2-e2e" npm run e2e:android
-            test -s "$RUNNER_TEMP/v2-e2e/result.json"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+            jq -e '.status=="pass"' "$RUNNER_TEMP/v2-e2e/result.json" >/dev/null
+      - name: Capture failed release diagnostics
+        if: failure()
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/v2-release-diagnostics"; mkdir -p "$out"
+          git rev-parse HEAD > "$out/lab-sha.txt"
+          cp app.json package.json "$out/"
+          node --version > "$out/runtime.txt"
+          npm --version >> "$out/runtime.txt"
+          java -version >> "$out/runtime.txt" 2>&1 || true
+          if [[ -d android/app ]]; then grep -R -n -F "${{ steps.contract.outputs.package }}" android/app > "$out/generated-package.txt" 2>/dev/null || true; fi
+          cp -r "$RUNNER_TEMP/v2-smoke" "$out/smoke" 2>/dev/null || true
+          cp -r "$RUNNER_TEMP/v2-e2e" "$out/e2e" 2>/dev/null || true
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: "chorescore-v2-release-failure-${{ github.run_id }}"
+          path: ${{ runner.temp }}/v2-release-diagnostics
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Upload final APK and evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: chorescore-v2-final-apk
           path: |
@@ -191,22 +238,64 @@ jobs:
             ${{ runner.temp }}/v2-e2e
           retention-days: 90
           compression-level: 0
-      - env: {GH_TOKEN: "${{ github.token }}", APK_SHA: "${{ steps.build.outputs.sha }}"}
+      - name: Attest V2-07 complete
+        env: {GH_TOKEN: "${{ github.token }}", APK_SHA: "${{ steps.build.outputs.sha }}"}
         run: |
           set -euo pipefail
           tmp=$(mktemp)
-          jq --arg run "$GITHUB_RUN_ID" --arg sha "$APK_SHA" '(.criteria[]|select(.id=="V2-07")|.status)="complete" | (.criteria[]|select(.id=="V2-07")|.evidence)=[{"kind":"artifact","reference":("Actions run "+$run+" APK sha256 "+$sha)},{"kind":"runtime-smoke","reference":("Android API35 install/launch run "+$run)},{"kind":"e2e-golden-path","reference":("Android golden path run "+$run)},{"kind":"visual-evidence","reference":("Android E2E checkpoints run "+$run)}] | .pendingArtifact=null | .activeCriteria=[] | .lastCycle=$run | .progressSummary="V2 RC complete with installable Android APK, privacy contract check and golden-path evidence"' docs/RELEASE_STATUS.json > "$tmp"; mv "$tmp" docs/RELEASE_STATUS.json
+          jq --arg run "$GITHUB_RUN_ID" --arg sha "$APK_SHA" '(.criteria[]|select(.id=="V2-07")|.status)="complete" | (.criteria[]|select(.id=="V2-07")|.evidence)=[{"kind":"artifact","reference":("Actions run "+$run+" APK sha256 "+$sha)},{"kind":"runtime-smoke","reference":("Android API35 install/launch run "+$run)},{"kind":"e2e-golden-path","reference":("Android golden path run "+$run)},{"kind":"visual-evidence","reference":("Android E2E checkpoints run "+$run)}] | .pendingArtifact=null | .activeCriteria=[] | .lastCycle=$run | .openFindings=[] | .progressSummary="V2 RC complete with installable Android APK, privacy contract check and golden-path evidence"' docs/RELEASE_STATUS.json > "$tmp"; mv "$tmp" docs/RELEASE_STATUS.json
           git config user.name chorescore-v2-factory; git config user.email chorescore-v2-factory@users.noreply.github.com
           git add docs/RELEASE_STATUS.json; git commit -m "release: attest ChoreScore V2 Android RC"
           auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0); git -c "http.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:refs/heads/lab/chorescore-v2
 
-  continue-factory:
-    needs: [prepare, builder, audit, director, release]
-    if: ${{ always() && !cancelled() && needs.prepare.result == 'success' && needs.prepare.outputs.final != 'true' }}
+  release-repair-state:
+    needs: [prepare, release]
+    if: ${{ always() && needs.prepare.result == 'success' && needs.release.result == 'failure' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - run: sleep 300
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+        with: {ref: lab/chorescore-v2, fetch-depth: 0, persist-credentials: false}
+      - name: Reopen V2-07 for targeted repair
+        env: {GH_TOKEN: "${{ github.token }}"}
+        run: |
+          set -euo pipefail
+          run="$GITHUB_RUN_ID"
+          jq -e '.pendingArtifact=="V2-07" and (.criteria[]|select(.id=="V2-07")|.status)=="in_progress"' docs/RELEASE_STATUS.json >/dev/null
+          tmp=$(mktemp)
+          jq --arg run "$run" '
+            .pendingArtifact=null |
+            .activeCriteria=["V2-07"] |
+            .openFindings=[] |
+            .lastCycle=$run |
+            (.criteria[]|select(.id=="V2-07")|.status)="in_progress" |
+            .progressSummary=("V2-07 trusted release failed in Actions run "+$run+"; automatically reopened for targeted Builder/Auditor repair before another trusted release attempt.")
+          ' docs/RELEASE_STATUS.json > "$tmp"; mv "$tmp" docs/RELEASE_STATUS.json
+          tmp=$(mktemp)
+          jq --arg run "$run" '
+            .builder.enabled=true |
+            .builder.criterionId="V2-07" |
+            .builder.objective=("REPAIR V2-07 trusted release failure from Actions run "+$run+". Inspect the exact failed release logs with gh run view "+$run+" --repo $GITHUB_REPOSITORY --log-failed before editing. Fix the concrete release/runtime/E2E blocker; do not redesign the product or reopen V2-00..V2-06.") |
+            .builder.scope="Target only the trusted-release failure and directly necessary app/config/test/scripts repairs. Preserve every accepted product criterion. Protected .github control-plane files remain trusted-shell owned." |
+            .builder.acceptance=["npm run check green","privacy:check green","Expo Android export green","Android release APK builds","validated app.json package installs and launches","Premium -> Free -> Premium Android golden path passes","E2E result.json status pass and checkpoints exist","V2-00..V2-06 preserved"]
+          ' directives/TASKS.json > "$tmp"; mv "$tmp" directives/TASKS.json
+          git config user.name chorescore-v2-factory; git config user.email chorescore-v2-factory@users.noreply.github.com
+          git add docs/RELEASE_STATUS.json directives/TASKS.json
+          git commit -m "factory $run: reopen V2-07 after trusted release failure"
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c "http.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:refs/heads/lab/chorescore-v2
+
+  continue-factory:
+    needs: [prepare, builder, audit, director, release, release-repair-state]
+    if: ${{ always() && !cancelled() && needs.prepare.result == 'success' && needs.prepare.outputs.final != 'true' && !(github.event_name == 'schedule' && needs.prepare.outputs.pending_artifact == 'true') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Backoff before next convergence cycle
+        run: |
+          delay=300
+          if [[ "${{ needs.release.result }}" == "failure" ]]; then delay=30; fi
+          sleep "$delay"
       - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
         with: {ref: lab/chorescore-v2, fetch-depth: 1, persist-credentials: false}
       - env: {GH_TOKEN: "${{ github.token }}"}
