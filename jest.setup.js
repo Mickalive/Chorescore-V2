@@ -45,3 +45,26 @@ jest.mock('expo-file-system', () => ({
   makeDirectoryAsync: jest.fn().mockResolvedValue(undefined),
   getInfoAsync: jest.fn().mockResolvedValue({ exists: true, isDirectory: false }),
 }));
+
+// Acceptance fixtures were authored around the canonical 2026-08-30 demo date.
+// Keep `new Date()` / `Date.now()` deterministic so real calendar rollovers cannot
+// turn a green release into a red one at midnight. Explicit Date arguments still
+// behave normally, and production/runtime code is unaffected by this Jest-only shim.
+const RealDate = Date;
+const FIXED_TEST_NOW_MS = new RealDate('2026-08-30T12:00:00+02:00').getTime();
+
+class ChoreScoreTestDate extends RealDate {
+  constructor(...args) {
+    if (args.length === 0) {
+      super(FIXED_TEST_NOW_MS);
+    } else {
+      super(...args);
+    }
+  }
+
+  static now() {
+    return FIXED_TEST_NOW_MS;
+  }
+}
+
+global.Date = ChoreScoreTestDate;
