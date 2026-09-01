@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33552750352",
+  "role": "builder",
+  "decision": "accept",
+  "summary": "V2-07 repair baseline confirmed intact and independently accepted. The trusted verification for this cycle exited 0 (reports/audits/TRUSTED_33552750352.md): npm ci, npm run check (608 tests, 16 suites), expo install --check (Dependencies are up to date), expo export --platform android, expo prebuild --platform android, and ./gradlew :app:assembleDebug BUILD SUCCESSFUL (17m 12s, 395 tasks). Independent re-verification reproduced the baseline: npm run check green (608 tests), npx expo install --check green (exit 0), npm run privacy:check green (222 tests + static privacy contract), lockfile root dependencies consistent with package.json, and release contract valid (scripts/privacy-check.js, scripts/e2e-android.js, .github/scripts/smoke-android-apk.sh syntactically valid; app.json android package com.chorescore.v2). The candidate diff versus the pristine accepted tree is strictly limited to the intended Expo SDK 57 package alignment (expo ~57.0.4 -> ~57.0.19, expo-linking ~57.0.8 -> ~57.0.9, expo-router ~57.0.17 -> ~57.0.18, expo-sharing ~57.0.16 -> ~57.0.17, plus the regenerated lockfile containing only SDK 57 family version bumps with no package added or removed) and the new trusted verification log. No product code, tests, app config, or protected control-plane files were modified, so V2-00..V2-06 invariants are preserved. No mustFix findings remain. Per the V2-07 handoff policy, the Director does not mark V2-07 complete: the accepted repair baseline is handed back to the trusted release shell, which alone re-runs the full V2-07 gate (release APK build, install, launch, Android golden path E2E) and attests completion.",
+  "checks": [
+    "trusted verification: PASS exit 0; see reports/audits/TRUSTED_33552750352.md",
+    "npm run check green (typecheck + 608 tests, 16 suites)",
+    "npx expo install --check green (Dependencies are up to date, exit 0)",
+    "npm run privacy:check green (222 tests + static privacy release contract)",
+    "package-lock.json root dependencies consistent with package.json",
+    "Release contract valid: scripts/privacy-check.js, scripts/e2e-android.js, .github/scripts/smoke-android-apk.sh present and syntactically valid",
+    "app.json android package com.chorescore.v2 present",
+    "Candidate diff vs pristine accepted tree limited to package.json/package-lock.json (Expo SDK 57 alignment) and reports/audits/TRUSTED_33552750352.md",
+    "Lockfile diff contains only Expo SDK 57 family version bumps; no dependency added or removed",
+    "No product code, tests, app config, or protected control-plane paths modified",
+    "V2-00..V2-06 invariants preserved (no product or test changes)",
+    "V2-07 completion left to the trusted release shell (APK build, install, launch, E2E golden path); Director does not mark complete"
+  ],
+  "findings": []
+}
