@@ -4,11 +4,12 @@
   "builder": {
     "enabled": true,
     "criterionId": "V2-07",
-    "objective": "REPAIR V2-07 trusted release failure from Actions run 33524374211. Inspect the exact failed release logs with gh run view 33524374211 --repo Mickalive/Chorescore-V2 --log-failed before editing. Fix the concrete release/runtime/E2E blocker; do not redesign the product or reopen V2-00..V2-06.",
-    "scope": "Target only the trusted-release failure and directly necessary app/config/test/scripts repairs. Preserve every accepted product criterion. Protected .github control-plane files remain trusted-shell owned.",
+    "objective": "REPAIR V2-07 after trusted release failure (Actions run 33524374211). The Expo SDK 57 package alignment fix is already committed (baseline 1658861). Local re-verification passed (608 tests green, expo install --check green, Gradle BUILD SUCCESSFUL). Confirm the repair baseline is intact by running npm run check and expo install --check. Do NOT redesign the product or reopen V2-00..V2-06. The trusted release shell must then re-run the full V2-07 gate (APK build, install, launch, E2E golden path). Director does not mark V2-07 complete.",
+    "scope": "Confirm the Expo SDK 57 repair baseline is intact. No product code changes. Preserve every accepted product criterion. Protected .github control-plane files remain trusted-shell owned.",
     "acceptance": [
       "npm run check green",
       "privacy:check green",
+      "expo install --check green",
       "Expo Android export green",
       "Android release APK builds",
       "validated app.json package installs and launches",

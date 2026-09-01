@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33537900254",
+  "decision": "continue",
+  "reason": "V2-07 trusted release failed in Actions run 33524374211 (expo install --check exit 1: outdated Expo SDK 57 packages). The trusted shell committed repair baseline 1658861 aligning expo, expo-constants, expo-font, expo-linking, expo-router, expo-sharing and @expo/metro-runtime to SDK 57 expected versions. Local re-verification by auditor passed (608 tests green, expo install --check green, expo export green, expo prebuild green, Gradle assembleDebug BUILD SUCCESSFUL). However the trusted verification log TRUSTED_33537900254.md still records the pre-repair exit 1. The repair baseline is preserved. V2-07 remains active; it must be re-attempted by the trusted release shell which alone can attest completion after APK/emulator/E2E gates. Director does not mark V2-07 complete.",
+  "progressEvidence": [
+    "repair-baseline-committed-1658861",
+    "expo-sdk57-packages-aligned",
+    "npm-run-check-green-608-tests",
+    "expo-install-check-green",
+    "expo-export-android-green",
+    "expo-prebuild-android-green",
+    "gradle-assembleDebug-build-successful",
+    "npm-run-privacy-check-green-222-tests",
+    "release-contract-validated",
+    "v2-00-through-v2-06-invariants-preserved",
+    "no-product-code-changed",
+    "no-protected-control-plane-files-changed",
+    "mustFix-0-expo-sdk57-version-mismatch-resolved"
+  ]
+}

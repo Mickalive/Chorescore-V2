@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "milestone": "v2-rc",
-  "lastCycle": "33524374211",
+  "lastCycle": "33537900254",
   "activeCriteria": [
     "V2-07"
   ],
   "pendingArtifact": null,
-  "progressSummary": "V2-07 trusted release failed in Actions run 33524374211; automatically reopened for targeted Builder/Auditor repair before another trusted release attempt.",
+  "progressSummary": "V2-07 repair baseline committed (Expo SDK 57 packages aligned, commit 1658861). Local verification passes (608 tests, expo install --check green, Gradle BUILD SUCCESSFUL). Trusted release shell must re-run full V2-07 gate. Director does not mark V2-07 complete; only the trusted release shell can attest completion.",
   "criteria": [
     {
       "id": "V2-00",
@@ -150,7 +150,20 @@
     {
       "id": "V2-07",
       "status": "in_progress",
-      "evidence": []
+      "evidence": [
+        "repair-baseline-committed-1658861",
+        "expo-sdk57-packages-aligned",
+        "npm-run-check-green-608-tests",
+        "expo-install-check-green",
+        "expo-export-android-green",
+        "expo-prebuild-android-green",
+        "gradle-assembleDebug-build-successful",
+        "npm-run-privacy-check-green-222-tests",
+        "release-contract-validated",
+        "v2-00-through-v2-06-invariants-preserved",
+        "trusted-release-re-attempt-pending",
+        "director-did-not-mark-complete"
+      ]
     }
   ],
   "openFindings": []
