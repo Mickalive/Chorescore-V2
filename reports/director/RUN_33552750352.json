@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33552750352",
+  "decision": "stop",
+  "reason": "V2-07 repair baseline accepted by independent auditor (audit RUN_33552750352). Trusted verification passed (exit 0): npm ci, npm run check (608 tests, 16 suites), expo install --check (Dependencies are up to date), expo export --platform android, expo prebuild --platform android, Gradle assembleDebug BUILD SUCCESSFUL (17m 12s, 395 tasks). Candidate diff vs pristine tree strictly limited to Expo SDK 57 package alignment (expo ~57.0.4->~57.0.19, expo-linking ~57.0.8->~57.0.9, expo-router ~57.0.17->~57.0.18, expo-sharing ~57.0.16->~57.0.17) and regenerated lockfile with SDK 57 family bumps only. No product code, tests, app config, or protected control-plane files modified. V2-00..V2-06 invariants preserved. Zero mustFix findings. Per V2-07 handoff policy, Director does not mark V2-07 complete: the accepted repair baseline is handed back to the trusted release shell, which alone re-runs the full V2-07 gate (release APK build, install, launch, Android golden path E2E) and attests completion. Builder disabled. pendingArtifact=V2-07. Trusted shell normalized the accepted V2-07 repair back to final release validation.",
+  "progressEvidence": [
+    "repair-baseline-committed-1658861",
+    "expo-sdk57-packages-aligned",
+    "npm-run-check-green-608-tests",
+    "expo-install-check-green",
+    "expo-export-android-green",
+    "expo-prebuild-android-green",
+    "gradle-assembleDebug-build-successful",
+    "npm-run-privacy-check-green-222-tests",
+    "release-contract-validated",
+    "v2-00-through-v2-06-invariants-preserved",
+    "trusted-verification-exit-code-0-cycle-33552750352",
+    "audit-accepted-33552750352",
+    "no-product-code-changed",
+    "lockfile-only-expo-sdk57-bumps",
+    "zero-mustfix-findings",
+    "builder-disabled",
+    "pending-artifact-V2-07",
+    "director-did-not-mark-complete",
+    "trusted-release-shell-hands-V2-07"
+  ]
+}
