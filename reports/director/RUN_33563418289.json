@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33563418289",
+  "decision": "continue",
+  "reason": "Audit decision is repair: the candidate for cycle 33563418289 did NOT fix the V2-07 release blocker. The only delta vs pristine accepted tree (d717169) is release-log.txt (the 2240-line failed-run log from Actions run 33552750352); no product code, script, or workflow was modified. The root cause is confirmed: android-emulator-runner executes each script: line as a separate sh -c process, so the $package shell variable set on line 1 does not persist to line 3 where smoke-android-apk.sh is invoked with an empty $2, causing abort on ${2:?package}. The fix requires inlining the package value per line in the emulator script block (or making the smoke script fall back to app.json when $2 is empty). Both fixes are in the protected .github/** surface. The previous Builder scope ('Protected .github control-plane files remain trusted-shell owned') prevented the Builder from applying the fix. Director extends the Builder scope to explicitly include .github/workflows/chorescore-v2-factory.yml release job emulator script block and .github/scripts/smoke-android-apk.sh for this targeted release-script repair only. V2-07 remains active. Builder remains enabled. Next cycle must produce a candidate that actually fixes the release blocker; the trusted release shell alone attests V2-07 completion.",
+  "progressEvidence": [
+    "audit-repair-decision-33563418289",
+    "release-blocker-not-fixed-by-candidate",
+    "root-cause-confirmed-android-emulator-runner-line-by-line-sh-c",
+    "release-log-txt-added-as-evidence-only",
+    "npm-run-check-green-608-tests-preserved",
+    "v2-00-through-v2-06-invariants-preserved",
+    "builder-scope-extended-to-include-github-release-scripts",
+    "v2-07-remains-active",
+    "builder-remains-enabled",
+    "next-cycle-must-fix-release-blocker"
+  ]
+}

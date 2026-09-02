@@ -4,8 +4,8 @@
   "builder": {
     "enabled": true,
     "criterionId": "V2-07",
-    "objective": "REPAIR V2-07 trusted release failure from Actions run 33552750352. Inspect the exact failed release logs with gh run view 33552750352 --repo Mickalive/Chorescore-V2 --log-failed before editing. Fix the concrete release/runtime/E2E blocker; do not redesign the product or reopen V2-00..V2-06.",
-    "scope": "Target only the trusted-release failure and directly necessary app/config/test/scripts repairs. Preserve every accepted product criterion. Protected .github control-plane files remain trusted-shell owned.",
+    "objective": "REPAIR V2-07 release blocker: the android-emulator-runner action executes each script: line as a separate sh -c process, so the $package shell variable does not persist across lines, causing smoke-android-apk.sh to receive an empty package argument and abort. Fix the emulator script block in .github/workflows/chorescore-v2-factory.yml to inline the package value per line (pass ${{ steps.contract.outputs.package }} directly to smoke-android-apk.sh and CHORESCORE_E2E_PACKAGE instead of relying on $package), OR make .github/scripts/smoke-android-apk.sh fall back to the package from app.json when $2 is empty (mirroring scripts/e2e-android.js configuredAndroidPackage()). Preserve every accepted product criterion V2-00..V2-06.",
+    "scope": "Scoped repair of .github/workflows/chorescore-v2-factory.yml release job emulator script block AND .github/scripts/smoke-android-apk.sh ONLY for the release-blocker fix described above. No other .github files, no product code, no tests, no app config. Preserve every accepted product criterion. Do not redesign the product or reopen V2-00..V2-06.",
     "acceptance": [
       "npm run check green",
       "privacy:check green",

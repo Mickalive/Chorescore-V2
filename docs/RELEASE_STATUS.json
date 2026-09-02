@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "milestone": "v2-rc",
-  "lastCycle": "33552750352",
+  "lastCycle": "33563418289",
   "activeCriteria": [
     "V2-07"
   ],
   "pendingArtifact": null,
-  "progressSummary": "V2-07 trusted release failed in Actions run 33552750352; automatically reopened for targeted Builder/Auditor repair before another trusted release attempt.",
+  "progressSummary": "V2-07 repair cycle 33563418289: candidate did not fix release blocker (only added release-log.txt). Root cause confirmed: android-emulator-runner executes each script: line as separate sh -c process, $package variable does not persist. Director extended Builder scope to include .github release scripts for targeted fix. V2-07 remains active, next cycle must produce actual fix.",
   "criteria": [
     {
       "id": "V2-00",
@@ -165,8 +165,12 @@
         "audit-accepted-33552750352",
         "no-product-code-changed",
         "lockfile-only-expo-sdk57-bumps",
-        "trusted-release-re-attempt-pending",
-        "director-did-not-mark-complete"
+        "audit-repair-decision-33563418289",
+        "release-blocker-not-fixed-by-candidate",
+        "root-cause-confirmed-android-emulator-runner-line-by-line-sh-c",
+        "release-log-txt-added-as-evidence-only",
+        "builder-scope-extended-to-include-github-release-scripts",
+        "next-cycle-must-fix-release-blocker"
       ]
     }
   ],
