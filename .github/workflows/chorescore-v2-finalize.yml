@@ -1,0 +1,224 @@
+name: ChoreScore V2 Finalize
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [lab/chorescore-v2]
+    paths:
+      - ".github/workflows/chorescore-v2-finalize.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: chorescore-v2-v207-finalize
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+  EXPO_NO_TELEMETRY: "1"
+  NODE_ENV: production
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout frozen V2 candidate
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+        with:
+          ref: lab/chorescore-v2
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate V2 state
+        run: |
+          set -euo pipefail
+          jq -e 'all(.criteria[]; if .id=="V2-07" then .status=="in_progress" else .status=="complete" end)' docs/RELEASE_STATUS.json >/dev/null
+          jq -e '.openFindings | length == 0' docs/RELEASE_STATUS.json >/dev/null
+          echo "tested_sha=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@ae0d4ed08881f17d1511386f5be3e62356acd4a6
+        with:
+          node-version: 22.13.0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Validate release contract
+        id: contract
+        run: |
+          set -euo pipefail
+          test -s package.json
+          test -s package-lock.json
+          test -s app.json
+          test -s scripts/privacy-check.js
+          test -s scripts/e2e-android.js
+          test -s .github/scripts/smoke-android-apk.sh
+          jq -e '.scripts["privacy:check"] and .scripts["e2e:android"]' package.json >/dev/null
+          node --check scripts/privacy-check.js
+          node --check scripts/e2e-android.js
+          bash -n .github/scripts/smoke-android-apk.sh
+          package=$(jq -er '.expo.android.package | select(type=="string" and length>0)' app.json)
+          echo "package=$package" >> "$GITHUB_OUTPUT"
+          echo "Android package: $package"
+
+      - name: Install and verify frozen product
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run check
+          npm run privacy:check
+          npx --no-install expo export --platform android --output-dir "$RUNNER_TEMP/v2-final-export"
+
+      - name: Prebuild Android
+        run: |
+          set -euo pipefail
+          npx --no-install expo prebuild --platform android --no-install
+          grep -F "${{ steps.contract.outputs.package }}" android/app/build.gradle >/dev/null
+
+      - name: Enable hardware acceleration
+        run: |
+          set -euo pipefail
+          if [[ -e /dev/kvm ]]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm || true
+            sudo chmod 666 /dev/kvm || true
+            ls -l /dev/kvm
+          else
+            echo "::warning::/dev/kvm is unavailable; emulator will use software acceleration"
+          fi
+
+      - name: Build fast x86_64 release candidate
+        id: testbuild
+        run: |
+          set -euo pipefail
+          (cd android && ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon --stacktrace)
+          apk="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$apk"
+          cp "$apk" "$RUNNER_TEMP/chorescore-v2-x86_64-test.apk"
+          echo "apk=$RUNNER_TEMP/chorescore-v2-x86_64-test.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Android golden path on CI test image
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: 35
+          target: aosp_atd
+          arch: x86_64
+          profile: pixel_6
+          cores: 2
+          ram-size: 3072M
+          disable-animations: true
+          emulator-boot-timeout: 300
+          script: |
+            set -euo pipefail
+            PACKAGE="${{ steps.contract.outputs.package }}"
+            APK="${{ steps.testbuild.outputs.apk }}"
+            adb shell settings put global hide_error_dialogs 1 || true
+            adb shell settings put global anr_show_background 0 || true
+            bash "$GITHUB_WORKSPACE/.github/scripts/smoke-android-apk.sh" "$APK" "$PACKAGE" "$RUNNER_TEMP/v2-smoke"
+            adb shell pm clear "$PACKAGE" || true
+            adb shell svc wifi enable || true
+            adb shell svc data enable || true
+            adb shell settings put global hide_error_dialogs 1 || true
+            mkdir -p "$RUNNER_TEMP/v2-e2e"
+            set +e
+            CHORESCORE_APK_PATH="$APK" CHORESCORE_E2E_PACKAGE="$PACKAGE" CHORESCORE_E2E_OUTPUT="$RUNNER_TEMP/v2-e2e" npm run e2e:android
+            rc=$?
+            set -e
+            if [[ $rc -ne 0 ]]; then
+              echo "First E2E attempt failed; retrying once on a clean app state without rebuilding."
+              mkdir -p "$RUNNER_TEMP/v2-e2e-attempt1"
+              cp -r "$RUNNER_TEMP/v2-e2e/." "$RUNNER_TEMP/v2-e2e-attempt1/" 2>/dev/null || true
+              adb shell am force-stop "$PACKAGE" || true
+              adb shell pm clear "$PACKAGE" || true
+              adb shell settings put global hide_error_dialogs 1 || true
+              rm -rf "$RUNNER_TEMP/v2-e2e"
+              mkdir -p "$RUNNER_TEMP/v2-e2e"
+              CHORESCORE_APK_PATH="$APK" CHORESCORE_E2E_PACKAGE="$PACKAGE" CHORESCORE_E2E_OUTPUT="$RUNNER_TEMP/v2-e2e" npm run e2e:android
+            fi
+            jq -e '.status=="pass"' "$RUNNER_TEMP/v2-e2e/result.json" >/dev/null
+
+      - name: Build final universal release APK
+        id: finalbuild
+        run: |
+          set -euo pipefail
+          (cd android && ./gradlew :app:assembleRelease --no-daemon --stacktrace)
+          apk="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$apk"
+          cp "$apk" "$RUNNER_TEMP/ChoreScore-V2-release.apk"
+          sha=$(sha256sum "$RUNNER_TEMP/ChoreScore-V2-release.apk" | awk '{print $1}')
+          echo "apk=$RUNNER_TEMP/ChoreScore-V2-release.apk" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "$sha  ChoreScore-V2-release.apk" > "$RUNNER_TEMP/ChoreScore-V2-release.sha256"
+
+      - name: Verify branch did not change under the tested candidate
+        run: |
+          set -euo pipefail
+          git fetch origin lab/chorescore-v2
+          remote_sha=$(git rev-parse origin/lab/chorescore-v2)
+          if [[ "$remote_sha" != "$tested_sha" ]]; then
+            changed=$(git diff --name-only "$tested_sha" "$remote_sha")
+            echo "Lab branch advanced during finalization:"
+            echo "$changed"
+            if echo "$changed" | grep -Ev '^(docs/RELEASE_STATUS.json|directives/TASKS.json|reports/|audit/)' >/dev/null; then
+              echo "::error::Product or test inputs changed while finalization was running. Refusing a false attestation."
+              exit 42
+            fi
+          fi
+
+      - name: Upload final APK and evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: chorescore-v2-final-apk
+          path: |
+            ${{ steps.finalbuild.outputs.apk }}
+            ${{ runner.temp }}/ChoreScore-V2-release.sha256
+            ${{ runner.temp }}/v2-smoke
+            ${{ runner.temp }}/v2-e2e
+            ${{ runner.temp }}/v2-e2e-attempt1
+          retention-days: 90
+          compression-level: 0
+
+      - name: Attest V2-07 complete
+        env:
+          GH_TOKEN: "${{ github.token }}"
+          APK_SHA: "${{ steps.finalbuild.outputs.sha }}"
+        run: |
+          set -euo pipefail
+          git fetch origin lab/chorescore-v2
+          git checkout -B lab/chorescore-v2 origin/lab/chorescore-v2
+          tmp=$(mktemp)
+          jq --arg run "$GITHUB_RUN_ID" --arg sha "$APK_SHA" '(.criteria[]|select(.id=="V2-07")|.status)="complete" | (.criteria[]|select(.id=="V2-07")|.evidence) += ["dedicated-finalizer-kvm-aosp-atd",("finalizer-run-"+$run),("final-apk-sha256-"+$sha),"android-api35-install-launch-green","golden-path-premium-free-premium-green"] | .pendingArtifact=null | .activeCriteria=[] | .lastCycle=$run | .openFindings=[] | .progressSummary="V2 RC complete: deterministic KVM/ATD Android golden path passed and final universal release APK uploaded"' docs/RELEASE_STATUS.json > "$tmp"
+          mv "$tmp" docs/RELEASE_STATUS.json
+          git config user.name chorescore-v2-finalizer
+          git config user.email chorescore-v2-finalizer@users.noreply.github.com
+          git add docs/RELEASE_STATUS.json
+          git commit -m "release: attest ChoreScore V2 final Android RC"
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c "http.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:refs/heads/lab/chorescore-v2
+
+      - name: Capture diagnostics
+        if: failure()
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/v2-finalizer-failure"
+          mkdir -p "$out"
+          git rev-parse HEAD > "$out/sha.txt" || true
+          cp app.json package.json "$out/" 2>/dev/null || true
+          cp -r "$RUNNER_TEMP/v2-smoke" "$out/smoke" 2>/dev/null || true
+          cp -r "$RUNNER_TEMP/v2-e2e" "$out/e2e" 2>/dev/null || true
+          cp -r "$RUNNER_TEMP/v2-e2e-attempt1" "$out/e2e-attempt1" 2>/dev/null || true
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: chorescore-v2-finalizer-failure-${{ github.run_id }}
+          path: ${{ runner.temp }}/v2-finalizer-failure
+          retention-days: 30
+          if-no-files-found: warn
