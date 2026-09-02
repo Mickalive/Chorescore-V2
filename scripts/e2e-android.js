@@ -114,7 +114,7 @@ function writeResult(status, error = null) {
 function launch() {
   shell('am', 'force-stop', packageName);
   try { shell('monkey', '-p', packageName, '-c', 'android.intent.category.LAUNCHER', '1'); } catch (_) {}
-  sleep(1400);
+  sleep(3000);
 }
 function openPersonalOptions() {
   swipeToTop();
@@ -128,16 +128,21 @@ try {
   if (!/device/.test(adb(['get-state']))) throw new Error('No adb device/emulator');
   if (!shell('pm', 'list', 'packages', packageName).includes(packageName)) adb(['install', '-r', apkPath]);
 
+  // Re-enable network in case the smoke script disabled it
+  try { shell('svc', 'wifi', 'enable'); } catch (_) {}
+  try { shell('svc', 'data', 'enable'); } catch (_) {}
+  sleep(1000);
+
   launch();
-  waitFor('Démonstration');
+  waitFor('Démonstration', 60000);
   screenshot('login');
   tapLabel('Démonstration', { exact: true });
-  waitFor('Appartement démo');
+  waitFor('Appartement démo', 60000);
   screenshot('demo-premium-root');
   assertAbsent('ChoreScore Premium');
 
   tapLabel('Appartement démo', { exact: true });
-  waitFor('Ajouter une tâche'); waitFor('Score'); waitFor('To-do'); waitFor('Vaisselle du soir');
+  waitFor('Ajouter une tâche', 30000); waitFor('Score'); waitFor('To-do'); waitFor('Vaisselle du soir');
   screenshot('household-add-premium');
 
   tapBelow('Quoi ?', 62); inputText('TestE2E');

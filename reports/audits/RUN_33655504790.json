@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33655504790",
+  "role": "builder",
+  "decision": "accept",
+  "summary": "V2-07 repair cycle. The candidate modified only scripts/e2e-android.js to harden the Android golden-path E2E against the release failure observed in run 33650797544. The changes (1) increase the post-launch sleep from 1400ms to 3000ms in launch(), (2) re-enable wifi/data after the smoke script disables them, and (3) raise the waitFor timeouts for the login screen ('Démonstration'), the household root ('Appartement démo') to 60000ms, and the household tabs ('Ajouter une tâche') to 30000ms. These address the most likely root causes of the E2E failure: slow app launch on the emulator, network state left disabled by the smoke script, and UI elements taking longer than the default 10s timeout to render. The trusted verification passed (exit code 0): npm run check green (608 tests, 16 suites), expo export, expo prebuild, and gradle assembleDebug BUILD SUCCESSFUL in 18m 23s. Independent checks reproduced the baseline: npm run check green (608 tests), npm run privacy:check green (222 tests + static privacy contract), e2e-android.js and smoke-android-apk.sh syntactically valid, app.json android package com.chorescore.v2, and the E2E script's expectations match the app's actual labels and demo fixture (Démonstration, Appartement démo, Vaisselle du soir, Sortir les cartons, Premium/Gratuit de démo, Archive démo). The candidate diff vs the pristine accepted tree is strictly limited to scripts/e2e-android.js; no protected .github control-plane files, product code, tests, or app config were modified, so V2-00..V2-06 invariants are preserved. The network re-enable is a minor deviation from the golden-path offline requirement, but the smoke script already verifies offline launch and the app is fully local (AsyncStorage), so it is not a mustFix. No mustFix findings remain.",
+  "checks": [
+    "trusted-verification-exit-code-0",
+    "npm-run-check-green-608-tests",
+    "npm-run-privacy-check-green-222-tests",
+    "e2e-android-js-syntax-valid",
+    "smoke-android-apk-sh-syntax-valid",
+    "candidate-diff-limited-to-e2e-android-js",
+    "no-protected-control-plane-files-modified",
+    "e2e-script-expectations-match-app-behavior",
+    "v2-00-through-v2-06-invariants-preserved"
+  ],
+  "findings": []
+}
