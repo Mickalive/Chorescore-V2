@@ -27,9 +27,10 @@ human_paths=(
   docs/agent-workflow.md
   directives/DIRECTOR.md
   .opencode
-  .github
   opencode.json
 )
+# Do not synchronize .github wholesale anymore. V2-07 has a dedicated finalizer on the lab
+# branch, and the general Factory must never overwrite or delete that trusted release harness.
 for path in "${human_paths[@]}"; do
   rm -rf "$work/$path"
   if git cat-file -e "$main_sha:$path" 2>/dev/null; then mkdir -p "$work/$(dirname "$path")"; git archive "$main_sha" "$path" | tar -x -C "$work"; fi
@@ -46,8 +47,23 @@ jq -e '.milestone=="v2-rc" and ([.criteria[].id]|sort)==(["V2-00","V2-01","V2-02
 pending=$(jq -r '.pendingArtifact=="V2-07"' "$status"); builder=$(jq -r '.builder.enabled' "$tasks")
 final=$(jq -r 'all(.criteria[];.status=="complete") and .pendingArtifact==null and (.activeCriteria|length)==0' "$status")
 
-# V2-07 is owned by the trusted release shell. A malformed handoff must fail immediately instead
-# of silently re-enabling Builder and reopening an already accepted V2-06 cycle.
+# Once the dedicated V2-07 finalizer exists, the general Factory becomes passive. This is
+# deliberately a scheduling sentinel, not a product-completion claim: only the finalizer may
+# attest V2-07 after APK install/launch and the Android golden path.
+if [[ -s "$work/.github/workflows/chorescore-v2-finalize.yml" ]] && jq -e 'all(.criteria[]; if .id=="V2-07" then .status=="in_progress" else .status=="complete" end)' "$status" >/dev/null; then
+  echo "Dedicated V2-07 finalizer owns release; general Factory will not probe/build/audit/release."
+  builder=false
+  pending=false
+  final=true
+  git worktree remove --force "$work"; git worktree prune
+  echo "accepted_sha=$accepted_sha" >> "$GITHUB_OUTPUT"
+  echo "pending_artifact=$pending" >> "$GITHUB_OUTPUT"
+  echo "builder_enabled=$builder" >> "$GITHUB_OUTPUT"
+  echo "final=$final" >> "$GITHUB_OUTPUT"
+  exit 0
+fi
+
+# Legacy V2-07 handoff path retained only for repositories that do not have the dedicated finalizer.
 if [[ "$pending" == true ]]; then
   jq -e 'all(.criteria[]; if .id=="V2-07" then .status=="in_progress" else .status=="complete" end) and (.activeCriteria|length)==0 and (.openFindings|length)==0' "$status" >/dev/null
   jq -e '.builder.enabled==false and .builder.criterionId==null' "$tasks" >/dev/null
