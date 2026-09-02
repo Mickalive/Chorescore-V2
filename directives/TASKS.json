@@ -2,11 +2,12 @@
   "schemaVersion": 1,
   "milestone": "v2-rc",
   "builder": {
-    "enabled": true,
-    "criterionId": "V2-07",
-    "objective": "REPAIR V2-07 release blocker (THIRD attempt — previous two candidates produced zero delta on target files). The android-emulator-runner action executes each script: line as a separate sh -c process, so the $package shell variable does not persist across lines, causing smoke-android-apk.sh to receive an empty package argument and abort. Fix EITHER: (A) inline the package value per line in .github/workflows/chorescore-v2-factory.yml release job emulator script block — pass \"${{ steps.contract.outputs.package }}\" directly to smoke-android-apk.sh and set CHORESCORE_E2E_PACKAGE=\"${{ steps.contract.outputs.package }}\" on each line that uses it; OR (B) make .github/scripts/smoke-android-apk.sh fall back to the package from app.json when $2 is empty. Preserve every accepted product criterion V2-00..V2-06.",
-    "scope": "Scoped repair of .github/workflows/chorescore-v2-factory.yml release job emulator script block AND .github/scripts/smoke-android-apk.sh ONLY for the release-blocker fix described above. No other .github files, no product code, no tests, no app config. Preserve every accepted product criterion. Do not redesign the product or reopen V2-00..V2-06.",
+    "enabled": false,
+    "criterionId": null,
+    "objective": "V2-07 is owned by the trusted release shell. The protected control-plane package propagation blocker was fixed directly on main in commit eee451c; Builder must not reopen or edit V2-00..V2-06 or trusted .github release control-plane files.",
+    "scope": "No Builder work while V2-07 is pending trusted release validation. Preserve the accepted product baseline. The trusted shell must run the release APK build, install/launch on Android API 35, Premium -> Free -> Premium golden path, E2E evidence collection and final attestation.",
     "acceptance": [
+      "Builder remains disabled during trusted V2-07 release",
       "npm run check green",
       "privacy:check green",
       "Expo Android export green",
@@ -14,7 +15,8 @@
       "validated app.json package installs and launches",
       "Premium -> Free -> Premium Android golden path passes",
       "E2E result.json status pass and checkpoints exist",
-      "V2-00..V2-06 preserved"
+      "V2-00..V2-06 preserved",
+      "V2-07 completed only by trusted release shell"
     ],
     "previousCriteriaPreserved": [
       "V2-00: architecture greenfield, ports/adapters, Android build",
