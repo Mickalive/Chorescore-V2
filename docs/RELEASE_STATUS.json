@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "milestone": "v2-rc",
-  "lastCycle": "33563418289",
+  "lastCycle": "33593759153",
   "activeCriteria": [
     "V2-07"
   ],
   "pendingArtifact": null,
-  "progressSummary": "V2-07 repair cycle 33563418289: candidate did not fix release blocker (only added release-log.txt). Root cause confirmed: android-emulator-runner executes each script: line as separate sh -c process, $package variable does not persist. Director extended Builder scope to include .github release scripts for targeted fix. V2-07 remains active, next cycle must produce actual fix.",
+  "progressSummary": "V2-07 repair cycle 33593759153: candidate again did NOT fix release blocker. Both .github/workflows/chorescore-v2-factory.yml and .github/scripts/smoke-android-apk.sh are byte-identical to pristine accepted tree. The $package variable still does not persist across sh -c lines. Root cause confirmed again. Builder scope remains extended. V2-07 stays active. Next cycle MUST implement the fix.",
   "criteria": [
     {
       "id": "V2-00",
@@ -170,7 +170,12 @@
         "root-cause-confirmed-android-emulator-runner-line-by-line-sh-c",
         "release-log-txt-added-as-evidence-only",
         "builder-scope-extended-to-include-github-release-scripts",
-        "next-cycle-must-fix-release-blocker"
+        "audit-repair-decision-33593759153",
+        "candidate-no-delta-vs-pristine-for-target-files",
+        "workflow-identical-to-pristine",
+        "smoke-script-identical-to-pristine",
+        "second-consecutive-repair-without-fix",
+        "next-cycle-must-implement-fix"
       ]
     }
   ],

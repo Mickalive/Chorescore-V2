@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33593759153",
+  "decision": "continue",
+  "reason": "Audit decision is repair: the candidate for cycle 33593759153 did NOT implement the required fix for the V2-07 release blocker. Both .github/workflows/chorescore-v2-factory.yml and .github/scripts/smoke-android-apk.sh are byte-identical to the pristine accepted tree (verified via diff). The buggy pattern remains: line 205 assigns package=\"${{ steps.contract.outputs.package }}\" and lines 207/209 still reference \"$package\" and CHORESCORE_E2E_PACKAGE=\"$package\" across separate sh -c processes, so smoke-android-apk.sh receives an empty package argument and aborts. This is the second consecutive repair cycle without the fix being applied. Trusted verification passed (exit 0, 608 tests green), V2-00..V2-06 invariants preserved, but the release blocker is unfixed. Builder scope remains extended to include .github release scripts. Next cycle MUST implement the fix: inline the package value per line OR add an app.json fallback in smoke-android-apk.sh.",
+  "progressEvidence": [
+    "audit-repair-decision-33593759153",
+    "candidate-no-delta-vs-pristine-for-target-files",
+    "workflow-identical-to-pristine",
+    "smoke-script-identical-to-pristine",
+    "second-consecutive-repair-without-fix",
+    "release-blocker-still-present",
+    "no-fix-implemented",
+    "trusted-verification-exit-code-0",
+    "608-tests-green-16-suites",
+    "v2-00-through-v2-06-invariants-preserved",
+    "builder-scope-remains-extended",
+    "v2-07-remains-active",
+    "builder-remains-enabled",
+    "next-cycle-must-implement-fix"
+  ]
+}
