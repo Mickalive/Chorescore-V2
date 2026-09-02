@@ -1,10 +1,12 @@
 {
   "schemaVersion": 1,
   "milestone": "v2-rc",
-  "lastCycle": "33593759153",
-  "activeCriteria": [],
-  "pendingArtifact": "V2-07",
-  "progressSummary": "V2-07 trusted control-plane blocker fixed directly on main in commit eee451c: Android package propagation is now inlined on every emulator-runner command, eliminating cross-line shell-variable loss. Product baseline remains green (608 tests, privacy gate, Expo export, Gradle build). Builder repair loop is closed and V2-07 is handed back to the trusted release shell for APK install/launch, golden-path E2E, visual evidence and final attestation.",
+  "lastCycle": "33650797544",
+  "activeCriteria": [
+    "V2-07"
+  ],
+  "pendingArtifact": null,
+  "progressSummary": "V2-07 trusted release failed in Actions run 33650797544; automatically reopened for targeted Builder/Auditor repair before another trusted release attempt.",
   "criteria": [
     {
       "id": "V2-00",
