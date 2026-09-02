@@ -202,11 +202,10 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
-            package="${{ steps.contract.outputs.package }}"
-            echo "Using validated Android package: $package"
-            bash "$GITHUB_WORKSPACE/.github/scripts/smoke-android-apk.sh" "${{ steps.build.outputs.apk }}" "$package" "$RUNNER_TEMP/v2-smoke"
+            echo "Using validated Android package: ${{ steps.contract.outputs.package }}"
+            bash "$GITHUB_WORKSPACE/.github/scripts/smoke-android-apk.sh" "${{ steps.build.outputs.apk }}" "${{ steps.contract.outputs.package }}" "$RUNNER_TEMP/v2-smoke"
             mkdir -p "$RUNNER_TEMP/v2-e2e"
-            CHORESCORE_APK_PATH="${{ steps.build.outputs.apk }}" CHORESCORE_E2E_PACKAGE="$package" CHORESCORE_E2E_OUTPUT="$RUNNER_TEMP/v2-e2e" npm run e2e:android
+            CHORESCORE_APK_PATH="${{ steps.build.outputs.apk }}" CHORESCORE_E2E_PACKAGE="${{ steps.contract.outputs.package }}" CHORESCORE_E2E_OUTPUT="$RUNNER_TEMP/v2-e2e" npm run e2e:android
             jq -e '.status=="pass"' "$RUNNER_TEMP/v2-e2e/result.json" >/dev/null
       - name: Capture failed release diagnostics
         if: failure()
@@ -275,7 +274,7 @@ jobs:
           jq --arg run "$run" --arg repo "$GITHUB_REPOSITORY" '
             .builder.enabled=true |
             .builder.criterionId="V2-07" |
-            .builder.objective=("REPAIR V2-07 trusted release failure from Actions run "+$run+". Inspect the exact failed release logs with gh run view "+$run+" --repo "+$repo+" --log-failed before editing. Fix the concrete release/runtime/E2E blocker; do not redesign the product or reopen V2-00..V2-06.") |
+            .builder.objective=("REPAIR V2-07 trusted release failure from Actions run "+$run+". Inspect the exact failed release logs with gh run view "+$run+" --repo "+$repo+" --log-failed before editing. Fix the concrete release/runtime/E2E blocker; do not redesign the product or reopen V2-00..V2-06. If the root cause is inside protected .github control-plane files, do not attempt a forbidden edit: report that exact trusted-control-plane blocker so it can be repaired outside Builder.") |
             .builder.scope="Target only the trusted-release failure and directly necessary app/config/test/scripts repairs. Preserve every accepted product criterion. Protected .github control-plane files remain trusted-shell owned." |
             .builder.acceptance=["npm run check green","privacy:check green","Expo Android export green","Android release APK builds","validated app.json package installs and launches","Premium -> Free -> Premium Android golden path passes","E2E result.json status pass and checkpoints exist","V2-00..V2-06 preserved"]
           ' directives/TASKS.json > "$tmp"; mv "$tmp" directives/TASKS.json
