@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33629483400",
+  "role": "builder",
+  "decision": "repair",
+  "summary": "V2-07 repair cycle (THIRD attempt): the candidate did NOT implement the required fix for the release blocker. The objective was to repair the android-emulator-runner script block in .github/workflows/chorescore-v2-factory.yml (which executes each script: line as a separate sh -c process, so the $package shell variable does not persist across lines, causing smoke-android-apk.sh to receive an empty package argument and abort) by either (A) inlining the package value per line (pass \"${{ steps.contract.outputs.package }}\" directly to smoke-android-apk.sh and set CHORESCORE_E2E_PACKAGE=\"${{ steps.contract.outputs.package }}\" on each line that uses it), or (B) making smoke-android-apk.sh fall back to the package from app.json when $2 is empty. The candidate checkout is byte-identical to the pristine accepted tree for both .github/workflows/chorescore-v2-factory.yml and .github/scripts/smoke-android-apk.sh (verified via diff). The buggy pattern remains: line 205 assigns package=\"${{ steps.contract.outputs.package }}\" and lines 207/209 still reference \"$package\" and CHORESCORE_E2E_PACKAGE=\"$package\" across separate sh -c processes, so the package argument is still empty when smoke-android-apk.sh runs (which requires a non-empty $2 via package=\"${2:?package}\"). No fallback was added to smoke-android-apk.sh. Trusted verification passed (exit code 0, 608 tests green, export/prebuild/Gradle build successful), but the trusted report does not exercise the android-emulator-runner script block, so it does not validate the release blocker fix. The release blocker is unfixed. This is a mandatory mustFix finding; the decision cannot be accept.",
+  "checks": [
+    "trusted-verification-exit-code-0",
+    "candidate-vs-pristine-diff-workflow-identical",
+    "candidate-vs-pristine-diff-smoke-identical",
+    "release-blocker-still-present",
+    "no-fix-implemented",
+    "trusted-report-does-not-exercise-emulator-script-block",
+    "no-regression-on-accepted-criteria"
+  ],
+  "findings": [
+    {
+      "path": ".github/workflows/chorescore-v2-factory.yml",
+      "problem": "The android-emulator-runner script block still relies on a $package shell variable assigned on one line and referenced on later lines. Because android-emulator-runner executes each script: line as a separate sh -c process, $package does not persist, so smoke-android-apk.sh receives an empty package argument and aborts (package=\"${2:?package}\"). The required fix (inline the package value per line, or add an app.json fallback in smoke-android-apk.sh) was not implemented. This is the third consecutive repair cycle with zero delta on the target files.",
+      "evidence": "diff /home/runner/work/_temp/accepted-pristine/.github/workflows/chorescore-v2-factory.yml .github/workflows/chorescore-v2-factory.yml reports 'IDENTICAL'; diff .../.github/scripts/smoke-android-apk.sh ... reports 'IDENTICAL'. Workflow lines 204-210 still contain: package=\"${{ steps.contract.outputs.package }}\" then bash ...smoke-android-apk.sh \"${{ steps.build.outputs.apk }}\" \"$package\" ... and CHORESCORE_E2E_PACKAGE=\"$package\". smoke-android-apk.sh line 3 still requires package=\"${2:?package}\" with no app.json fallback. The trusted report (TRUSTED_33629483400.md) runs npm run check, expo export, expo prebuild and gradlew assembleDebug only; it never invokes the android-emulator-runner script block, so exit code 0 does not validate the release blocker.",
+      "mustFix": true,
+      "requiredFix": "In .github/workflows/chorescore-v2-factory.yml, inline the package value per line: pass \"${{ steps.contract.outputs.package }}\" directly to smoke-android-apk.sh and set CHORESCORE_E2E_PACKAGE=\"${{ steps.contract.outputs.package }}\" (do not rely on the $package variable persisting across sh -c lines). Optionally also add an app.json fallback in .github/scripts/smoke-android-apk.sh mirroring scripts/e2e-android.js configuredAndroidPackage() so an empty $2 does not abort.",
+      "verification": "Confirm the workflow script block no longer references a cross-line $package variable and passes the package value inline on each line; confirm smoke-android-apk.sh (or the workflow) resolves the package from app.json when $2 is empty; run the trusted release and confirm smoke-android-apk.sh receives a non-empty package and the golden path E2E passes."
+    }
+  ]
+}
