@@ -2,9 +2,11 @@
   "schemaVersion": 1,
   "milestone": "v2-rc",
   "lastCycle": "33655504790",
-  "activeCriteria": [],
-  "pendingArtifact": "V2-07",
-  "progressSummary": "V2-07 repair independently accepted; corrected baseline handed back to trusted Android release shell for final APK/emulator/E2E attestation.",
+  "activeCriteria": [
+    "V2-07"
+  ],
+  "pendingArtifact": null,
+  "progressSummary": "V2-07 trusted release failed in Actions run 33655504790; automatically reopened for targeted Builder/Auditor repair before another trusted release attempt.",
   "criteria": [
     {
       "id": "V2-00",
