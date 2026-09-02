@@ -2,19 +2,13 @@
   "schemaVersion": 1,
   "milestone": "v2-rc",
   "builder": {
-    "enabled": true,
-    "criterionId": "V2-07",
-    "objective": "REPAIR V2-07 trusted release failure from Actions run 33650797544. Inspect the exact failed release logs with gh run view 33650797544 --repo Mickalive/Chorescore-V2 --log-failed before editing. Fix the concrete release/runtime/E2E blocker; do not redesign the product or reopen V2-00..V2-06. If the root cause is inside protected .github control-plane files, do not attempt a forbidden edit: report that exact trusted-control-plane blocker so it can be repaired outside Builder.",
-    "scope": "Target only the trusted-release failure and directly necessary app/config/test/scripts repairs. Preserve every accepted product criterion. Protected .github control-plane files remain trusted-shell owned.",
+    "enabled": false,
+    "criterionId": null,
+    "objective": "Accepted V2-07 repair is now owned by the trusted release shell; no Builder edits until another trusted release failure.",
+    "scope": "No further Builder work required. Trusted release shell re-runs full V2-07 gate.",
     "acceptance": [
-      "npm run check green",
-      "privacy:check green",
-      "Expo Android export green",
-      "Android release APK builds",
-      "validated app.json package installs and launches",
-      "Premium -> Free -> Premium Android golden path passes",
-      "E2E result.json status pass and checkpoints exist",
-      "V2-00..V2-06 preserved"
+      "Trusted release shell re-runs: npm run check, expo export, expo prebuild, gradle assembleRelease, install, launch, E2E golden path",
+      "V2-07 completion attested by trusted release shell only"
     ],
     "previousCriteriaPreserved": [
       "V2-00: architecture greenfield, ports/adapters, Android build",

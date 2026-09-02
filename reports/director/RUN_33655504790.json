@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "cycle": "33655504790",
+  "decision": "stop",
+  "reason": "V2-07 repair accepted by independent auditor (audit RUN_33655504790). Candidate modified only scripts/e2e-android.js to harden the Android golden-path E2E against the release failure observed in run 33650797544: post-launch sleep increased from 1400ms to 3000ms, wifi/data re-enabled after smoke script disables them, and waitFor timeouts raised for login screen ('Démonstration' 60000ms), household root ('Appartement démo' 60000ms), and household tabs ('Ajouter une tâche' 30000ms). These address the most likely root causes: slow app launch on emulator, network state left disabled by smoke script, and UI elements exceeding default 10s timeout. Trusted verification passed (exit code 0): npm run check green (608 tests, 16 suites), npm run privacy:check green (222 tests + static privacy contract), expo export, expo prebuild, gradle assembleDebug BUILD SUCCESSFUL (18m 23s). Independent checks reproduced baseline. Candidate diff vs pristine accepted tree strictly limited to scripts/e2e-android.js; no protected .github control-plane files, product code, tests, or app config modified. V2-00..V2-06 invariants preserved. Zero mustFix findings. Per V2-07 handoff policy, Director does not mark V2-07 complete: the accepted repair baseline is handed back to the trusted release shell, which alone re-runs the full V2-07 gate (release APK build, install, launch, Android golden path E2E) and attests completion. Builder disabled. pendingArtifact=V2-07. Trusted shell normalized the accepted V2-07 repair back to final release validation.",
+  "progressEvidence": [
+    "e2e-script-harden-only-scripts-e2e-android-js",
+    "post-launch-sleep-increased-1400ms-to-3000ms",
+    "wifi-data-re-enabled-after-smoke-script",
+    "login-timeout-raised-to-60000ms",
+    "household-root-timeout-raised-to-60000ms",
+    "household-tabs-timeout-raised-to-30000ms",
+    "npm-run-check-green-608-tests-16-suites",
+    "npm-run-privacy-check-green-222-tests",
+    "expo-export-android-green",
+    "expo-prebuild-android-green",
+    "gradle-assembleDebug-build-successful-18m23s",
+    "trusted-verification-exit-code-0",
+    "audit-accepted-33655504790",
+    "candidate-diff-limited-to-e2e-android-js",
+    "no-protected-control-plane-files-modified",
+    "no-product-code-tests-or-config-modified",
+    "e2e-script-expectations-match-app-behavior",
+    "v2-00-through-v2-06-invariants-preserved",
+    "zero-mustfix-findings",
+    "builder-disabled",
+    "pending-artifact-V2-07",
+    "director-did-not-mark-complete",
+    "trusted-release-shell-hands-V2-07"
+  ]
+}

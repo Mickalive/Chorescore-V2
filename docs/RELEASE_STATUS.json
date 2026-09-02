@@ -1,12 +1,10 @@
 {
   "schemaVersion": 1,
   "milestone": "v2-rc",
-  "lastCycle": "33650797544",
-  "activeCriteria": [
-    "V2-07"
-  ],
-  "pendingArtifact": null,
-  "progressSummary": "V2-07 trusted release failed in Actions run 33650797544; automatically reopened for targeted Builder/Auditor repair before another trusted release attempt.",
+  "lastCycle": "33655504790",
+  "activeCriteria": [],
+  "pendingArtifact": "V2-07",
+  "progressSummary": "V2-07 repair independently accepted; corrected baseline handed back to trusted Android release shell for final APK/emulator/E2E attestation.",
   "criteria": [
     {
       "id": "V2-00",
@@ -168,7 +166,24 @@
         "root-cause-confirmed-android-emulator-runner-line-by-line-sh-c",
         "trusted-control-plane-package-propagation-fixed-eee451c",
         "builder-repair-loop-closed",
-        "trusted-release-re-attempt-ready"
+        "trusted-release-re-attempt-ready",
+        "e2e-script-harden-only-scripts-e2e-android-js",
+        "post-launch-sleep-increased-1400ms-to-3000ms",
+        "wifi-data-re-enabled-after-smoke-script",
+        "login-timeout-raised-to-60000ms",
+        "household-root-timeout-raised-to-60000ms",
+        "household-tabs-timeout-raised-to-30000ms",
+        "npm-run-check-green-608-tests-16-suites",
+        "npm-run-privacy-check-green-222-tests",
+        "gradle-assembleDebug-build-successful-18m23s",
+        "trusted-verification-exit-code-0-cycle-33655504790",
+        "audit-accepted-33655504790",
+        "candidate-diff-limited-to-e2e-android-js",
+        "no-protected-control-plane-files-modified",
+        "v2-00-through-v2-06-invariants-preserved",
+        "zero-mustfix-findings",
+        "director-did-not-mark-complete",
+        "trusted-release-shell-hands-V2-07"
       ]
     }
   ],
