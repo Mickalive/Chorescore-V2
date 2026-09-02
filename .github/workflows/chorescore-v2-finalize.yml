@@ -34,8 +34,29 @@ jobs:
       - name: Validate V2 state
         run: |
           set -euo pipefail
-          jq -e 'all(.criteria[]; if .id=="V2-07" then .status=="in_progress" else .status=="complete" end)' docs/RELEASE_STATUS.json >/dev/null
-          jq -e '.openFindings | length == 0' docs/RELEASE_STATUS.json >/dev/null
+          python3 - <<'PY'
+          import json, sys
+          with open('docs/RELEASE_STATUS.json', encoding='utf-8') as f:
+              s = json.load(f)
+          statuses = {c['id']: c.get('status') for c in s.get('criteria', [])}
+          expected = {f'V2-{i:02d}' for i in range(8)}
+          missing = sorted(expected - set(statuses))
+          bad_done = {k: v for k, v in statuses.items() if k != 'V2-07' and v != 'complete'}
+          v207 = statuses.get('V2-07')
+          findings = s.get('openFindings', [])
+          print('V2 statuses:', statuses)
+          print('V2-07 active criteria:', s.get('activeCriteria'))
+          print('Open findings:', len(findings))
+          if missing:
+              print('ERROR missing criteria:', missing, file=sys.stderr); sys.exit(11)
+          if bad_done:
+              print('ERROR pre-V2-07 criteria not complete:', bad_done, file=sys.stderr); sys.exit(12)
+          if v207 != 'in_progress':
+              print('ERROR V2-07 must be in_progress, got:', v207, file=sys.stderr); sys.exit(13)
+          if findings:
+              print('ERROR unresolved findings:', findings, file=sys.stderr); sys.exit(14)
+          print('State contract OK: V2-00..06 complete, V2-07 in_progress, zero findings')
+          PY
           echo "tested_sha=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@ae0d4ed08881f17d1511386f5be3e62356acd4a6
