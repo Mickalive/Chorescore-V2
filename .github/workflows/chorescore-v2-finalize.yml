@@ -90,7 +90,7 @@ jobs:
       - name: Install and verify frozen product
         run: |
           set -euo pipefail
-          npm ci --ignore-scripts --no-audit --no-fund
+          npm ci --include=dev --ignore-scripts --no-audit --no-fund
           npm run check
           npm run privacy:check
           npx --no-install expo export --platform android --output-dir "$RUNNER_TEMP/v2-final-export"
