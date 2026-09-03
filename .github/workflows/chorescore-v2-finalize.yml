@@ -136,7 +136,7 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 300
           script: |
-            set -euo pipefail
+            set -eu
             PACKAGE="${{ steps.contract.outputs.package }}"
             APK="${{ steps.testbuild.outputs.apk }}"
             adb shell settings put global hide_error_dialogs 1 || true
@@ -151,7 +151,7 @@ jobs:
             CHORESCORE_APK_PATH="$APK" CHORESCORE_E2E_PACKAGE="$PACKAGE" CHORESCORE_E2E_OUTPUT="$RUNNER_TEMP/v2-e2e" npm run e2e:android
             rc=$?
             set -e
-            if [[ $rc -ne 0 ]]; then
+            if [ "$rc" -ne 0 ]; then
               echo "First E2E attempt failed; retrying once on a clean app state without rebuilding."
               mkdir -p "$RUNNER_TEMP/v2-e2e-attempt1"
               cp -r "$RUNNER_TEMP/v2-e2e/." "$RUNNER_TEMP/v2-e2e-attempt1/" 2>/dev/null || true
