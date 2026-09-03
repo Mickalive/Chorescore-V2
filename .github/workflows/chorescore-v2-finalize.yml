@@ -243,3 +243,5 @@ jobs:
           path: ${{ runner.temp }}/v2-finalizer-failure
           retention-days: 30
           if-no-files-found: warn
+
+# Manual trigger marker for the final V2-07 closure run.
