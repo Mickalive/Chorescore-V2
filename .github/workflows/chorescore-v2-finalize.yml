@@ -7,6 +7,8 @@ on:
     paths:
       - ".github/workflows/chorescore-v2-finalize.yml"
       - ".github/scripts/finalize-android-golden-path.sh"
+      - "scripts/e2e-android.js"
+      - "src/features/household/AddTaskScreen.tsx"
 
 permissions:
   contents: write
