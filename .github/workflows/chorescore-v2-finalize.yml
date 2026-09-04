@@ -140,6 +140,36 @@ jobs:
           cp "$apk" "$RUNNER_TEMP/chorescore-v2-x86_64-test.apk"
           echo "apk=$RUNNER_TEMP/chorescore-v2-x86_64-test.apk" >> "$GITHUB_OUTPUT"
 
+      - name: Build universal testable APK
+        id: finalbuild
+        run: |
+          set -euo pipefail
+          (cd android && ./gradlew :app:assembleRelease --no-daemon --stacktrace)
+          apk="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$apk"
+          cp "$apk" "$RUNNER_TEMP/ChoreScore-V2-release.apk"
+          sha=$(sha256sum "$RUNNER_TEMP/ChoreScore-V2-release.apk" | awk '{print $1}')
+          echo "apk=$RUNNER_TEMP/ChoreScore-V2-release.apk" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "$sha  ChoreScore-V2-release.apk" > "$RUNNER_TEMP/ChoreScore-V2-release.sha256"
+          {
+            echo "ChoreScore V2 real-device test candidate"
+            echo "Commit: $tested_sha"
+            echo "SHA256: $sha"
+            echo "Status: testable candidate; final V2-07 attestation still requires the Android golden path to pass."
+          } > "$RUNNER_TEMP/ChoreScore-V2-candidate-status.txt"
+
+      - name: Upload testable APK immediately
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: chorescore-v2-testable-apk
+          path: |
+            ${{ steps.finalbuild.outputs.apk }}
+            ${{ runner.temp }}/ChoreScore-V2-release.sha256
+            ${{ runner.temp }}/ChoreScore-V2-candidate-status.txt
+          retention-days: 90
+          compression-level: 0
+
       - name: Android golden path on CI test image
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
@@ -152,19 +182,6 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 300
           script: bash "$GITHUB_WORKSPACE/.github/scripts/finalize-android-golden-path.sh" "${{ steps.testbuild.outputs.apk }}" "${{ steps.contract.outputs.package }}" "$RUNNER_TEMP"
-
-      - name: Build final universal release APK
-        id: finalbuild
-        run: |
-          set -euo pipefail
-          (cd android && ./gradlew :app:assembleRelease --no-daemon --stacktrace)
-          apk="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk"
-          test -s "$apk"
-          cp "$apk" "$RUNNER_TEMP/ChoreScore-V2-release.apk"
-          sha=$(sha256sum "$RUNNER_TEMP/ChoreScore-V2-release.apk" | awk '{print $1}')
-          echo "apk=$RUNNER_TEMP/ChoreScore-V2-release.apk" >> "$GITHUB_OUTPUT"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          echo "$sha  ChoreScore-V2-release.apk" > "$RUNNER_TEMP/ChoreScore-V2-release.sha256"
 
       - name: Verify branch did not change under the tested candidate
         run: |
