@@ -76,10 +76,6 @@ function tapLeftOf(label, px = 48) {
   const b = bounds(findVisible(label, { exact: true }));
   shell('input', 'tap', String(Math.max(10, b.x1 - px)), String(b.y)); sleep(550);
 }
-function tapBelow(label, px = 65) {
-  const b = bounds(findVisible(label, { exact: true }));
-  shell('input', 'tap', String(b.x), String(b.y2 + px)); sleep(250);
-}
 function inputText(value) { shell('input', 'text', value.replace(/ /g, '%s')); sleep(250); }
 function typeInto(label, value) { tapNode(findVisible(label, { exact: true }), 150); inputText(value); }
 function back() { shell('input', 'keyevent', 'KEYCODE_BACK'); sleep(500); }
@@ -95,9 +91,17 @@ function assertAbsent(label) {
   if (findNodes(label).length) throw new Error(`Expected ${label} to be absent`);
 }
 function screenshot(name) {
-  const file = path.join(outputDir, `${String(checkpoints.length + 1).padStart(2, '0')}-${name}.png`);
+  const prefix = `${String(checkpoints.length + 1).padStart(2, '0')}-${name}`;
+  const file = path.join(outputDir, `${prefix}.png`);
   fs.writeFileSync(file, adb(['exec-out', 'screencap', '-p'], true));
-  checkpoints.push({ name, screenshot: path.basename(file), at: new Date().toISOString() });
+  let uiDump = null;
+  try {
+    const dump = dumpUi();
+    const uiFile = path.join(outputDir, `${prefix}.xml`);
+    fs.writeFileSync(uiFile, dump.xml);
+    uiDump = path.basename(uiFile);
+  } catch (_) {}
+  checkpoints.push({ name, screenshot: path.basename(file), uiDump, at: new Date().toISOString() });
 }
 function writeResult(status, error = null) {
   fs.writeFileSync(resultPath, JSON.stringify({
@@ -145,7 +149,8 @@ try {
   waitFor('Ajouter une tâche', 30000); waitFor('Score'); waitFor('To-do'); waitFor('Vaisselle du soir');
   screenshot('household-add-premium');
 
-  tapBelow('Quoi ?', 62); inputText('TestE2E');
+  typeInto('Nom de la tâche', 'TestE2E');
+  waitFor('TestE2E', 5000);
   tapLabel('Fait par: Alex', { exact: true });
   tapLabel('Fait pour: Sam', { exact: true });
   typeInto('Durée minutes', '20'); back();
