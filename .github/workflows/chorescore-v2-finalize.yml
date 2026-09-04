@@ -88,6 +88,17 @@ jobs:
           node --check scripts/e2e-android.js
           bash -n .github/scripts/smoke-android-apk.sh
           bash -n .github/scripts/finalize-android-golden-path.sh
+          grep -F 'accessibilityLabel="Nom de la tâche"' src/features/household/AddTaskScreen.tsx >/dev/null
+          grep -F 'function inputKeyText' scripts/e2e-android.js >/dev/null
+          raw_taps=$(grep -F -c "shell('input', 'tap'" scripts/e2e-android.js || true)
+          if [[ "$raw_taps" -ne 1 ]]; then
+            echo "::error::Android E2E must route taps through node-derived tapNode; found $raw_taps raw tap calls"
+            exit 21
+          fi
+          if grep -Eq 'tapBelow\(|tapLeftOf\(' scripts/e2e-android.js; then
+            echo "::error::Fragile pixel-offset Android E2E helper detected"
+            exit 22
+          fi
           package=$(jq -er '.expo.android.package | select(type=="string" and length>0)' app.json)
           echo "package=$package" >> "$GITHUB_OUTPUT"
           echo "Android package: $package"
