@@ -72,12 +72,52 @@ function tapNode(node, waitMs = 550) {
   sleep(waitMs);
 }
 function tapLabel(label, options = {}) { const node = findVisible(label, options); tapNode(node, options.waitMs); return node; }
-function tapLeftOf(label, px = 48) {
-  const b = bounds(findVisible(label, { exact: true }));
-  shell('input', 'tap', String(Math.max(10, b.x1 - px)), String(b.y)); sleep(550);
+function tapClickableLeftOf(label) {
+  const { nodes } = dumpUi();
+  const target = nodes.find((n) => nodeMatches(n, label, true));
+  if (!target) throw new Error(`UI node not found for structural left click: ${label}`);
+  const tb = bounds(target);
+  const targetHeight = Math.max(1, tb.y2 - tb.y1);
+  const candidates = nodes
+    .filter((n) => n.clickable === 'true')
+    .map((node) => ({ node, b: bounds(node) }))
+    .filter(({ b }) => {
+      const overlap = Math.min(b.y2, tb.y2) - Math.max(b.y1, tb.y1);
+      return b.x2 <= tb.x1 && overlap >= Math.min(targetHeight, b.y2 - b.y1) * 0.5;
+    })
+    .sort((a, b) => {
+      const gapA = tb.x1 - a.b.x2;
+      const gapB = tb.x1 - b.b.x2;
+      if (gapA !== gapB) return gapA - gapB;
+      return Math.abs(a.b.y - tb.y) - Math.abs(b.b.y - tb.y);
+    });
+  if (!candidates.length) throw new Error(`No clickable control structurally left of: ${label}`);
+  tapNode(candidates[0].node);
 }
-function inputText(value) { shell('input', 'text', value.replace(/ /g, '%s')); sleep(250); }
-function typeInto(label, value) { tapNode(findVisible(label, { exact: true }), 150); inputText(value); }
+function inputKeyText(value) {
+  const keyFor = (ch) => {
+    if (/^[a-z]$/.test(ch)) return `KEYCODE_${ch.toUpperCase()}`;
+    if (/^[0-9]$/.test(ch)) return `KEYCODE_${ch}`;
+    if (ch === ' ') return 'KEYCODE_SPACE';
+    throw new Error(`Unsupported deterministic E2E input character: ${ch}`);
+  };
+  for (const ch of value.toLowerCase()) shell('input', 'keyevent', keyFor(ch));
+  sleep(300);
+}
+function typeInto(label, value) {
+  tapNode(findVisible(label, { exact: true }), 500);
+  const focused = findVisible(label, { exact: true, scroll: false });
+  if (focused.focused !== 'true') throw new Error(`Text input did not receive focus: ${label}`);
+  inputKeyText(value);
+  const until = Date.now() + 3000;
+  while (Date.now() < until) {
+    const current = findVisible(label, { exact: true, scroll: false });
+    if (current.text === value) return;
+    sleep(150);
+  }
+  const current = findVisible(label, { exact: true, scroll: false });
+  throw new Error(`Text input failed for ${label}: expected ${value}, saw ${current.text || '<empty>'}`);
+}
 function back() { shell('input', 'keyevent', 'KEYCODE_BACK'); sleep(500); }
 function waitFor(label, timeoutMs = 10000) {
   const until = Date.now() + timeoutMs;
@@ -149,12 +189,11 @@ try {
   waitFor('Ajouter une tâche', 30000); waitFor('Score'); waitFor('To-do'); waitFor('Vaisselle du soir');
   screenshot('household-add-premium');
 
-  typeInto('Nom de la tâche', 'TestE2E');
-  waitFor('TestE2E', 5000);
+  typeInto('Nom de la tâche', 'teste2e');
   tapLabel('Fait par: Alex', { exact: true });
   tapLabel('Fait pour: Sam', { exact: true });
   typeInto('Durée minutes', '20'); back();
-  tapLabel('Valider', { exact: true }); waitFor('TestE2E');
+  tapLabel('Valider', { exact: true }); waitFor('teste2e');
   screenshot('entry-created');
 
   tapLabel('Score', { exact: true }); waitFor('Équilibres'); waitFor('Alex'); waitFor('Sam');
@@ -165,7 +204,7 @@ try {
   screenshot('native-share-sheet'); back();
 
   tapLabel('To-do', { exact: true }); waitFor('Sortir les cartons'); screenshot('todo-premium');
-  tapLeftOf('Sortir les cartons'); waitFor('Tâche faite !');
+  tapClickableLeftOf('Sortir les cartons'); waitFor('Tâche faite !');
   tapLabel('Fait par: Sam', { exact: true });
   typeInto('Durée minutes', '10'); back();
   tapLabel('Valider', { exact: true }); waitFor('Terminées'); screenshot('todo-completed');
