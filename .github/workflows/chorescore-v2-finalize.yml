@@ -6,6 +6,7 @@ on:
     branches: [lab/chorescore-v2]
     paths:
       - ".github/workflows/chorescore-v2-finalize.yml"
+      - ".github/scripts/finalize-android-golden-path.sh"
 
 permissions:
   contents: write
@@ -79,10 +80,12 @@ jobs:
           test -s scripts/privacy-check.js
           test -s scripts/e2e-android.js
           test -s .github/scripts/smoke-android-apk.sh
+          test -s .github/scripts/finalize-android-golden-path.sh
           jq -e '.scripts["privacy:check"] and .scripts["e2e:android"]' package.json >/dev/null
           node --check scripts/privacy-check.js
           node --check scripts/e2e-android.js
           bash -n .github/scripts/smoke-android-apk.sh
+          bash -n .github/scripts/finalize-android-golden-path.sh
           package=$(jq -er '.expo.android.package | select(type=="string" and length>0)' app.json)
           echo "package=$package" >> "$GITHUB_OUTPUT"
           echo "Android package: $package"
@@ -135,34 +138,7 @@ jobs:
           ram-size: 3072M
           disable-animations: true
           emulator-boot-timeout: 300
-          script: |
-            set -eu
-            PACKAGE="${{ steps.contract.outputs.package }}"
-            APK="${{ steps.testbuild.outputs.apk }}"
-            adb shell settings put global hide_error_dialogs 1 || true
-            adb shell settings put global anr_show_background 0 || true
-            bash "$GITHUB_WORKSPACE/.github/scripts/smoke-android-apk.sh" "$APK" "$PACKAGE" "$RUNNER_TEMP/v2-smoke"
-            adb shell pm clear "$PACKAGE" || true
-            adb shell svc wifi enable || true
-            adb shell svc data enable || true
-            adb shell settings put global hide_error_dialogs 1 || true
-            mkdir -p "$RUNNER_TEMP/v2-e2e"
-            set +e
-            CHORESCORE_APK_PATH="$APK" CHORESCORE_E2E_PACKAGE="$PACKAGE" CHORESCORE_E2E_OUTPUT="$RUNNER_TEMP/v2-e2e" npm run e2e:android
-            rc=$?
-            set -e
-            if [ "$rc" -ne 0 ]; then
-              echo "First E2E attempt failed; retrying once on a clean app state without rebuilding."
-              mkdir -p "$RUNNER_TEMP/v2-e2e-attempt1"
-              cp -r "$RUNNER_TEMP/v2-e2e/." "$RUNNER_TEMP/v2-e2e-attempt1/" 2>/dev/null || true
-              adb shell am force-stop "$PACKAGE" || true
-              adb shell pm clear "$PACKAGE" || true
-              adb shell settings put global hide_error_dialogs 1 || true
-              rm -rf "$RUNNER_TEMP/v2-e2e"
-              mkdir -p "$RUNNER_TEMP/v2-e2e"
-              CHORESCORE_APK_PATH="$APK" CHORESCORE_E2E_PACKAGE="$PACKAGE" CHORESCORE_E2E_OUTPUT="$RUNNER_TEMP/v2-e2e" npm run e2e:android
-            fi
-            jq -e '.status=="pass"' "$RUNNER_TEMP/v2-e2e/result.json" >/dev/null
+          script: bash "$GITHUB_WORKSPACE/.github/scripts/finalize-android-golden-path.sh" "${{ steps.testbuild.outputs.apk }}" "${{ steps.contract.outputs.package }}" "$RUNNER_TEMP"
 
       - name: Build final universal release APK
         id: finalbuild
@@ -244,4 +220,4 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
-# Manual trigger marker for the final V2-07 closure run.
+# Dedicated V2-07 closure only.
