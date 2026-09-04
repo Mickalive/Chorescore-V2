@@ -262,6 +262,7 @@ export function AddTaskScreen({ householdId }: AddTaskScreenProps) {
             onChangeText={setLabel}
             placeholder="Ex: Vaisselle, Courses..."
             placeholderTextColor={colors.textMuted}
+            accessibilityLabel="Nom de la tâche"
           />
         </View>
 
