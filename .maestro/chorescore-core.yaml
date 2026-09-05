@@ -1,0 +1,37 @@
+appId: com.chorescore.v2
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Démonstration"
+    timeout: 60000
+- tapOn: "Démonstration"
+- extendedWaitUntil:
+    visible: "Appartement démo"
+    timeout: 60000
+- tapOn: "Appartement démo"
+- extendedWaitUntil:
+    visible: "Ajouter une tâche"
+    timeout: 30000
+- tapOn: "Nom de la tâche"
+- eraseText
+- inputText: "teste2e"
+- tapOn: "Fait par: Alex"
+- tapOn: "Fait pour: Sam"
+- tapOn: "Durée minutes"
+- eraseText
+- inputText: "20"
+- hideKeyboard
+- tapOn: "Valider"
+- extendedWaitUntil:
+    visible: "teste2e"
+    timeout: 15000
+- tapOn: "Score"
+- assertVisible: "Équilibres"
+- assertVisible: "Alex"
+- assertVisible: "Sam"
+- tapOn: "To-do"
+- extendedWaitUntil:
+    visible: "Sortir les cartons"
+    timeout: 15000
+- takeScreenshot: "chorescore-core-pass"
