@@ -1,0 +1,179 @@
+name: ChoreScore V2 E2E Matrix
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [lab/chorescore-v2]
+    paths:
+      - ".github/workflows/chorescore-v2-e2e-matrix.yml"
+      - ".github/scripts/run-e2e-runner.sh"
+      - ".maestro/**"
+      - "scripts/e2e-appium.js"
+      - "scripts/e2e-android.js"
+      - "src/**"
+      - "app/**"
+      - "app.json"
+      - "package.json"
+      - "package-lock.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chorescore-v2-e2e-matrix
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+  EXPO_NO_TELEMETRY: "1"
+  NODE_ENV: production
+
+jobs:
+  build:
+    name: Build one E2E APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      package: ${{ steps.meta.outputs.package }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@ae0d4ed08881f17d1511386f5be3e62356acd4a6
+        with:
+          node-version: 22.13.0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Read Android package
+        id: meta
+        run: |
+          set -euo pipefail
+          package=$(jq -er '.expo.android.package | select(type=="string" and length>0)' app.json)
+          echo "package=$package" >> "$GITHUB_OUTPUT"
+          echo "Testing package: $package"
+
+      - name: Verify product before device tests
+        run: |
+          set -euo pipefail
+          npm ci --include=dev --ignore-scripts --no-audit --no-fund
+          npm run check
+          npm run privacy:check
+
+      - name: Prebuild Android
+        run: |
+          set -euo pipefail
+          npx --no-install expo prebuild --platform android --no-install
+
+      - name: Build x86_64 release APK once
+        run: |
+          set -euo pipefail
+          (cd android && ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon --stacktrace)
+          apk="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$apk"
+          cp "$apk" "$RUNNER_TEMP/chorescore-v2-x86_64-test.apk"
+          sha256sum "$RUNNER_TEMP/chorescore-v2-x86_64-test.apk"
+
+      - name: Upload shared E2E APK
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: chorescore-v2-e2e-apk
+          path: ${{ runner.temp }}/chorescore-v2-x86_64-test.apk
+          retention-days: 7
+          compression-level: 0
+
+  e2e:
+    name: E2E — ${{ matrix.runner }}
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    continue-on-error: ${{ matrix.runner == 'legacy' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [maestro, appium, legacy]
+
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@ae0d4ed08881f17d1511386f5be3e62356acd4a6
+        with:
+          node-version: 22.13.0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Download shared E2E APK
+        uses: actions/download-artifact@v4
+        with:
+          name: chorescore-v2-e2e-apk
+          path: ${{ runner.temp }}/e2e-apk
+
+      - name: Install Maestro 2.7.0
+        if: matrix.runner == 'maestro'
+        run: |
+          set -euo pipefail
+          export MAESTRO_VERSION=2.7.0
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          "$HOME/.maestro/bin/maestro" --version
+
+      - name: Install Appium 3.7.0 + UiAutomator2
+        if: matrix.runner == 'appium'
+        run: |
+          set -euo pipefail
+          npm install -g appium@3.7.0
+          appium driver install uiautomator2
+          appium --version
+          appium driver list --installed
+
+      - name: Enable hardware acceleration
+        run: |
+          set -euo pipefail
+          if [[ -e /dev/kvm ]]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm || true
+            sudo chmod 666 /dev/kvm || true
+            ls -l /dev/kvm
+          else
+            echo "::warning::/dev/kvm unavailable; emulator will use software acceleration"
+          fi
+
+      - name: Run ${{ matrix.runner }} against Android API 35
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: 35
+          target: aosp_atd
+          arch: x86_64
+          profile: pixel_6
+          cores: 2
+          ram-size: 3072M
+          disable-animations: true
+          emulator-boot-timeout: 300
+          script: bash "$GITHUB_WORKSPACE/.github/scripts/run-e2e-runner.sh" "${{ matrix.runner }}" "$RUNNER_TEMP/e2e-apk/chorescore-v2-x86_64-test.apk" "${{ needs.build.outputs.package }}" "$RUNNER_TEMP/e2e-${{ matrix.runner }}"
+
+      - name: Upload ${{ matrix.runner }} evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: chorescore-v2-e2e-${{ matrix.runner }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/e2e-${{ matrix.runner }}
+          retention-days: 30
+          if-no-files-found: warn
+
+# Maestro and Appium are the blocking black-box validators.
+# The previous ADB/UIAutomator script remains only as a non-blocking comparison signal.
