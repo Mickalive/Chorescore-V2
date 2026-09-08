@@ -6,9 +6,14 @@ on:
     branches: [lab/chorescore-v2]
     paths:
       - ".github/workflows/chorescore-v2-finalize.yml"
-      - ".github/scripts/finalize-android-golden-path.sh"
-      - "scripts/e2e-android.js"
-      - "src/features/household/AddTaskScreen.tsx"
+      - ".github/scripts/run-e2e-runner.sh"
+      - ".maestro/**"
+      - "scripts/e2e-appium.js"
+      - "src/**"
+      - "app/**"
+      - "app.json"
+      - "package.json"
+      - "package-lock.json"
 
 permissions:
   contents: write
@@ -23,9 +28,14 @@ env:
   NODE_ENV: production
 
 jobs:
-  finalize:
+  build:
+    name: Build frozen V2 candidate
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 60
+    outputs:
+      package: ${{ steps.contract.outputs.package }}
+      tested_sha: ${{ steps.state.outputs.tested_sha }}
+      apk_sha: ${{ steps.finalbuild.outputs.sha }}
     steps:
       - name: Checkout frozen V2 candidate
         uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
@@ -35,6 +45,7 @@ jobs:
           persist-credentials: false
 
       - name: Validate V2 state
+        id: state
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -60,7 +71,9 @@ jobs:
               print('ERROR unresolved findings:', findings, file=sys.stderr); sys.exit(14)
           print('State contract OK: V2-00..06 complete, V2-07 in_progress, zero findings')
           PY
-          echo "tested_sha=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          tested_sha=$(git rev-parse HEAD)
+          echo "tested_sha=$tested_sha" >> "$GITHUB_OUTPUT"
+          echo "Tested SHA: $tested_sha"
 
       - uses: actions/setup-node@ae0d4ed08881f17d1511386f5be3e62356acd4a6
         with:
@@ -80,25 +93,16 @@ jobs:
           test -s package-lock.json
           test -s app.json
           test -s scripts/privacy-check.js
-          test -s scripts/e2e-android.js
-          test -s .github/scripts/smoke-android-apk.sh
-          test -s .github/scripts/finalize-android-golden-path.sh
-          jq -e '.scripts["privacy:check"] and .scripts["e2e:android"]' package.json >/dev/null
+          test -s scripts/e2e-appium.js
+          test -s .maestro/chorescore-core.yaml
+          test -s .github/scripts/run-e2e-runner.sh
+          jq -e '.scripts["privacy:check"]' package.json >/dev/null
           node --check scripts/privacy-check.js
-          node --check scripts/e2e-android.js
-          bash -n .github/scripts/smoke-android-apk.sh
-          bash -n .github/scripts/finalize-android-golden-path.sh
+          node --check scripts/e2e-appium.js
+          bash -n .github/scripts/run-e2e-runner.sh
           grep -F 'accessibilityLabel="Nom de la tâche"' src/features/household/AddTaskScreen.tsx >/dev/null
-          grep -F 'function inputKeyText' scripts/e2e-android.js >/dev/null
-          raw_taps=$(grep -F -c "shell('input', 'tap'" scripts/e2e-android.js || true)
-          if [[ "$raw_taps" -ne 1 ]]; then
-            echo "::error::Android E2E must route taps through node-derived tapNode; found $raw_taps raw tap calls"
-            exit 21
-          fi
-          if grep -Eq 'tapBelow\(|tapLeftOf\(' scripts/e2e-android.js; then
-            echo "::error::Fragile pixel-offset Android E2E helper detected"
-            exit 22
-          fi
+          grep -F 'Nom de la tâche' .maestro/chorescore-core.yaml >/dev/null
+          grep -F 'teste2e' .maestro/chorescore-core.yaml >/dev/null
           package=$(jq -er '.expo.android.package | select(type=="string" and length>0)' app.json)
           echo "package=$package" >> "$GITHUB_OUTPUT"
           echo "Android package: $package"
@@ -117,20 +121,7 @@ jobs:
           npx --no-install expo prebuild --platform android --no-install
           grep -F "${{ steps.contract.outputs.package }}" android/app/build.gradle >/dev/null
 
-      - name: Enable hardware acceleration
-        run: |
-          set -euo pipefail
-          if [[ -e /dev/kvm ]]; then
-            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
-            sudo udevadm control --reload-rules
-            sudo udevadm trigger --name-match=kvm || true
-            sudo chmod 666 /dev/kvm || true
-            ls -l /dev/kvm
-          else
-            echo "::warning::/dev/kvm is unavailable; emulator will use software acceleration"
-          fi
-
-      - name: Build fast x86_64 release candidate
+      - name: Build x86_64 E2E release candidate
         id: testbuild
         run: |
           set -euo pipefail
@@ -138,7 +129,15 @@ jobs:
           apk="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk"
           test -s "$apk"
           cp "$apk" "$RUNNER_TEMP/chorescore-v2-x86_64-test.apk"
-          echo "apk=$RUNNER_TEMP/chorescore-v2-x86_64-test.apk" >> "$GITHUB_OUTPUT"
+          sha256sum "$RUNNER_TEMP/chorescore-v2-x86_64-test.apk"
+
+      - name: Upload shared E2E APK
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: chorescore-v2-finalizer-e2e-apk
+          path: ${{ runner.temp }}/chorescore-v2-x86_64-test.apk
+          retention-days: 7
+          compression-level: 0
 
       - name: Build universal testable APK
         id: finalbuild
@@ -149,14 +148,13 @@ jobs:
           test -s "$apk"
           cp "$apk" "$RUNNER_TEMP/ChoreScore-V2-release.apk"
           sha=$(sha256sum "$RUNNER_TEMP/ChoreScore-V2-release.apk" | awk '{print $1}')
-          echo "apk=$RUNNER_TEMP/ChoreScore-V2-release.apk" >> "$GITHUB_OUTPUT"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "$sha  ChoreScore-V2-release.apk" > "$RUNNER_TEMP/ChoreScore-V2-release.sha256"
           {
             echo "ChoreScore V2 real-device test candidate"
-            echo "Commit: $tested_sha"
+            echo "Commit: ${{ steps.state.outputs.tested_sha }}"
             echo "SHA256: $sha"
-            echo "Status: testable candidate; final V2-07 attestation still requires the Android golden path to pass."
+            echo "Status: testable candidate; final V2-07 attestation requires both Maestro and Appium golden paths to pass."
           } > "$RUNNER_TEMP/ChoreScore-V2-candidate-status.txt"
 
       - name: Upload testable APK immediately
@@ -164,13 +162,76 @@ jobs:
         with:
           name: chorescore-v2-testable-apk
           path: |
-            ${{ steps.finalbuild.outputs.apk }}
+            ${{ runner.temp }}/ChoreScore-V2-release.apk
             ${{ runner.temp }}/ChoreScore-V2-release.sha256
             ${{ runner.temp }}/ChoreScore-V2-candidate-status.txt
           retention-days: 90
           compression-level: 0
 
-      - name: Android golden path on CI test image
+  e2e:
+    name: Android E2E — ${{ matrix.runner }}
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [maestro, appium]
+    steps:
+      - name: Checkout exact tested candidate
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+        with:
+          ref: ${{ needs.build.outputs.tested_sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@ae0d4ed08881f17d1511386f5be3e62356acd4a6
+        with:
+          node-version: 22.13.0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Download exact E2E APK
+        uses: actions/download-artifact@v4
+        with:
+          name: chorescore-v2-finalizer-e2e-apk
+          path: ${{ runner.temp }}/e2e-apk
+
+      - name: Install Maestro 2.7.0
+        if: matrix.runner == 'maestro'
+        run: |
+          set -euo pipefail
+          export MAESTRO_VERSION=2.7.0
+          export MAESTRO_CLI_NO_ANALYTICS=1
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          "$HOME/.maestro/bin/maestro" --version
+
+      - name: Install Appium 3.7.0 + UiAutomator2
+        if: matrix.runner == 'appium'
+        run: |
+          set -euo pipefail
+          npm install -g appium@3.7.0
+          appium driver install uiautomator2
+          appium --version
+          appium driver list --installed
+
+      - name: Enable hardware acceleration
+        run: |
+          set -euo pipefail
+          if [[ -e /dev/kvm ]]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm || true
+            sudo chmod 666 /dev/kvm || true
+            ls -l /dev/kvm
+          else
+            echo "::warning::/dev/kvm unavailable; emulator will use software acceleration"
+          fi
+
+      - name: Run ${{ matrix.runner }} golden path on Android API 35
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
           api-level: 35
@@ -181,13 +242,60 @@ jobs:
           ram-size: 3072M
           disable-animations: true
           emulator-boot-timeout: 300
-          script: bash "$GITHUB_WORKSPACE/.github/scripts/finalize-android-golden-path.sh" "${{ steps.testbuild.outputs.apk }}" "${{ steps.contract.outputs.package }}" "$RUNNER_TEMP"
+          script: bash "$GITHUB_WORKSPACE/.github/scripts/run-e2e-runner.sh" "${{ matrix.runner }}" "$RUNNER_TEMP/e2e-apk/chorescore-v2-x86_64-test.apk" "${{ needs.build.outputs.package }}" "$RUNNER_TEMP/v2-e2e-${{ matrix.runner }}"
 
-      - name: Verify branch did not change under the tested candidate
+      - name: Upload ${{ matrix.runner }} evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: chorescore-v2-finalizer-e2e-${{ matrix.runner }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/v2-e2e-${{ matrix.runner }}
+          retention-days: 90
+          if-no-files-found: warn
+
+  attest:
+    name: Attest V2-07 and publish final APK
+    needs: [build, e2e]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact tested candidate
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+        with:
+          ref: ${{ needs.build.outputs.tested_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download universal APK candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: chorescore-v2-testable-apk
+          path: ${{ runner.temp }}/final-apk
+
+      - name: Download Maestro evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: chorescore-v2-finalizer-e2e-maestro-${{ github.run_id }}
+          path: ${{ runner.temp }}/evidence/maestro
+
+      - name: Download Appium evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: chorescore-v2-finalizer-e2e-appium-${{ github.run_id }}
+          path: ${{ runner.temp }}/evidence/appium
+
+      - name: Verify frozen candidate and branch stability
         run: |
           set -euo pipefail
+          test -s "$RUNNER_TEMP/final-apk/ChoreScore-V2-release.apk"
+          actual_sha=$(sha256sum "$RUNNER_TEMP/final-apk/ChoreScore-V2-release.apk" | awk '{print $1}')
+          if [[ "$actual_sha" != "${{ needs.build.outputs.apk_sha }}" ]]; then
+            echo "::error::Final APK digest changed between build and attestation"
+            exit 41
+          fi
           git fetch origin lab/chorescore-v2
           remote_sha=$(git rev-parse origin/lab/chorescore-v2)
+          tested_sha="${{ needs.build.outputs.tested_sha }}"
           if [[ "$remote_sha" != "$tested_sha" ]]; then
             changed=$(git diff --name-only "$tested_sha" "$remote_sha")
             echo "Lab branch advanced during finalization:"
@@ -197,30 +305,38 @@ jobs:
               exit 42
             fi
           fi
+          {
+            echo "ChoreScore V2 final Android RC"
+            echo "Commit: $tested_sha"
+            echo "SHA256: $actual_sha"
+            echo "Validation: Maestro 2.7.0 PASS + Appium 3.7.0/UiAutomator2 PASS on Android API 35"
+            echo "Status: V2-07 release gate passed with two independent black-box E2E frameworks."
+          } > "$RUNNER_TEMP/final-apk/ChoreScore-V2-final-status.txt"
 
-      - name: Upload final APK and evidence
+      - name: Upload final APK and dual-framework evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: chorescore-v2-final-apk
           path: |
-            ${{ steps.finalbuild.outputs.apk }}
-            ${{ runner.temp }}/ChoreScore-V2-release.sha256
-            ${{ runner.temp }}/v2-smoke
-            ${{ runner.temp }}/v2-e2e
-            ${{ runner.temp }}/v2-e2e-attempt1
+            ${{ runner.temp }}/final-apk/ChoreScore-V2-release.apk
+            ${{ runner.temp }}/final-apk/ChoreScore-V2-release.sha256
+            ${{ runner.temp }}/final-apk/ChoreScore-V2-final-status.txt
+            ${{ runner.temp }}/evidence/maestro
+            ${{ runner.temp }}/evidence/appium
           retention-days: 90
           compression-level: 0
 
       - name: Attest V2-07 complete
         env:
           GH_TOKEN: "${{ github.token }}"
-          APK_SHA: "${{ steps.finalbuild.outputs.sha }}"
+          APK_SHA: "${{ needs.build.outputs.apk_sha }}"
+          TESTED_SHA: "${{ needs.build.outputs.tested_sha }}"
         run: |
           set -euo pipefail
           git fetch origin lab/chorescore-v2
           git checkout -B lab/chorescore-v2 origin/lab/chorescore-v2
           tmp=$(mktemp)
-          jq --arg run "$GITHUB_RUN_ID" --arg sha "$APK_SHA" '(.criteria[]|select(.id=="V2-07")|.status)="complete" | (.criteria[]|select(.id=="V2-07")|.evidence) += ["dedicated-finalizer-kvm-aosp-atd",("finalizer-run-"+$run),("final-apk-sha256-"+$sha),"android-api35-install-launch-green","golden-path-premium-free-premium-green"] | .pendingArtifact=null | .activeCriteria=[] | .lastCycle=$run | .openFindings=[] | .progressSummary="V2 RC complete: deterministic KVM/ATD Android golden path passed and final universal release APK uploaded"' docs/RELEASE_STATUS.json > "$tmp"
+          jq --arg run "$GITHUB_RUN_ID" --arg sha "$APK_SHA" --arg tested "$TESTED_SHA" '(.criteria[]|select(.id=="V2-07")|.status)="complete" | (.criteria[]|select(.id=="V2-07")|.evidence) += ["dedicated-finalizer-kvm-aosp-atd",("finalizer-run-"+$run),("tested-commit-"+$tested),("final-apk-sha256-"+$sha),"android-api35-install-launch-green","maestro-2.7.0-golden-path-green","appium-3.7.0-uiautomator2-golden-path-green","dual-independent-black-box-e2e-green"] | .pendingArtifact=null | .activeCriteria=[] | .lastCycle=$run | .openFindings=[] | .progressSummary="V2 RC complete: universal Android release APK published after independent Maestro and Appium golden paths passed on Android API 35"' docs/RELEASE_STATUS.json > "$tmp"
           mv "$tmp" docs/RELEASE_STATUS.json
           git config user.name chorescore-v2-finalizer
           git config user.email chorescore-v2-finalizer@users.noreply.github.com
@@ -229,25 +345,5 @@ jobs:
           auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
           git -c "http.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:refs/heads/lab/chorescore-v2
 
-      - name: Capture diagnostics
-        if: failure()
-        run: |
-          set -euo pipefail
-          out="$RUNNER_TEMP/v2-finalizer-failure"
-          mkdir -p "$out"
-          git rev-parse HEAD > "$out/sha.txt" || true
-          cp app.json package.json "$out/" 2>/dev/null || true
-          cp -r "$RUNNER_TEMP/v2-smoke" "$out/smoke" 2>/dev/null || true
-          cp -r "$RUNNER_TEMP/v2-e2e" "$out/e2e" 2>/dev/null || true
-          cp -r "$RUNNER_TEMP/v2-e2e-attempt1" "$out/e2e-attempt1" 2>/dev/null || true
-
-      - name: Upload failure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: chorescore-v2-finalizer-failure-${{ github.run_id }}
-          path: ${{ runner.temp }}/v2-finalizer-failure
-          retention-days: 30
-          if-no-files-found: warn
-
-# Dedicated V2-07 closure only.
+# V2-07 closure: candidate APK is published before E2E; final attestation requires
+# both independent black-box Android validators (Maestro and Appium) to pass.
