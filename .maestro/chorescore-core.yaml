@@ -23,9 +23,12 @@ appId: com.chorescore.v2
 - inputText: "20"
 - hideKeyboard
 - tapOn: "Valider"
-- extendedWaitUntil:
-    visible: "teste2e"
+- scrollUntilVisible:
+    element:
+      text: "teste2e"
+    direction: DOWN
     timeout: 15000
+- assertVisible: "teste2e"
 - tapOn: "Score"
 - assertVisible: "Équilibres"
 - assertVisible: "Alex"
