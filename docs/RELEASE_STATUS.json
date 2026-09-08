@@ -1,12 +1,10 @@
 {
   "schemaVersion": 1,
   "milestone": "v2-rc",
-  "lastCycle": "33655504790",
-  "activeCriteria": [
-    "V2-07"
-  ],
+  "lastCycle": "34260696856",
+  "activeCriteria": [],
   "pendingArtifact": null,
-  "progressSummary": "V2-07 trusted release failed in Actions run 33655504790; automatically reopened for targeted Builder/Auditor repair before another trusted release attempt.",
+  "progressSummary": "V2 RC complete: universal Android release APK published after independent Maestro and Appium golden paths passed on Android API 35",
   "criteria": [
     {
       "id": "V2-00",
@@ -149,7 +147,7 @@
     },
     {
       "id": "V2-07",
-      "status": "in_progress",
+      "status": "complete",
       "evidence": [
         "repair-baseline-committed-1658861",
         "expo-sdk57-packages-aligned",
@@ -185,7 +183,15 @@
         "v2-00-through-v2-06-invariants-preserved",
         "zero-mustfix-findings",
         "director-did-not-mark-complete",
-        "trusted-release-shell-hands-V2-07"
+        "trusted-release-shell-hands-V2-07",
+        "dedicated-finalizer-kvm-aosp-atd",
+        "finalizer-run-34260696856",
+        "tested-commit-1b6ad57c46c0319fa3b2920111cec31d5fafa2aa",
+        "final-apk-sha256-f444228592233bb729f3489f7ad9c30bc0e631b9f9a3a65b02a9e708d1489d40",
+        "android-api35-install-launch-green",
+        "maestro-2.7.0-golden-path-green",
+        "appium-3.7.0-uiautomator2-golden-path-green",
+        "dual-independent-black-box-e2e-green"
       ]
     }
   ],
