@@ -47,6 +47,10 @@ function elementId(payload) {
   return value['element-6066-11e4-a52e-4f735466cecf'] || value.ELEMENT;
 }
 
+function isNoSuchElement(error) {
+  return error?.status === 404 || /no such element|could not be located/i.test(String(error?.message || error));
+}
+
 async function findOnce(label) {
   const escaped = javaString(label);
   const selectors = [
@@ -62,7 +66,7 @@ async function findOnce(label) {
       const id = elementId(payload);
       if (id) return id;
     } catch (error) {
-      if (!/no such element/i.test(String(error.message))) throw error;
+      if (!isNoSuchElement(error)) throw error;
     }
   }
   return null;
@@ -99,6 +103,21 @@ async function clearAndType(label, value) {
     value: [...value],
   });
   await sleep(300);
+}
+
+async function scrollTextIntoView(label) {
+  const escaped = javaString(label);
+  const selector = `new UiScrollable(new UiSelector().scrollable(true)).setMaxSearchSwipes(10).scrollIntoView(new UiSelector().text("${escaped}"))`;
+  try {
+    const payload = await request('POST', `/session/${sessionId}/element`, {
+      using: '-android uiautomator',
+      value: selector,
+    });
+    return elementId(payload);
+  } catch (error) {
+    if (!isNoSuchElement(error)) throw error;
+    return null;
+  }
 }
 
 async function hideKeyboard() {
@@ -172,6 +191,7 @@ async function main() {
   await clearAndType('Durée minutes', '20');
   await hideKeyboard();
   await click('Valider');
+  await scrollTextIntoView('teste2e');
   await waitFor('teste2e', 15000);
   await screenshot('entry-created');
 
