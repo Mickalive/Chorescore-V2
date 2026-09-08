@@ -177,3 +177,4 @@ jobs:
 
 # Maestro and Appium are the blocking black-box validators.
 # The previous ADB/UIAutomator script remains only as a non-blocking comparison signal.
+# Revision 2: accessibility fallback + created-entry scrolling fixes.
